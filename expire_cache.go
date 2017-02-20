@@ -22,7 +22,7 @@ type ExpireCacheStats struct {
 // cache, as the cache might decide an item needs to be removed
 // (because we hit the cache limit) before the item has been processed.
 //
-// Every time an item is touched by `Get()` or `Set()` the duration is
+// Every time an item is touched by `Get()` or `Add()` the duration is
 // updated which ensures items in frequent use stay in the cache
 //
 // Processing can modify the item in the cache without updating the
@@ -74,7 +74,7 @@ func (c *ExpireCache) Get(key interface{}) (interface{}, bool) {
 }
 
 // Put the key, value and TTL in the cache
-func (c *ExpireCache) Set(key interface{}, value interface{}) {
+func (c *ExpireCache) Add(key interface{}, value interface{}) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -99,19 +99,34 @@ func (c *ExpireCache) Update(key interface{}, value interface{}) error {
 	return nil
 }
 
-// Processes each item in the cache in a thread safe way, such that the cache can be in use
-// while processing items in the cache
-func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
-	var keys []interface{}
-
+// Get a list of keys at this point in time
+func (c *ExpireCache) Keys() (keys []interface{}) {
+	defer c.mutex.Unlock()
 	c.mutex.Lock()
-	// Get a list of keys at this point in time
+
 	for key := range c.cache {
 		keys = append(keys, key)
 	}
-	c.mutex.Unlock()
+	return
+}
 
+// Get the value without updating the expiration
+func (c *ExpireCache) Peek(key interface{}) (value interface{}, ok bool) {
+	defer c.mutex.Unlock()
+	c.mutex.Lock()
+
+	if record, hit := c.cache[key]; hit {
+		return record.Value, true
+	}
+	return nil, false
+}
+
+// Processes each item in the cache in a thread safe way, such that the cache can be in use
+// while processing items in the cache
+func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
 	fanOut := NewFanOut(concurrent)
+	keys := c.Keys()
+
 	for _, key := range keys {
 		fanOut.Run(func(key interface{}) error {
 			c.mutex.Lock()
@@ -143,7 +158,6 @@ func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value 
 	}
 
 	return nil
-
 }
 
 // Retrieve stats about the cache
@@ -159,8 +173,5 @@ func (c *ExpireCache) GetStats() ExpireCacheStats {
 
 // Returns the number of items in the cache.
 func (c *ExpireCache) Size() int64 {
-	if c.cache == nil {
-		return 0
-	}
 	return int64(len(c.cache))
 }

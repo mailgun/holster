@@ -14,6 +14,11 @@ type FanOut struct {
 }
 
 func NewFanOut(size int) *FanOut {
+	// They probably want no concurrency
+	if size == 0 {
+		size = 1
+	}
+
 	pool := FanOut{
 		errChan: make(chan error, size),
 		size:    make(chan bool, size),
@@ -42,11 +47,13 @@ func (p *FanOut) start() {
 // Run a new routine with an optional data value
 func (p *FanOut) Run(callBack func(interface{}) error, data interface{}) {
 	p.size <- true
-	err := callBack(data)
-	if err != nil {
-		p.errChan <- err
-	}
-	<-p.size
+	go func() {
+		err := callBack(data)
+		if err != nil {
+			p.errChan <- err
+		}
+		<-p.size
+	}()
 }
 
 // Wait for all the routines to complete and return any errors

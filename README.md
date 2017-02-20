@@ -25,6 +25,46 @@ if errs != nil {
 }
 ```
 
+## LRUCache
+Implements a Least Recently Used Cache with optional TTL and stats collection
+
+This is a LRU cache based off [github.com/golang/groupcache/lru](http://github.com/golang/groupcache/lru) expanded
+with the following
+
+* `Peek()` - Get the value without updating the expiration or last used or stats
+* `Keys()` - Get a list of keys at this point in time
+* `Stats()` - Returns stats about the current state of the cache
+* `AddWithTTL()` - Adds a value to the cache with a expiration time
+
+TTL is evaluated during calls to `Get()` if the entry is past the requested TTL `Get()`
+removes the entry from the cache counts a miss and returns not `ok`
+
+```go
+cache := NewLRUCache(5000)
+go func() {
+    for {
+        select {
+        // Send cache stats every 5 seconds
+        case <-time.Tick(time.Second * 5):
+            stats := cache.GetStats()
+            metrics.Gauge(metrics.Metric("demo", "cache", "size"), int64(stats.Size), 1)
+            metrics.Gauge(metrics.Metric("demo", "cache", "hit"), stats.Hit, 1)
+            metrics.Gauge(metrics.Metric("demo", "cache", "miss"), stats.Miss, 1)
+        }
+    }
+}()
+
+cache.Add("key", "value")
+value, ok := cache.Get("key")
+
+for _, key := range cache.Keys() {
+    value, ok := cache.Get(key)
+    if ok {
+        fmt.Printf("Key: %+v Value %+v\n", key, value)
+    }
+}
+```
+
 ## ExpireCache
 ExpireCache is a cache which expires entries only after 2 conditions are met
 
@@ -81,7 +121,7 @@ go func() {
     }
 }()
 
-cache.Set("domain-id", Item{Id: 1, Field: "value"},
+cache.Add("domain-id", Item{Id: 1, Field: "value"},
 item, ok := cache.Get("domain-id")
 if ok {
     fmt.Printf("%+v\n", item.(Item))
