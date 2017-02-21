@@ -127,3 +127,23 @@ if ok {
     fmt.Printf("%+v\n", item.(Item))
 }
 ```
+
+## Random Utilities
+A set of functions to generate random domain names and strings useful for testing
+
+```go
+// Return a random string 10 characters long made up of runes passed
+holster.RandomRunes("prefix-", 10, holster.AlphaRunes, hoslter.NumericRunes)
+
+// Return a random string 10 characters long made up of Alpha Characters A-Z, a-z
+holster.RandomAlpha("prefix-", 10)
+
+// Return a random string 10 characters long made up of Alpha and Numeric Characters A-Z, a-z, 0-9
+holster.RandomString("prefix-", 10)
+
+// Return a random item from the list given
+holster.RandomItem("foo", "bar", "fee", "bee")
+
+// Return a random domain name in the form "random-numbers.[gov, net, com, ..]"
+holster.RandomDomainName()
+```
