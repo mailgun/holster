@@ -10,7 +10,7 @@ type FanOut struct {
 	errChan chan error
 	size    chan bool
 	errs    []error
-	routine sync.WaitGroup
+	wg      sync.WaitGroup
 }
 
 func NewFanOut(size int) *FanOut {
@@ -29,13 +29,13 @@ func NewFanOut(size int) *FanOut {
 }
 
 func (p *FanOut) start() {
-	p.routine.Add(1)
+	p.wg.Add(1)
 	go func() {
 		for {
 			select {
 			case err, ok := <-p.errChan:
 				if !ok {
-					p.routine.Done()
+					p.wg.Done()
 					return
 				}
 				p.errs = append(p.errs, err)
@@ -68,7 +68,7 @@ func (p *FanOut) Wait() []error {
 	}
 
 	// Wait until the error collector routine is complete
-	p.routine.Wait()
+	p.wg.Wait()
 
 	// If there are no errors
 	if len(p.errs) == 0 {

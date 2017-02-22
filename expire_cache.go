@@ -142,11 +142,11 @@ func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value 
 				return err
 			}
 
+			c.mutex.Lock()
 			if record.ExpireAt.Before(time.Now().UTC()) {
-				c.mutex.Lock()
 				delete(c.cache, key)
-				c.mutex.Unlock()
 			}
+			c.mutex.Unlock()
 			return nil
 		}, key)
 	}
@@ -162,8 +162,8 @@ func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value 
 
 // Retrieve stats about the cache
 func (c *ExpireCache) GetStats() ExpireCacheStats {
-	c.mutex.Lock()
 	c.stats.Size = c.Size()
+	c.mutex.Lock()
 	defer func() {
 		c.stats = ExpireCacheStats{}
 		c.mutex.Unlock()
@@ -173,5 +173,7 @@ func (c *ExpireCache) GetStats() ExpireCacheStats {
 
 // Returns the number of items in the cache.
 func (c *ExpireCache) Size() int64 {
+	defer c.mutex.Unlock()
+	c.mutex.Lock()
 	return int64(len(c.cache))
 }
