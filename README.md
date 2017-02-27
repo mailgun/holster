@@ -1,11 +1,59 @@
 # Holster
 A place to put useful mailgun utilities and small libraries that don't fit anywhere else.
 
+## WaitGroup
+Waitgroup is a simplification of `sync.Waitgroup` with item and error collection included.
+
+Running many short term routines over a collection with `.Run()`
+```go
+var wg WaitGroup
+for _, item := range items {
+    wg.Run(func(item interface{}) error {
+        // Do some long running thing with the item
+        fmt.Printf("Item: %+v\n", item.(MyItem))
+        return nil
+    }, item)
+}
+errs := wg.Wait()
+if errs != nil {
+    fmt.Printf("Errs: %+v\n", errrs)
+}
+```
+
+Clean up long running routines easily with `.Loop()`
+```go
+pipe := make(chan int32, 0)
+var wg WaitGroup
+var count int32
+
+wg.Loop(func() bool {
+    select {
+    case inc, ok := <-pipe:
+        // If the pipe was closed, return false
+        if !ok {
+            return false
+        }
+        atomic.AddInt32(&count, inc)
+    }
+    return true
+})
+
+// Feed the loop some numbers and close the pipe
+pipe <- 1
+pipe <- 5
+pipe <- 10
+close(pipe)
+
+// Wait for the loop to exit
+wg.Wait()
+```
+
 ## FanOut
-FanOut spawns a new go-routine each time `Run()` is called until `size` is reached,
-subsequent calls to `Run()` will block until previously `Run()` routines have completed.
-Allowing the user to control how many routines will run simultaneously. `Wait()` then
-collects any errors from the routines once they have all completed.
+FanOut spawns a new go-routine each time `.Run()` is called until `size` is reached,
+subsequent calls to `.Run()` will block until previously `.Run()` routines have completed.
+Allowing the user to control how many routines will run simultaneously. `.Wait()` then
+collects any errors from the routines once they have all completed. FanOut allows you
+to control how many goroutines spawn at a time while WaitGroup will not.
 
 ```go
 // Insert records into the database 10 at a time
@@ -36,7 +84,7 @@ with the following
 * `Stats()` - Returns stats about the current state of the cache
 * `AddWithTTL()` - Adds a value to the cache with a expiration time
 
-TTL is evaluated during calls to `Get()` if the entry is past the requested TTL `Get()`
+TTL is evaluated during calls to `.Get()` if the entry is past the requested TTL `.Get()`
 removes the entry from the cache counts a miss and returns not `ok`
 
 ```go
@@ -72,21 +120,20 @@ ExpireCache is a cache which expires entries only after 2 conditions are met
 2. The item has been processed with ExpireCache.Each()
 
 This is an unbounded cache which guaranties each item in the cache
-has been processed before removal. This is different from a LRU
-cache, as the cache might decide an item needs to be removed
-(because we hit the cache limit) before the item has been processed.
+has been processed before removal. This cache is useful if you need an
+unbounded queue, that can also act like an LRU cache.
 
-Every time an item is touched by `Get()` or `Set()` the duration is
+Every time an item is touched by `.Get()` or `.Set()` the duration is
 updated which ensures items in frequent use stay in the cache. Processing
-the cache with `Each()` can modify the item in the cache without 
-updating the expiration time by using the `Update()` method.
+the cache with `.Each()` can modify the item in the cache without
+updating the expiration time by using the `.Update()` method.
 
 The cache can also return statistics which can be used to graph cache usage
 and size.
 
-NOTE: Because this is an unbounded cache, the user MUST process the cache
-with `Each()` regularly! Else the cache items will never expire and the cache
-will eventually eat all the memory on the system
+*NOTE: Because this is an unbounded cache, the user MUST process the cache
+with `.Each()` regularly! Else the cache items will never expire and the cache
+will eventually eat all the memory on the system*
 
 ```go
 // How often the cache is processed
@@ -95,8 +142,8 @@ syncInterval := time.Second * 10
 // In this example the cache TTL is slightly less than the sync interval
 // such that before the first sync; items that where only accessed once
 // between sync intervals should expire. This technique is useful if you
-// have a long syncInterval and are only interested in keeping very 
-// frequently used items
+// have a long syncInterval and are only interested in keeping items
+// that where accessed during the sync cycle
 cache := holster.NewExpireCache((syncInterval / 5) * 4)
 
 go func() {
@@ -106,12 +153,14 @@ go func() {
         // Items in the cache will not be expired until this completes without error
         case <-time.Tick(syncInterval):
             // Each() uses FanOut() to run several of these concurrently, in this
-            // example we are capped at running 10 concurrently
+            // example we are capped at running 10 concurrently, Use 0 or 1 if you
+            // don't need concurrent FanOut
             cache.Each(10, func(key inteface{}, value interface{}) error {
                 item := value.(Item)
                 return db.ExecuteQuery("insert into tbl (id, field) values (?, ?)",
                     item.Id, item.Field)
             })
+        // Periodically send stats about the cache
         case <-time.Tick(time.Second * 5):
             stats := cache.GetStats()
             metrics.Gauge(metrics.Metric("demo", "cache", "size"), int64(stats.Size), 1)
@@ -128,7 +177,7 @@ if ok {
 }
 ```
 
-## Random Utilities
+## Testing Utilities
 A set of functions to generate random domain names and strings useful for testing
 
 ```go
