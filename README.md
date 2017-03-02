@@ -177,7 +177,30 @@ if ok {
 }
 ```
 
-## Testing Utilities
+## Default values
+These functions assist in determining if values are the golang default and if so, set a value
+```go
+var value string
+
+// Returns true if 'value' is zero (the default golang value)
+holster.IsZero(value)
+
+// Returns true if 'value' is zero (the default golang value)
+holster.IsZeroValue(reflect.ValueOf(value))
+
+// If 'value' is empty or of zero value, assign the default value.
+// This panics if the value is not a pointer or if value and
+// default value are not of the same type.
+var config struct {
+    Foo string
+    Bar int
+}
+holster.SetDefault(&config.Foo, "default")
+holster.SetDefault(&config.Bar, 200)
+```
+
+
+## Random Things
 A set of functions to generate random domain names and strings useful for testing
 
 ```go
