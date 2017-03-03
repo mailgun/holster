@@ -1,6 +1,11 @@
 # Holster
 A place to put useful mailgun utilities and small libraries that don't fit anywhere else.
 
+## Errors
+Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
+ functions for improving the relationship between structured logging and error handling in go
+See the [errors readme](https://github.com/mailgun/holster/blob/master/errors/README.md) for details
+
 ## WaitGroup
 Waitgroup is a simplification of `sync.Waitgroup` with item and error collection included.
 
