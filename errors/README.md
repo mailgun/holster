@@ -55,7 +55,7 @@ func (r *Repository) FetchAuthor(isbn string) (Author, error) {
         return nil, errors.WithContext{"isbn": isbn}.Wrap(err, "while fetching book")
     }
     // Returns ErrorNotFound{} if not exist
-    author, err := r.fetchAuthor(book)
+    author, err := r.fetchAuthorByBook(book)
     if err != nil {
         return nil, errors.WithContext{"book": book}.Wrap(err, "while fetching author")
     }
@@ -65,10 +65,10 @@ func (r *Repository) FetchAuthor(isbn string) (Author, error) {
 
 You should continue to create and inspect error types
 ```go
-type ErrorNotFound struct {}
+type ErrorAuthorNotFound struct {}
 
 func isNotFound(err error) {
-    _, ok := err.(*ErrorNotFound)
+    _, ok := err.(*ErrorAuthorNotFound)
     return ok
 }
 
@@ -89,12 +89,46 @@ func main() {
 }
 ```
 
-## Context Determination
+## Context for concrete error types
 If the error implements the `errors.HasContext` interface the context can be retrieved
 ```go
 context, ok := err.(errors.HasContext)
 if ok {
     fmt.Println(context.Context())
+}
+```
+
+This makes it easy for error types to provide their context information.
+ ```go
+type ErrorBookNotFound struct {
+    ISBN string
+}
+// Implements the `HasContext` interface
+func (e *ErrorBookNotFound) func Context() map[string]interface{} {
+    return map[string]interface{}{
+        "isbn": e.ISBN,
+    }
+ }
+```
+Now we can create the error and logrus knows how to retrieve the context
+ 
+```go
+func (* Repository) FetchBook(isbn string) (*Book, error) {
+    var book Book
+    err := r.db.Query("SELECT * FROM books WHERE isbn = ?").One(&book)
+    if err != nil {
+        return nil, ErrorBookNotFound{ISBN: isbn}
+    }
+}
+
+func main() {
+    r := Repository{}
+    book, err := r.FetchBook("isbn-213f-23422f52356")
+    if err != nil {
+        logrus.WithFields(errors.ToLogrus(err)).Errorf("while fetching book - %s", err)
+        os.Exit(1)
+    }
+    fmt.Printf("Book %+v\n", book)
 }
 ```
 
