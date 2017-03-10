@@ -4,19 +4,30 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+
+	"github.com/mailgun/holster/stack"
+	pkg "github.com/pkg/errors"
 )
 
 // Implements the `error` `causer` and `Contexter` interfaces
-type ContextMap struct {
+type withContext struct {
 	context WithContext
 	msg     string
 	cause   error
+	stack   *stack.Stack
 }
 
-func (c *ContextMap) Error() string { return c.msg + ": " + c.cause.Error() }
-func (c *ContextMap) Cause() error  { return c.cause }
+func (c *withContext) Error() string { return c.msg + ": " + c.cause.Error() }
+func (c *withContext) Cause() error  { return c.cause }
 
-func (c *ContextMap) Context() map[string]interface{} {
+func (c *withContext) StackTrace() pkg.StackTrace {
+	if child, ok := c.cause.(stack.HasStackTrace); ok {
+		return child.StackTrace()
+	}
+	return c.stack.StackTrace()
+}
+
+func (c *withContext) Context() map[string]interface{} {
 	result := make(map[string]interface{}, len(c.context))
 	for key, value := range c.context {
 		result[key] = value
@@ -36,20 +47,16 @@ func (c *ContextMap) Context() map[string]interface{} {
 	return result
 }
 
-func (c *ContextMap) Format(s fmt.State, verb rune) {
+func (c *withContext) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
-		if s.Flag('+') {
-			fmt.Fprintf(s, "%s: %+v (%s)", c.msg, c.Cause(), c.FormatFields())
-			return
-		}
-		fallthrough
+		fmt.Fprintf(s, "%s: %+v (%s)", c.msg, c.Cause(), c.FormatFields())
 	case 's', 'q':
 		io.WriteString(s, c.Error())
 	}
 }
 
-func (c *ContextMap) FormatFields() string {
+func (c *withContext) FormatFields() string {
 	var buf bytes.Buffer
 	var count int
 

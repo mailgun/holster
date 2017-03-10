@@ -96,6 +96,7 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/mailgun/holster/stack"
 )
 
 // New returns an error with the supplied message.
@@ -103,7 +104,7 @@ import (
 func New(message string) error {
 	return &fundamental{
 		msg:   message,
-		stack: callers(),
+		Stack: stack.New(1),
 	}
 }
 
@@ -113,14 +114,14 @@ func New(message string) error {
 func Errorf(format string, args ...interface{}) error {
 	return &fundamental{
 		msg:   fmt.Sprintf(format, args...),
-		stack: callers(),
+		Stack: stack.New(1),
 	}
 }
 
 // fundamental is an error that has a message and a stack, but no caller.
 type fundamental struct {
 	msg string
-	*stack
+	*stack.Stack
 }
 
 func (f *fundamental) Error() string { return f.msg }
@@ -130,7 +131,7 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			io.WriteString(s, f.msg)
-			f.stack.Format(s, verb)
+			f.Stack.Format(s, verb)
 			return
 		}
 		fallthrough
@@ -149,23 +150,29 @@ func WithStack(err error) error {
 	}
 	return &withStack{
 		err,
-		callers(),
+		stack.New(1),
 	}
 }
 
 type withStack struct {
 	error
-	*stack
+	*stack.Stack
 }
 
 func (w *withStack) Cause() error { return w.error }
+func (w *withStack) Context() map[string]interface{} {
+	if child, ok := w.error.(HasContext); ok {
+		return child.Context()
+	}
+	return nil
+}
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
 			fmt.Fprintf(s, "%+v", w.Cause())
-			w.stack.Format(s, verb)
+			w.Stack.Format(s, verb)
 			return
 		}
 		fallthrough
@@ -189,7 +196,7 @@ func Wrap(err error, message string) error {
 	}
 	return &withStack{
 		err,
-		callers(),
+		stack.New(1),
 	}
 }
 
@@ -206,7 +213,7 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 	return &withStack{
 		err,
-		callers(),
+		stack.New(1),
 	}
 }
 
@@ -273,23 +280,64 @@ func Cause(err error) error {
 // Returns the context for the underlying error as map[string]interface{}
 // If no context is available returns nil
 func ToMap(err error) map[string]interface{} {
+	var result map[string]interface{}
+
+	// Add the stack info if provided
+	if cast, ok := err.(stack.HasStackTrace); ok {
+		caller := stack.GetLastFrame(cast.StackTrace())
+		result = map[string]interface{}{
+			"go-call-stack": caller.CallStack,
+			"go-func":       caller.Func,
+			"go-line":       caller.LineNo,
+			"go-src":        caller.File,
+		}
+	}
+
+	// Add context if provided
 	child, ok := err.(HasContext)
 	if !ok {
-		return nil
+		return result
 	}
-	return child.Context()
+
+	if result == nil {
+		return child.Context()
+	}
+
+	// Append the context map to our results
+	for key, value := range child.Context() {
+		result[key] = value
+	}
+	return result
 }
 
 // Returns the context for the underlying error as logrus.Fields{}
 // If no context is available returns empty logrus.Fields{}
 func ToLogrus(err error) logrus.Fields {
-	assert, ok := err.(HasContext)
-	if !ok {
-		return logrus.Fields{}
+	var result logrus.Fields
+
+	// Add the stack info if provided
+	if cast, ok := err.(stack.HasStackTrace); ok {
+		caller := stack.GetLastFrame(cast.StackTrace())
+		result = logrus.Fields{
+			"go-call-stack": caller.CallStack,
+			"go-func":       caller.Func,
+			"go-line":       caller.LineNo,
+			"go-src":        caller.File,
+		}
 	}
-	context := assert.Context()
-	result := make(logrus.Fields, len(context))
-	for key, value := range context {
+
+	// Add context if provided
+	child, ok := err.(HasContext)
+	if !ok {
+		return result
+	}
+
+	if result == nil {
+		result = make(logrus.Fields)
+	}
+
+	// Append the context map to our results
+	for key, value := range child.Context() {
 		result[key] = value
 	}
 	return result
