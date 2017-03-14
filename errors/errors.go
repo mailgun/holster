@@ -95,7 +95,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/mailgun/holster/stack"
 )
 
@@ -282,17 +281,6 @@ func Cause(err error) error {
 func ToMap(err error) map[string]interface{} {
 	var result map[string]interface{}
 
-	// Add the stack info if provided
-	if cast, ok := err.(stack.HasStackTrace); ok {
-		caller := stack.GetLastFrame(cast.StackTrace())
-		result = map[string]interface{}{
-			"go-call-stack": caller.CallStack,
-			"go-func":       caller.Func,
-			"go-line":       caller.LineNo,
-			"go-src":        caller.File,
-		}
-	}
-
 	// Add context if provided
 	child, ok := err.(HasContext)
 	if !ok {
@@ -301,39 +289,6 @@ func ToMap(err error) map[string]interface{} {
 
 	if result == nil {
 		return child.Context()
-	}
-
-	// Append the context map to our results
-	for key, value := range child.Context() {
-		result[key] = value
-	}
-	return result
-}
-
-// Returns the context for the underlying error as logrus.Fields{}
-// If no context is available returns empty logrus.Fields{}
-func ToLogrus(err error) logrus.Fields {
-	var result logrus.Fields
-
-	// Add the stack info if provided
-	if cast, ok := err.(stack.HasStackTrace); ok {
-		caller := stack.GetLastFrame(cast.StackTrace())
-		result = logrus.Fields{
-			"go-call-stack": caller.CallStack,
-			"go-func":       caller.Func,
-			"go-line":       caller.LineNo,
-			"go-src":        caller.File,
-		}
-	}
-
-	// Add context if provided
-	child, ok := err.(HasContext)
-	if !ok {
-		return result
-	}
-
-	if result == nil {
-		result = make(logrus.Fields)
 	}
 
 	// Append the context map to our results
