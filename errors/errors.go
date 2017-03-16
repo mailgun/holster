@@ -95,6 +95,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/mailgun/holster/stack"
 )
 
@@ -289,6 +290,44 @@ func ToMap(err error) map[string]interface{} {
 
 	if result == nil {
 		return child.Context()
+	}
+
+	// Append the context map to our results
+	for key, value := range child.Context() {
+		result[key] = value
+	}
+	return result
+}
+
+// Returns the context and stacktrace information for the underlying error as logrus.Fields{}
+// returns empty logrus.Fields{} if err has no context or no stacktrace
+//
+// 	logrus.WithFields(errors.ToLogrus(err)).WithField("tid", 1).Error(err)
+//
+func ToLogrus(err error) logrus.Fields {
+	type hasContext interface {
+		Context() map[string]interface{}
+	}
+
+	result := logrus.Fields{
+		"excValue": err.Error(),
+		"excType":  fmt.Sprintf("%T", err),
+		"excText":  fmt.Sprintf("%+v", err),
+	}
+
+	// Add the stack info if provided
+	if cast, ok := err.(stack.HasStackTrace); ok {
+		trace := cast.StackTrace()
+		caller := stack.GetLastFrame(trace)
+		result["excFuncName"] = caller.Func
+		result["excLineno"] = caller.LineNo
+		result["excFileName"] = caller.File
+	}
+
+	// Add context if provided
+	child, ok := err.(hasContext)
+	if !ok {
+		return result
 	}
 
 	// Append the context map to our results

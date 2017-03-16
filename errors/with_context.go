@@ -31,3 +31,21 @@ func (c WithContext) Wrap(err error, msg string) error {
 		msg:     msg,
 	}
 }
+
+func (c WithContext) Error(msg string) error {
+	return &withContext{
+		stack:   stack.New(1),
+		context: c,
+		cause:   fmt.Errorf(msg),
+		msg:     "",
+	}
+}
+
+func (c WithContext) Errorf(err error, format string, args ...interface{}) error {
+	return &withContext{
+		stack:   stack.New(1),
+		context: c,
+		cause:   fmt.Errorf(format, args...),
+		msg:     "",
+	}
+}

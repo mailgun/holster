@@ -17,8 +17,16 @@ type withContext struct {
 	stack   *stack.Stack
 }
 
-func (c *withContext) Error() string { return c.msg + ": " + c.cause.Error() }
-func (c *withContext) Cause() error  { return c.cause }
+func (c *withContext) Cause() error {
+	return c.cause
+}
+
+func (c *withContext) Error() string {
+	if len(c.msg) == 0 {
+		return c.cause.Error()
+	}
+	return c.msg + ": " + c.cause.Error()
+}
 
 func (c *withContext) StackTrace() pkg.StackTrace {
 	if child, ok := c.cause.(stack.HasStackTrace); ok {
