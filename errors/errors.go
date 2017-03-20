@@ -311,7 +311,7 @@ func ToLogrus(err error) logrus.Fields {
 
 	result := logrus.Fields{
 		"excValue": err.Error(),
-		"excType":  fmt.Sprintf("%T", err),
+		"excType":  fmt.Sprintf("%T", Cause(err)),
 		"excText":  fmt.Sprintf("%+v", err),
 	}
 

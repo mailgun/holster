@@ -224,3 +224,16 @@ holster.RandomItem("foo", "bar", "fee", "bee")
 // Return a random domain name in the form "random-numbers.[gov, net, com, ..]"
 holster.RandomDomainName()
 ```
+
+## Logrus ToFields()
+Recursively convert a deeply nested struct or map to `logrus.Fields` such that the result is safe for JSON encoding.
+(IE: Ignore non marshallerable types like `func`)
+```go
+conf := struct {
+   Endpoints []string
+   CallBack  func([]byte) bool
+   LogLevel  int
+}
+// Outputs the contents of the config struct along with the info message
+logrus.WithFields(holster.ToFields(conf)).Info("Starting service")
+```

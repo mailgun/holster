@@ -6,6 +6,7 @@ import "reflect"
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
 //      var config struct {
+//		Verbose *bool
 //		Foo string
 //		Bar int
 //	}

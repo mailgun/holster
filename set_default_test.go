@@ -1,6 +1,9 @@
-package holster
+package holster_test
 
-import . "gopkg.in/check.v1"
+import (
+	"github.com/mailgun/holster"
+	. "gopkg.in/check.v1"
+)
 
 type SetDefaultTestSuite struct{}
 
@@ -18,8 +21,8 @@ func (s *SetDefaultTestSuite) TestIfEmpty(c *C) {
 	c.Assert(conf.Bar, Equals, 0)
 
 	// Should apply the default values
-	SetDefault(&conf.Foo, "default")
-	SetDefault(&conf.Bar, 200)
+	holster.SetDefault(&conf.Foo, "default")
+	holster.SetDefault(&conf.Bar, 200)
 
 	c.Assert(conf.Foo, Equals, "default")
 	c.Assert(conf.Bar, Equals, 200)
@@ -28,8 +31,8 @@ func (s *SetDefaultTestSuite) TestIfEmpty(c *C) {
 	conf.Bar = 500
 
 	// Should NOT apply the default values
-	SetDefault(&conf.Foo, "default")
-	SetDefault(&conf.Bar, 200)
+	holster.SetDefault(&conf.Foo, "default")
+	holster.SetDefault(&conf.Bar, 200)
 
 	c.Assert(conf.Foo, Equals, "thrawn")
 	c.Assert(conf.Bar, Equals, 500)
@@ -40,13 +43,13 @@ func (s *SetDefaultTestSuite) TestIsEmpty(c *C) {
 	var thing string
 
 	// Should return true
-	c.Assert(IsZero(count64), Equals, true)
-	c.Assert(IsZero(thing), Equals, true)
+	c.Assert(holster.IsZero(count64), Equals, true)
+	c.Assert(holster.IsZero(thing), Equals, true)
 
 	thing = "thrawn"
 	count64 = int64(1)
-	c.Assert(IsZero(count64), Equals, false)
-	c.Assert(IsZero(thing), Equals, false)
+	c.Assert(holster.IsZero(count64), Equals, false)
+	c.Assert(holster.IsZero(thing), Equals, false)
 }
 
 func (s *SetDefaultTestSuite) TestIfEmptyTypePanic(c *C) {
@@ -58,7 +61,7 @@ func (s *SetDefaultTestSuite) TestIfEmptyTypePanic(c *C) {
 
 	var thing string
 	// Should panic
-	SetDefault(&thing, 1)
+	holster.SetDefault(&thing, 1)
 	c.Fatalf("Should have caught panic")
 }
 
@@ -71,6 +74,6 @@ func (s *SetDefaultTestSuite) TestIfEmptyNonPtrPanic(c *C) {
 
 	var thing string
 	// Should panic
-	SetDefault(thing, "thrawn")
+	holster.SetDefault(thing, "thrawn")
 	c.Fatalf("Should have caught panic")
 }
