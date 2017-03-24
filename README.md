@@ -237,3 +237,10 @@ conf := struct {
 // Outputs the contents of the config struct along with the info message
 logrus.WithFields(holster.ToFields(conf)).Info("Starting service")
 ```
+
+## GoRoutine ID
+Get the go routine id (useful for logging)
+```go
+import "github.com/mailgun/holster/stack"
+logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
+```
