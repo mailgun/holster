@@ -15,6 +15,7 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 	go func() {
 		err := callBack(data)
 		if err == nil {
+			wg.wg.Done()
 			return
 		}
 		wg.mutex.Lock()

@@ -97,6 +97,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/mailgun/holster/stack"
+	pkg "github.com/pkg/errors"
 )
 
 // New returns an error with the supplied message.
@@ -305,10 +306,6 @@ func ToMap(err error) map[string]interface{} {
 // 	logrus.WithFields(errors.ToLogrus(err)).WithField("tid", 1).Error(err)
 //
 func ToLogrus(err error) logrus.Fields {
-	type hasContext interface {
-		Context() map[string]interface{}
-	}
-
 	result := logrus.Fields{
 		"excValue": err.Error(),
 		"excType":  fmt.Sprintf("%T", Cause(err)),
@@ -325,7 +322,7 @@ func ToLogrus(err error) logrus.Fields {
 	}
 
 	// Add context if provided
-	child, ok := err.(hasContext)
+	child, ok := err.(HasContext)
 	if !ok {
 		return result
 	}
@@ -336,3 +333,57 @@ func ToLogrus(err error) logrus.Fields {
 	}
 	return result
 }
+
+type CauseError struct {
+	stack *stack.Stack
+	error error
+}
+
+// Creates a new error that becomes the cause even if 'err' is a wrapped error
+// but preserves the Context() and StackTrace() information. This allows the user
+// to create a concrete error type without losing context
+//
+//	// Our new concrete type encapsulates CauseError
+// 	type RetryError struct {
+//		errors.CauseError
+//	}
+//
+//	func NewRetryError(err error) *RetryError {
+//		return &RetryError{errors.NewCauseError(err, 1)}
+//	}
+//
+//	// Returns true if the error is of type RetryError
+//	func IsRetryError(err error) bool {
+//		err = errors.Cause(err)
+//		_, ok := err.(*RetryError)
+//		return ok
+//	}
+//
+func NewCauseError(err error, depth ...int) *CauseError {
+	var stk *stack.Stack
+	if len(depth) > 0 {
+		stk = stack.New(1 + depth[0])
+	} else {
+		stk = stack.New(1)
+	}
+	return &CauseError{
+		stack: stk,
+		error: err,
+	}
+}
+
+func (e *CauseError) Error() string { return e.error.Error() }
+func (e *CauseError) Context() map[string]interface{} {
+	if child, ok := e.error.(HasContext); ok {
+		return child.Context()
+	}
+	return nil
+}
+func (e *CauseError) StackTrace() pkg.StackTrace {
+	if child, ok := e.error.(stack.HasStackTrace); ok {
+		return child.StackTrace()
+	}
+	return e.stack.StackTrace()
+}
+
+// TODO: Add Format() support

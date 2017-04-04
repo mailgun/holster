@@ -11,7 +11,12 @@ type HasContext interface {
 	Context() map[string]interface{}
 }
 
-// Creates errors that conform to the `Contexter` interface
+// True if the interface has the format method (from fmt package)
+type HasFormat interface {
+	Format(st fmt.State, verb rune)
+}
+
+// Creates errors that conform to the `HasContext` interface
 type WithContext map[string]interface{}
 
 func (c WithContext) Wrapf(err error, format string, args ...interface{}) error {
@@ -41,7 +46,7 @@ func (c WithContext) Error(msg string) error {
 	}
 }
 
-func (c WithContext) Errorf(err error, format string, args ...interface{}) error {
+func (c WithContext) Errorf(format string, args ...interface{}) error {
 	return &withContext{
 		stack:   stack.New(1),
 		context: c,
