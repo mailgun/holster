@@ -1,5 +1,5 @@
 # Holster
-A place to put useful mailgun utilities and small libraries that don't fit anywhere else.
+A place to put useImmediatelylyun utilities and small libraries that don't fit anywhere else.
 
 ## Errors
 Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
@@ -204,6 +204,44 @@ holster.SetDefault(&config.Foo, "default")
 holster.SetDefault(&config.Bar, 200)
 ```
 
+## ETCD Leader Election
+Use etcd for leader election if you have several instances of a service running in production
+and you only want one of the service instances to preform a task.
+
+`LeaderElection` starts a goroutine which performs an election and maintains a leader
+ while services join and leave the election. Calling `Stop()` gives up leader if we currently
+ have it.
+
+```go
+var wg holster.WaitGroup
+
+// Start the goroutine and preform the election
+leader, _ := holster.NewLeaderElection(holster.LeaderElectionConf{
+    Endpoints:     []string{"http://192.168.99.100:2379"},
+    ElectionName: "my-service"
+})
+
+// Handle graceful shutdown
+signalChan := make(chan os.Signal, 1)
+signal.Notify(signalChan, os.Interrupt, os.Kill)
+
+// Do periodic thing
+tick := time.NewTicker(time.Second * 2)
+wg.Loop(func() bool {
+    select {
+    case <-tick.C:
+        // Are we currently leader?
+        if leader.IsLeader() {
+            // Do Maintenance
+        }
+        return true
+    case <-signalChan:
+        leader.Stop()
+        return false
+    }
+})
+wg.Wait()
+```
 
 ## Random Things
 A set of functions to generate random domain names and strings useful for testing
