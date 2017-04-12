@@ -209,8 +209,8 @@ Use etcd for leader election if you have several instances of a service running 
 and you only want one of the service instances to preform a task.
 
 `LeaderElection` starts a goroutine which performs an election and maintains a leader
- while services join and leave the election. Calling `Stop()` gives up leader if we currently
- have it.
+ while services join and leave the election. Calling `Stop()` will `Concede()` leadership if
+  we currently have it.
 
 ```go
 var wg holster.WaitGroup
@@ -232,7 +232,11 @@ wg.Loop(func() bool {
     case <-tick.C:
         // Are we currently leader?
         if leader.IsLeader() {
-            // Do Maintenance
+            err := DoThing()
+            if err != nil {
+                // Have another instance DoThing(), we can't for some reason
+                leader.Concede()
+            }
         }
         return true
     case <-signalChan:

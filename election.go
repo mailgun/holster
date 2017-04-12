@@ -19,6 +19,7 @@ type LeaderElection struct {
 	ctx      context.Context
 	api      etcd.KeysAPI
 	isLeader int32
+	conceded int32
 }
 
 type LeaderElectionConf struct {
@@ -152,6 +153,11 @@ func (s *LeaderElection) Start() {
 				return true
 			}
 		case <-event:
+			// If we recently conceded leadership, ignore this event and wait for the next one
+			if atomic.LoadInt32(&s.conceded) == 1 {
+				atomic.StoreInt32(&s.conceded, 0)
+				return true
+			}
 			// If we are not leader
 			if atomic.LoadInt32(&s.isLeader) == 0 {
 				// Attempt to become leader
@@ -179,4 +185,15 @@ func (s *LeaderElection) Stop() {
 
 func (s *LeaderElection) IsLeader() bool {
 	return atomic.LoadInt32(&s.isLeader) == 1
+}
+
+// Release leadership and return true if we own it, else do nothing and return false
+func (s *LeaderElection) Concede() bool {
+	if atomic.LoadInt32(&s.isLeader) == 1 {
+		atomic.StoreInt32(&s.conceded, 1)
+		s.api.Delete(context.Background(), s.conf.ElectionName, nil)
+		atomic.StoreInt32(&s.isLeader, 0)
+		return true
+	}
+	return false
 }
