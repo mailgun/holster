@@ -286,3 +286,14 @@ Get the go routine id (useful for logging)
 import "github.com/mailgun/holster/stack"
 logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
 ```
+
+## ContainsString
+Checks if a given slice of strings contains the provided string.
+If a modifier func is provided, it is called with the slice item before the comparation.
+```go
+import "github.com/mailgun/holster/slice"
+
+haystack := []string{"one", "Two", "Three"}
+slice.ContainsString("two", haystack, strings.ToLower) // true
+slice.ContainsString("two", haystack, nil) // false
+```
