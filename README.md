@@ -213,12 +213,18 @@ and you only want one of the service instances to preform a task.
   we currently have it.
 
 ```go
+
+import (
+    "github.com/mailgun/holster"
+    "github.com/mailgun/holster/election"
+)
+
 var wg holster.WaitGroup
 
 // Start the goroutine and preform the election
-leader, _ := holster.NewLeaderElection(holster.LeaderElectionConf{
+leader, _ := election.New(election.Config{
     Endpoints:     []string{"http://192.168.99.100:2379"},
-    ElectionName: "my-service"
+    Name: "my-service"
 })
 
 // Handle graceful shutdown

@@ -3,30 +3,33 @@ package holster
 import (
 	"context"
 	"os"
+	"path"
 	"sync/atomic"
 	"time"
 
-	"path"
-
 	"github.com/Sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
+	"github.com/mailgun/holster"
 )
 
 type LeaderElection struct {
 	cancel   context.CancelFunc
-	conf     LeaderElectionConf
-	wg       WaitGroup
+	conf     Config
+	wg       holster.WaitGroup
 	ctx      context.Context
 	api      etcd.KeysAPI
 	isLeader int32
 	conceded int32
 }
 
-type LeaderElectionConf struct {
-	ElectionName  string
-	CandidateName string
-	Endpoints     []string
-	TTL           time.Duration
+type Config struct {
+	// The name of the election (IE: scout, blackbird, etc...)
+	Election string
+	// The name of this instance (IE: worker-n01, worker-n02, etc...)
+	Candidate string
+
+	Endpoints []string
+	TTL       time.Duration
 }
 
 // Use leader election if you have several instances of a service running in production
@@ -40,7 +43,7 @@ type LeaderElectionConf struct {
 //	if leader.IsLeader() {
 //		// Do periodic thing
 //	}
-func NewLeaderElection(conf LeaderElectionConf) (*LeaderElection, error) {
+func New(conf Config) (*LeaderElection, error) {
 	client, err := etcd.New(etcd.Config{
 		Endpoints: conf.Endpoints,
 	})
@@ -49,13 +52,13 @@ func NewLeaderElection(conf LeaderElectionConf) (*LeaderElection, error) {
 	}
 
 	if host, err := os.Hostname(); err != nil {
-		SetDefault(&conf.CandidateName, host)
+		holster.SetDefault(&conf.Candidate, host)
 	}
-	SetDefault(&conf.ElectionName, "default-election")
-	SetDefault(&conf.TTL, time.Second*5)
+	holster.SetDefault(&conf.Election, "default-election")
+	holster.SetDefault(&conf.TTL, time.Second*5)
 
 	// Set a root prefix for `/elections`
-	conf.ElectionName = path.Join("elections", conf.ElectionName)
+	conf.Election = path.Join("elections", conf.Election)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
@@ -124,7 +127,7 @@ func (s *LeaderElection) Start() {
 	var index uint64
 
 	// Attempt to become leader
-	resp, err := s.api.Set(s.ctx, s.conf.ElectionName, s.conf.CandidateName, &opts)
+	resp, err := s.api.Set(s.ctx, s.conf.Election, s.conf.Candidate, &opts)
 	if err == nil {
 		atomic.StoreInt32(&s.isLeader, 1)
 		index = resp.Index
@@ -134,7 +137,7 @@ func (s *LeaderElection) Start() {
 		}
 	}
 	// Watch our election for changes
-	event := s.Watch(s.ctx, s.api.Watcher(s.conf.ElectionName, &etcd.WatcherOptions{AfterIndex: index}))
+	event := s.Watch(s.ctx, s.api.Watcher(s.conf.Election, &etcd.WatcherOptions{AfterIndex: index}))
 
 	// Keep trying
 	s.wg.Loop(func() bool {
@@ -147,7 +150,7 @@ func (s *LeaderElection) Start() {
 					Refresh: true,
 					TTL:     s.conf.TTL,
 				}
-				if _, err := s.api.Set(s.ctx, s.conf.ElectionName, "", &opts); err != nil {
+				if _, err := s.api.Set(s.ctx, s.conf.Election, "", &opts); err != nil {
 					atomic.StoreInt32(&s.isLeader, 0)
 				}
 				return true
@@ -161,14 +164,14 @@ func (s *LeaderElection) Start() {
 			// If we are not leader
 			if atomic.LoadInt32(&s.isLeader) == 0 {
 				// Attempt to become leader
-				if _, err := s.api.Set(s.ctx, s.conf.ElectionName, s.conf.CandidateName, &opts); err == nil {
+				if _, err := s.api.Set(s.ctx, s.conf.Election, s.conf.Candidate, &opts); err == nil {
 					atomic.StoreInt32(&s.isLeader, 1)
 				}
 			}
 		case <-s.ctx.Done():
 			// Give up leadership if we are leader
 			if atomic.LoadInt32(&s.isLeader) == 1 {
-				s.api.Delete(context.Background(), s.conf.ElectionName, nil)
+				s.api.Delete(context.Background(), s.conf.Election, nil)
 			}
 			atomic.StoreInt32(&s.isLeader, 0)
 			ticker.Stop()
@@ -191,7 +194,7 @@ func (s *LeaderElection) IsLeader() bool {
 func (s *LeaderElection) Concede() bool {
 	if atomic.LoadInt32(&s.isLeader) == 1 {
 		atomic.StoreInt32(&s.conceded, 1)
-		s.api.Delete(context.Background(), s.conf.ElectionName, nil)
+		s.api.Delete(context.Background(), s.conf.Election, nil)
 		atomic.StoreInt32(&s.isLeader, 0)
 		return true
 	}
