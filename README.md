@@ -1,5 +1,26 @@
 # Holster
-A place to put useImmediatelylyun utilities and small libraries that don't fit anywhere else.
+A place to holster mailgun's golang libraries and tools
+
+## Bunker
+Bunker is a key/value store library for efficiently storing large chunks of data into a cassandra cluster.
+ Bunker provides support for encryption, compression and data signing
+See the [bunker readme](https://github.com/mailgun/holster/blob/master/bunker/README.md) for details
+
+## HttpSign
+HttpSign is a library for signing and authenticating HTTP requests between web services.
+See the [httpsign readme](https://github.com/mailgun/holster/blob/master/httpsign/README.md) for details
+
+## Random
+Random is an Interface for random number generators.
+See the [random readme](https://github.com/mailgun/holster/blob/master/random/README.md) for details
+
+## Secret
+Secret is a library for encrypting and decrypting authenticated messages.
+See the [secret readme](https://github.com/mailgun/holster/blob/master/secret/README.md) for details
+
+## Distributed Election
+A distributed election implementation using etcd to coordinate elections
+See the [election readme](https://github.com/mailgun/holster/blob/master/election/README.md) for details
 
 ## Errors
 Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
@@ -182,8 +203,37 @@ if ok {
 }
 ```
 
+## TTLMap
+Provides a threadsafe time to live map useful for holding a bounded set of key'd values
+ that can expire before being accessed. The expiration of values is calculated
+ when the value is accessed or the map capacity has been reached.
+```go
+ttlMap := holster.NewTTLMap(10)
+ttlMap.Clock = &holster.FrozenClock{time.Now()}
+
+// Set a value that expires in 5 seconds
+ttlMap.Set("one", "one", 5)
+
+// Set a value that expires in 10 seconds
+ttlMap.Set("two", "twp", 10)
+
+// Simulate sleeping for 6 seconds
+ttlMap.Clock.Sleep(time.Second * 6)
+
+// Retrieve the expired value and un-expired value
+_, ok1 := ttlMap.Get("one")
+_, ok2 := ttlMap.Get("two")
+
+fmt.Printf("value one exists: %t\n", ok1)
+fmt.Printf("value two exists: %t\n", ok2)
+
+// Output: value one exists: false
+// value two exists: true
+```
+
 ## Default values
-These functions assist in determining if values are the golang default and if so, set a value
+These functions assist in determining if values are the golang default
+ and if so, set a value
 ```go
 var value string
 
@@ -204,53 +254,13 @@ holster.SetDefault(&config.Foo, "default")
 holster.SetDefault(&config.Bar, 200)
 ```
 
-## ETCD Leader Election
-Use etcd for leader election if you have several instances of a service running in production
-and you only want one of the service instances to preform a task.
-
-`LeaderElection` starts a goroutine which performs an election and maintains a leader
- while services join and leave the election. Calling `Stop()` will `Concede()` leadership if
-  we currently have it.
-
+## GetEnv
+Get a value from an environment variable or return the provided default
 ```go
-
-import (
-    "github.com/mailgun/holster"
-    "github.com/mailgun/holster/election"
-)
-
-var wg holster.WaitGroup
-
-// Start the goroutine and preform the election
-leader, _ := election.New(election.Config{
-    Endpoints:     []string{"http://192.168.99.100:2379"},
-    Name: "my-service"
-})
-
-// Handle graceful shutdown
-signalChan := make(chan os.Signal, 1)
-signal.Notify(signalChan, os.Interrupt, os.Kill)
-
-// Do periodic thing
-tick := time.NewTicker(time.Second * 2)
-wg.Loop(func() bool {
-    select {
-    case <-tick.C:
-        // Are we currently leader?
-        if leader.IsLeader() {
-            err := DoThing()
-            if err != nil {
-                // Have another instance DoThing(), we can't for some reason
-                leader.Concede()
-            }
-        }
-        return true
-    case <-signalChan:
-        leader.Stop()
-        return false
-    }
-})
-wg.Wait()
+var conf = sandra.CassandraConfig{
+   Nodes:    []string{holster.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
+   Keyspace: "test",
+}
 ```
 
 ## Random Things
@@ -303,3 +313,56 @@ haystack := []string{"one", "Two", "Three"}
 slice.ContainsString("two", haystack, strings.ToLower) // true
 slice.ContainsString("two", haystack, nil) // false
 ```
+
+## Clock
+Provides an interface which allows users to inject a modified clock during testing.
+
+```go
+type MyApp struct {
+    Clock holster.Clock
+}
+
+// Defaults to the system clock
+app := MyApp{Clock: &holster.SystemClock{}}
+
+// Override the system clock for testing
+app.Clock = &holster.FrozenClock{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
+
+// Simulate sleeping for 10 seconds
+app.Clock.Sleep(time.Second * 10)
+
+fmt.Printf("Time is Now: %s", app.Clock.Now())
+
+// Output: Time is Now: 2009-11-10 23:00:10 +0000 UTC
+}
+```
+
+## Priority Queue
+Provides a Priority Queue implementation as described [here](https://en.wikipedia.org/wiki/Priority_queue)
+
+```go
+queue := holster.NewPriorityQueue()
+
+queue.Push(&holster.PQItem{
+    Value: "thing3",
+    Priority: 3,
+})
+
+queue.Push(&holster.PQItem{
+    Value: "thing1",
+    Priority: 1,
+})
+
+queue.Push(&holster.PQItem{
+    Value: "thing2",
+    Priority: 2,
+})
+
+// Pops item off the queue according to the priority instead of the Push() order
+item := queue.Pop()
+
+fmt.Printf("Item: %s", item.Value.(string))
+
+// Output: Item: thing1
+```
+
