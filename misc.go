@@ -1,3 +1,18 @@
+/*
+Copyright 2017 Mailgun Technologies Inc
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package holster
 
 import (
@@ -7,6 +22,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/structs"
+	"os"
 )
 
 // Given a struct or map[string]interface{} return as a logrus.Fields{} map
@@ -46,4 +62,14 @@ func ToFields(value interface{}) logrus.Fields {
 		result[key] = value
 	}
 	return result
+}
+
+
+// Get the environment variable or return the default value if unset
+func GetEnv(envName, defaultValue string) string {
+	value := os.Getenv(envName)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }
