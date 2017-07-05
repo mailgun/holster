@@ -1,0 +1,13 @@
+list:
+  - val1
+  - val2
+
+env: {{.Env.SOME_ENV_KEY}}
+
+builtin:
+  anotherkey: anothervalue
+  mandatory: onemorevalue
+  onemorebuiltin:
+    blah: blah
+
+number: 42
