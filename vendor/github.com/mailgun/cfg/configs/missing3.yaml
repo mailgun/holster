@@ -1,0 +1,13 @@
+key: val
+
+env: {{.Env.SOME_ENV_KEY}}
+
+builtin:
+  mandatory: onemorevalue
+  onemorebuiltin:
+    blah: blah
+
+number: 42
+
+ptrstruct:
+  ptrblah: blah

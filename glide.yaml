@@ -1,0 +1,30 @@
+package: github.com/mailgun/holster
+import:
+- package: github.com/Sirupsen/logrus
+  version: v1.0.0
+- package: github.com/codegangsta/cli
+  version: v1.19.1
+- package: github.com/coreos/etcd
+  version: v3.2.1
+  subpackages:
+  - client
+- package: github.com/fatih/structs
+  version: v1.0
+- package: github.com/mailgun/cfg
+- package: github.com/mailgun/metrics
+- package: github.com/mailgun/sandra
+- package: github.com/pborman/uuid
+  version: v1.0
+- package: github.com/pkg/errors
+  version: v0.8.0
+- package: golang.org/x/crypto
+  subpackages:
+  - nacl/secretbox
+  - pbkdf2
+- package: gopkg.in/mgo.v2
+  subpackages:
+  - bson
+testImport:
+- package: github.com/ahmetalpbalkan/go-linq
+  version: v3.0.0
+- package: gopkg.in/check.v1
