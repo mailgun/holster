@@ -1,0 +1,153 @@
+{
+	"ImportPath": "github.com/mailgun/holster",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.11.5-12-g10f801e",
+			"Rev": "10f801ebc38b33738c9d17d50860f484a0988ff5"
+		},
+		{
+			"ImportPath": "github.com/ahmetalpbalkan/go-linq",
+			"Comment": "v3.0.0-6-g67424dc",
+			"Rev": "67424dce7b47e42b7f2373557878fd6e3f2d8c44"
+		},
+		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "v1.19.1-52-gb892ba3",
+			"Rev": "b892ba3809cd07fcf2b064e166b0c2e16e0147bd"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/client",
+			"Comment": "v3.0.15",
+			"Rev": "fc00305a2e59b4c2d4a53c9fbb4d30741a96ea67"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
+			"Comment": "v3.0.15",
+			"Rev": "fc00305a2e59b4c2d4a53c9fbb4d30741a96ea67"
+		},
+		{
+			"ImportPath": "github.com/coreos/etcd/pkg/types",
+			"Comment": "v3.0.15",
+			"Rev": "fc00305a2e59b4c2d4a53c9fbb4d30741a96ea67"
+		},
+		{
+			"ImportPath": "github.com/fatih/structs",
+			"Rev": "dc3312cb1a4513a366c4c9e622ad55c32df12ed3"
+		},
+		{
+			"ImportPath": "github.com/go-yaml/yaml",
+			"Rev": "a5b47d31c556af34a302ce5d659e6fea44d90de0"
+		},
+		{
+			"ImportPath": "github.com/gocql/gocql",
+			"Comment": "pre-node-events-498-g66628b3",
+			"Rev": "66628b367ca6d68ca135881f4d947bdf20d915b9"
+		},
+		{
+			"ImportPath": "github.com/gocql/gocql/internal/lru",
+			"Comment": "pre-node-events-498-g66628b3",
+			"Rev": "66628b367ca6d68ca135881f4d947bdf20d915b9"
+		},
+		{
+			"ImportPath": "github.com/gocql/gocql/internal/murmur",
+			"Comment": "pre-node-events-498-g66628b3",
+			"Rev": "66628b367ca6d68ca135881f4d947bdf20d915b9"
+		},
+		{
+			"ImportPath": "github.com/gocql/gocql/internal/streams",
+			"Comment": "pre-node-events-498-g66628b3",
+			"Rev": "66628b367ca6d68ca135881f4d947bdf20d915b9"
+		},
+		{
+			"ImportPath": "github.com/golang/snappy",
+			"Rev": "d9eb7a3d35ec988b8585d4a0068e462c27d28380"
+		},
+		{
+			"ImportPath": "github.com/hailocab/go-hostpool",
+			"Rev": "e80d13ce29ede4452c43dea11e79b9bc8a15b478"
+		},
+		{
+			"ImportPath": "github.com/mailgun/cfg",
+			"Rev": "f6905cd5820bb88364b3cbce8556e7876de7e5c2"
+		},
+		{
+			"ImportPath": "github.com/mailgun/log",
+			"Rev": "2f35a4607f1abf71f97f77f99b0de8493ef6f4ef"
+		},
+		{
+			"ImportPath": "github.com/mailgun/metrics",
+			"Rev": "2b3c4565aafdcd40c8069e50de08ac5379787943"
+		},
+		{
+			"ImportPath": "github.com/mailgun/sandra",
+			"Rev": "66cd1fdf13827288e21cdcf31207b19eea0eeeb0"
+		},
+		{
+			"ImportPath": "github.com/mailgun/timetools",
+			"Rev": "fd192d755b00c968d312d23f521eb0cdc6f66bd0"
+		},
+		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.0-23-ge790cca",
+			"Rev": "e790cca94e6cc75c7064b1332e63811d4aae1a53"
+		},
+		{
+			"ImportPath": "github.com/pkg/errors",
+			"Comment": "v0.8.0-2-g248dadf",
+			"Rev": "248dadf4e9068a0b3e79f02ed0a610d935de5302"
+		},
+		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "faddd6128c66c4708f45fdc007f575f75e592a3c"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
+			"Rev": "850760c427c516be930bc91280636328f1a62286"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pbkdf2",
+			"Rev": "850760c427c516be930bc91280636328f1a62286"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/poly1305",
+			"Rev": "850760c427c516be930bc91280636328f1a62286"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
+			"Rev": "850760c427c516be930bc91280636328f1a62286"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "a6577fac2d73be281a500b310739095313165611"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "9a2e24c3733eddc63871eda99f253e2db29bd3b9"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "4f90aeace3a26ad7021961c297b22c42160c7b25"
+		},
+		{
+			"ImportPath": "gopkg.in/inf.v0",
+			"Comment": "v0.9.0",
+			"Rev": "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/bson",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2/internal/json",
+			"Comment": "r2016.08.01-5-g3f83fa5",
+			"Rev": "3f83fa5005286a7fe593b055f0d7771a7dce4655"
+		}
+	]
+}
