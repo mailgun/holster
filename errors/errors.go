@@ -95,7 +95,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/mailgun/holster/stack"
 	pkg "github.com/pkg/errors"
 )
