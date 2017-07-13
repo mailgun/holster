@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
 	"github.com/mailgun/holster"
 )

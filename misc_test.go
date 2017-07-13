@@ -16,7 +16,7 @@ limitations under the License.
 package holster_test
 
 import (
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/mailgun/holster"
 	. "gopkg.in/check.v1"
 )
