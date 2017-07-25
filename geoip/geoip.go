@@ -1,4 +1,3 @@
-//go:generate go run generate.go
 /*
 Copyright 2017 Mailgun Technologies Inc
 
@@ -38,7 +37,7 @@ var unknownData = events.GeoLocation{
 	Region:  DefaultUnknown,
 }
 
-func GeoDataFromIp(ip string) events.GeoLocation {
+func GetEventFromIp(ip string) events.GeoLocation {
 	if ip == "" {
 		return unknownData
 	}

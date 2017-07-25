@@ -38,23 +38,23 @@ func (s *GeoIPSuite) SetUpSuite(c *C) {
 	DatabasePath = "./assets/GeoLite2-City.mmdb"
 }
 
-func (s *GeoIPSuite) TestGeoDataFromIp(c *C) {
+func (s *GeoIPSuite) TestGetEventFromIp(c *C) {
 	fmt.Println(DatabasePath)
-	c.Assert(GeoDataFromIp(""), Equals, unknownData)
-	c.Assert(GeoDataFromIp("10.0.0.1"), Equals, unknownData)
-	c.Assert(GeoDataFromIp("127.0.0.1"), Equals, unknownData)
+	c.Assert(GetEventFromIp(""), Equals, unknownData)
+	c.Assert(GetEventFromIp("10.0.0.1"), Equals, unknownData)
+	c.Assert(GetEventFromIp("127.0.0.1"), Equals, unknownData)
 
 	data := events.GeoLocation{
 		Country: "US",
 		Region:  "CA",
 		City:    "Mountain View",
 	}
-	c.Assert(GeoDataFromIp("173.194.35.210"), Equals, data)
+	c.Assert(GetEventFromIp("173.194.35.210"), Equals, data)
 
 	data = events.GeoLocation{
 		Country: "GB",
 		Region:  "ENG",
 		City:    "London",
 	}
-	c.Assert(GeoDataFromIp("81.2.69.142"), Equals, data)
+	c.Assert(GetEventFromIp("81.2.69.142"), Equals, data)
 }
