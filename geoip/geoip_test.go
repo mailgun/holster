@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package geoip
+package geoip_test
 
 import (
 	"testing"
 
-	"fmt"
-
 	"github.com/mailgun/events"
+	"github.com/mailgun/holster/geoip"
 	. "gopkg.in/check.v1"
 )
 
@@ -35,26 +34,25 @@ type GeoIPSuite struct {
 var _ = Suite(&GeoIPSuite{})
 
 func (s *GeoIPSuite) SetUpSuite(c *C) {
-	DatabasePath = "./assets/GeoLite2-City.mmdb"
+	geoip.DatabasePath = "./assets/GeoLite2-City.mmdb"
 }
 
 func (s *GeoIPSuite) TestGetEventFromIp(c *C) {
-	fmt.Println(DatabasePath)
-	c.Assert(GetEventFromIp(""), Equals, unknownData)
-	c.Assert(GetEventFromIp("10.0.0.1"), Equals, unknownData)
-	c.Assert(GetEventFromIp("127.0.0.1"), Equals, unknownData)
+	c.Assert(geoip.GetEventFromIp(""), Equals, geoip.UnknownData)
+	c.Assert(geoip.GetEventFromIp("10.0.0.1"), Equals, geoip.UnknownData)
+	c.Assert(geoip.GetEventFromIp("127.0.0.1"), Equals, geoip.UnknownData)
 
 	data := events.GeoLocation{
 		Country: "US",
 		Region:  "CA",
 		City:    "Mountain View",
 	}
-	c.Assert(GetEventFromIp("173.194.35.210"), Equals, data)
+	c.Assert(geoip.GetEventFromIp("173.194.35.210"), Equals, data)
 
 	data = events.GeoLocation{
 		Country: "GB",
 		Region:  "ENG",
 		City:    "London",
 	}
-	c.Assert(GetEventFromIp("81.2.69.142"), Equals, data)
+	c.Assert(geoip.GetEventFromIp("81.2.69.142"), Equals, data)
 }

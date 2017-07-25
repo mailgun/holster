@@ -31,7 +31,7 @@ const (
 var DatabasePath = "/var/mailgun/GeoLite2-City.mmdb"
 
 var db *geoip2.Reader
-var unknownData = events.GeoLocation{
+var UnknownData = events.GeoLocation{
 	City:    DefaultUnknown,
 	Country: DefaultUnknown,
 	Region:  DefaultUnknown,
@@ -39,7 +39,7 @@ var unknownData = events.GeoLocation{
 
 func GetEventFromIp(ip string) events.GeoLocation {
 	if ip == "" {
-		return unknownData
+		return UnknownData
 	}
 
 	if db == nil {
@@ -49,18 +49,18 @@ func GetEventFromIp(ip string) events.GeoLocation {
 	parsedIP := net.ParseIP(ip)
 	if parsedIP == nil {
 		fmt.Errorf("Invalid IP given: %s", ip)
-		return unknownData
+		return UnknownData
 	}
 
 	record, err := db.City(parsedIP)
 	if err != nil {
 		fmt.Errorf("Error: %s", err)
-		return unknownData
+		return UnknownData
 	}
 
 	// Not found in the database
 	if record.City.GeoNameID == 0 {
-		return unknownData
+		return UnknownData
 	}
 
 	return events.GeoLocation{
