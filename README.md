@@ -366,3 +366,9 @@ fmt.Printf("Item: %s", item.Value.(string))
 // Output: Item: thing1
 ```
 
+## User Agent
+Provides user agent parsing into Mailgun [ClientInfo](https://github.com/mailgun/events/blob/master/objects.go#L42-L50) events.
+
+```
+clientInfo := useragent.Parse("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.70 Safari/537.17")
+```
