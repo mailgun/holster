@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
 	"github.com/mailgun/holster"
+	"github.com/sirupsen/logrus"
 )
 
 type LeaderElection struct {
@@ -84,9 +84,10 @@ func New(conf Config) (*LeaderElection, error) {
 }
 
 // Watch the prefix for any events and send a 'true' if we should attempt grab leader
-func (s *LeaderElection) Watch(ctx context.Context, watcher etcd.Watcher) chan bool {
+func (s *LeaderElection) Watch(ctx context.Context, startIndex uint64) chan bool {
 	results := make(chan bool)
 	var cancel atomic.Value
+	var stop int32
 
 	go func() {
 		select {
@@ -96,8 +97,16 @@ func (s *LeaderElection) Watch(ctx context.Context, watcher etcd.Watcher) chan b
 		}
 	}()
 
+	// Create our initial watcher
+	watcher := s.api.Watcher(s.conf.Election, nil)
+
 	s.wg.Loop(func() bool {
-		ctx, c := context.WithTimeout(context.Background(), time.Second*60)
+		// this ensures we exit properly if the watcher isn't connected to etcd
+		if atomic.LoadInt32(&stop) == 1 {
+			return false
+		}
+
+		ctx, c := context.WithTimeout(context.Background(), time.Second*10)
 		cancel.Store(c)
 		resp, err := watcher.Next(ctx)
 		if err != nil {
@@ -105,12 +114,26 @@ func (s *LeaderElection) Watch(ctx context.Context, watcher etcd.Watcher) chan b
 				close(results)
 				return false
 			}
+
+			if cErr, ok := err.(etcd.Error); ok {
+				if cErr.Code == etcd.ErrorCodeEventIndexCleared {
+					logrus.WithField("category", "election").
+						Infof("LeaderElection %s - new index is %d",
+							err, cErr.Index+1)
+
+					// Re-create the watcher with a newer index until we catch up
+					watcher = s.api.Watcher(s.conf.Election, nil)
+					return true
+				}
+			}
 			if err != context.DeadlineExceeded {
-				logrus.Errorf("LeaderElection watch: %s", err)
+				logrus.WithField("category", "election").
+					Errorf("LeaderElection etcd error: %s", err)
 				time.Sleep(time.Second * 10)
 			}
 		} else {
-			logrus.Debug("LeaderElection etcd event: %+v\n", resp)
+			logrus.WithField("category", "election").
+				Debugf("LeaderElection etcd event: %+v\n", resp)
 			results <- true
 		}
 		return true
@@ -136,8 +159,9 @@ func (s *LeaderElection) Start() {
 			index = cast.Index
 		}
 	}
-	// Watch our election for changes
-	event := s.Watch(s.ctx, s.api.Watcher(s.conf.Election, &etcd.WatcherOptions{AfterIndex: index}))
+
+	// Watch our election for changes after index
+	event := s.Watch(s.ctx, index)
 
 	// Keep trying
 	s.wg.Loop(func() bool {
