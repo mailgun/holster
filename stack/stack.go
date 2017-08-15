@@ -3,7 +3,6 @@ package stack
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -28,14 +27,6 @@ func GetCallStack(frames errors.StackTrace) string {
 
 // Returns Caller information on the first frame in the stack trace
 func GetLastFrame(frames errors.StackTrace) FrameInfo {
-	funcName := func(funcPath string) string {
-		idx := strings.LastIndex(funcPath, ".")
-		if idx == -1 {
-			return funcPath
-		}
-		return funcPath[idx+1:] + "()"
-	}
-
 	if len(frames) == 0 {
 		return FrameInfo{}
 	}
@@ -44,12 +35,28 @@ func GetLastFrame(frames errors.StackTrace) FrameInfo {
 	if fn == nil {
 		return FrameInfo{Func: fmt.Sprintf("unknown func at %f", pc)}
 	}
-	path, line := fn.FileLine(pc)
+	filePath, lineNo := fn.FileLine(pc)
 	return FrameInfo{
 		CallStack: GetCallStack(frames),
-		Func:      funcName(fn.Name()),
-		File:      filepath.Base(path),
-		LineNo:    line}
+		Func:      FuncName(fn),
+		File:      filePath,
+		LineNo:    lineNo,
+	}
+}
+
+// FuncName given a runtime function spec returns a short function name in
+// format `<package name>.<function name>` or if the function has a receiver
+// in format `<package name>.(<receiver>).<function name>`.
+func FuncName(fn *runtime.Func) string {
+	if fn == nil {
+		return ""
+	}
+	funcPath := fn.Name()
+	idx := strings.LastIndex(funcPath, "/")
+	if idx == -1 {
+		return funcPath
+	}
+	return funcPath[idx+1:]
 }
 
 type HasStackTrace interface {
