@@ -132,3 +132,15 @@ func (s *SystemSuite) TestTick(c *C) {
 		c.Error("Sleep did not last long enough")
 	}
 }
+
+func (s *SystemSuite) TestNewStoppedTimer(c *C) {
+	t := NewStoppedTimer()
+
+	// When/Then
+	select {
+	case <-t.C():
+		c.Error("Timer should not have fired")
+	default:
+	}
+	c.Assert(t.Stop(), Equals, false)
+}

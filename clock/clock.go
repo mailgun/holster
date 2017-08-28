@@ -84,6 +84,13 @@ func Tick(d time.Duration) <-chan time.Time {
 	return provider.Tick(d)
 }
 
+// NewStoppedTimer returns a stopped timer. Call Reset to get it ticking.
+func NewStoppedTimer() Timer {
+	t := NewTimer(42 * time.Hour)
+	t.Stop()
+	return t
+}
+
 type clock interface {
 	Now() time.Time
 	Sleep(d time.Duration)

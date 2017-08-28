@@ -2,15 +2,10 @@ package clock
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	. "gopkg.in/check.v1"
 )
-
-func Test(t *testing.T) {
-	TestingT(t)
-}
 
 type FrozenSuite struct {
 	epoch time.Time
@@ -34,7 +29,7 @@ func (s *FrozenSuite) TearDownTest(c *C) {
 
 func (s *FrozenSuite) TestNow(c *C) {
 	c.Assert(Now(), Equals, s.epoch)
-	Advance(42*time.Millisecond)
+	Advance(42 * time.Millisecond)
 	c.Assert(Now(), Equals, s.epoch.Add(42*time.Millisecond))
 }
 
@@ -241,6 +236,18 @@ func (s *FrozenSuite) TestTick(c *C) {
 func (s *FrozenSuite) TestTickZero(c *C) {
 	ch := Tick(0)
 	c.Assert(ch, IsNil)
+}
+
+func (s *FrozenSuite) TestNewStoppedTimer(c *C) {
+	t := NewStoppedTimer()
+
+	// When/Then
+	select {
+	case <-t.C():
+		c.Error("Timer should not have fired")
+	default:
+	}
+	c.Assert(t.Stop(), Equals, false)
 }
 
 func assertHits(c *C, got <-chan int, want []int) {
