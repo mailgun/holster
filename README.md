@@ -6,6 +6,10 @@ Bunker is a key/value store library for efficiently storing large chunks of data
  Bunker provides support for encryption, compression and data signing
 See the [bunker readme](https://github.com/mailgun/holster/blob/master/bunker/README.md) for details
 
+## Clock
+A drop in (almost) replacement for the system `time` package to make scheduled
+events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/clock/README.md) for details
+
 ## HttpSign
 HttpSign is a library for signing and authenticating HTTP requests between web services.
 See the [httpsign readme](https://github.com/mailgun/holster/blob/master/httpsign/README.md) for details
@@ -315,6 +319,9 @@ slice.ContainsString("two", haystack, nil) // false
 ```
 
 ## Clock
+
+DEPRECATED: Use [clock](https://github.com/mailgun/holster/blob/master/clock) package instead.
+
 Provides an interface which allows users to inject a modified clock during testing.
 
 ```go
