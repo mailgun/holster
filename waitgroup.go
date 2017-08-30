@@ -21,6 +21,7 @@ type WaitGroup struct {
 	wg    sync.WaitGroup
 	mutex sync.Mutex
 	errs  []error
+	done  chan struct{}
 }
 
 // Run a routine and collect errors if any
@@ -40,7 +41,32 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 	}()
 }
 
-// Run a routine in a loop continuously, if the callBack return false the loop is broken
+// Run a goroutine in a loop continuously, if the callBack returns false the loop is broken.
+// `Until()` differs from `Loop()` in that if the `Stop()` is called on the WaitGroup
+// the `done` channel is closed. Implementations of the callBack function can listen
+// for the close to indicate a stop was requested.
+func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
+	wg.done = make(chan struct{})
+	wg.wg.Add(1)
+	go func() {
+		for {
+			if !callBack(wg.done) {
+				wg.wg.Done()
+				break
+			}
+		}
+	}()
+}
+
+// closes the done channel passed into `Until()` calls and waits for the `Until()` callBack to return false
+func (wg *WaitGroup) Stop() {
+	if wg.done != nil {
+		close(wg.done)
+	}
+	wg.Wait()
+}
+
+// Run a goroutine in a loop continuously, if the callBack returns false the loop is broken
 func (wg *WaitGroup) Loop(callBack func() bool) {
 	wg.wg.Add(1)
 	go func() {

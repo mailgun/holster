@@ -85,3 +85,28 @@ func (s *WaitGroupTestSuite) TestLoop(c *C) {
 	c.Assert(errs, IsNil)
 	c.Assert(count, Equals, int32(16))
 }
+
+func (s *WaitGroupTestSuite) TestUntil(c *C) {
+	pipe := make(chan int32, 0)
+	var wg WaitGroup
+	var count int32
+
+	wg.Until(func(done chan struct{}) bool {
+		select {
+		case inc := <-pipe:
+			atomic.AddInt32(&count, inc)
+		case <-done:
+			return false
+		}
+		return true
+	})
+
+	// Feed the loop some numbers and close the pipe
+	pipe <- 1
+	pipe <- 5
+	pipe <- 10
+
+	// Wait for the routine to end
+	wg.Stop()
+	c.Assert(count, Equals, int32(16))
+}
