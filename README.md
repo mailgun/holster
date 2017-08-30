@@ -74,6 +74,24 @@ close(pipe)
 wg.Wait()
 ```
 
+Loop `.Until()` `.Stop()` is called
+```go
+var wg WaitGroup
+
+wg.Until(func(done chan struct{}) bool {
+    select {
+    case <- time.Tick(time.Second):
+        // Do some periodic thing
+    case <- done:
+        return false
+    }
+    return true
+})
+
+// Close the done channel and wait for the routine to exit
+wg.Stop()
+```
+
 ## FanOut
 FanOut spawns a new go-routine each time `.Run()` is called until `size` is reached,
 subsequent calls to `.Run()` will block until previously `.Run()` routines have completed.
