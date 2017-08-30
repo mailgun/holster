@@ -14,10 +14,13 @@ package clock
 
 import "time"
 
+var frozenAt time.Time
+
 // Freeze after this function is called all time related functions start
 // generate deterministic timers that are triggered by Advance function. It is
 // supposed to be used in tests only.
 func Freeze(now time.Time) {
+	frozenAt = now.UTC()
 	provider = &frozenTime{now: now}
 }
 
@@ -27,13 +30,16 @@ func Unfreeze() {
 }
 
 // Makes the deterministic time move forward by the specified duration, firing
-// timers along the way in the natural order.
-func Advance(d time.Duration) {
+// timers along the way in the natural order. It returns how much time has
+// passed since it was frozen. So you can assert on the return value in tests
+// to make it explicit where you stand on the deterministic time scale.
+func Advance(d time.Duration) time.Duration {
 	ft, ok := provider.(*frozenTime)
 	if !ok {
 		panic("Freeze time first!")
 	}
 	ft.advance(d)
+	return Now().UTC().Sub(frozenAt)
 }
 
 // Now see time.Now.
