@@ -16,13 +16,12 @@ limitations under the License.
 package holster
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 
-	"fmt"
-
-	"github.com/sirupsen/logrus"
 	"github.com/fatih/structs"
-	"os"
+	"github.com/sirupsen/logrus"
 )
 
 // Given a struct or map[string]interface{} return as a logrus.Fields{} map
@@ -63,7 +62,6 @@ func ToFields(value interface{}) logrus.Fields {
 	}
 	return result
 }
-
 
 // Get the environment variable or return the default value if unset
 func GetEnv(envName, defaultValue string) string {

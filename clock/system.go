@@ -2,7 +2,7 @@ package clock
 
 import "time"
 
-type systemTime struct {}
+type systemTime struct{}
 
 func (st *systemTime) Now() time.Time {
 	return time.Now()
@@ -25,7 +25,7 @@ func (st *systemTime) NewTimer(d time.Duration) Timer {
 	return &systemTimer{t}
 }
 
-func (st *systemTime) AfterFunc(d time.Duration, f func ()) Timer {
+func (st *systemTime) AfterFunc(d time.Duration, f func()) Timer {
 	t := time.AfterFunc(d, f)
 	return &systemTimer{t}
 }

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pborman/uuid"
 	"github.com/mailgun/sandra"
+	"github.com/pborman/uuid"
 )
 
 // backend is an interface for bunker backends. It mainly exists in order to simplify testing

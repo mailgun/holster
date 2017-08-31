@@ -1,12 +1,12 @@
 package useragent
 
 import (
-	"github.com/mailgun/events"
+	"fmt"
+	"strings"
 
 	"github.com/avct/uasurfer"
+	"github.com/mailgun/events"
 	"github.com/ua-parser/uap-go/uaparser"
-	"strings"
-	"fmt"
 )
 
 const (
@@ -21,13 +21,12 @@ const (
 	ClientMobileBrowser = "mobile browser"
 	ClientEmailClient   = "email client"
 	ClientRobot         = "robot"
-
 )
 
 var (
 	EmailClients = [...]string{"Windows Live Mail", "Outlook", "Apple Mail", "Thunderbird", "Lotus Notes", "Postbox", "Sparrow", "PocoMail"}
-	RegexesPath = "/var/mailgun/uap_regexes.yaml"
-	uasParser *uaparser.Parser
+	RegexesPath  = "/var/mailgun/uap_regexes.yaml"
+	uasParser    *uaparser.Parser
 )
 
 func Parse(uagent string) (events.ClientInfo, error) {
@@ -58,10 +57,10 @@ func Parse(uagent string) (events.ClientInfo, error) {
 	}
 
 	return events.ClientInfo{
-		UserAgent: uagent,
+		UserAgent:  uagent,
 		DeviceType: deviceType,
 		ClientName: clientName,
-		ClientOS: clientOs,
+		ClientOS:   clientOs,
 		ClientType: clientType,
 	}, nil
 }

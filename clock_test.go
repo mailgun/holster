@@ -132,4 +132,3 @@ func Example_Clock_Usage() {
 
 	// Output: Time is Now: 2009-11-10 23:00:10 +0000 UTC
 }
-

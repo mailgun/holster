@@ -2,6 +2,7 @@ package clock
 
 import (
 	"testing"
+
 	. "gopkg.in/check.v1"
 )
 

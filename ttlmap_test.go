@@ -16,11 +16,11 @@ limitations under the License.
 package holster_test
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/mailgun/holster"
 	. "gopkg.in/check.v1"
-	"fmt"
 )
 
 type TestSuite struct {
