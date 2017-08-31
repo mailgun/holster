@@ -16,9 +16,10 @@ limitations under the License.
 package holster_test
 
 import (
+	"fmt"
+
 	"github.com/mailgun/holster"
 	. "gopkg.in/check.v1"
-	"fmt"
 )
 
 type MinHeapSuite struct{}
@@ -91,22 +92,21 @@ func (s *MinHeapSuite) TestUpdate(c *C) {
 	c.Assert(toInt(mh.Peek().Value), Equals, 1)
 }
 
-
 func Example_Priority_Queue_Usage() {
 	queue := holster.NewPriorityQueue()
 
 	queue.Push(&holster.PQItem{
-		Value: "thing3",
+		Value:    "thing3",
 		Priority: 3,
 	})
 
 	queue.Push(&holster.PQItem{
-		Value: "thing1",
+		Value:    "thing1",
 		Priority: 1,
 	})
 
 	queue.Push(&holster.PQItem{
-		Value: "thing2",
+		Value:    "thing2",
 		Priority: 2,
 	})
 

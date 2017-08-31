@@ -42,14 +42,15 @@ func (s *FooSuite) TestSleep(c *C) {
     clock.AfterFunc(100*time.Millisecond, func() {
         fired = true
     })
- 
+    clock.Advance(93*time.Millisecond)
+    
     // Advance will make all fire all events, timers, tickers that are
     // scheduled for the passed period of time. Note that scheduled functions
     // are called from within Advanced unlike system time package that calls
     // them in their own goroutine.
-    clock.Advance(99*time.Millisecond)
+    c.Assert(clock.Advance(6*time.Millisecond), Equals, 97*time.Millisecond)
     c.Assert(fired, Equals, false)
-    clock.Advance(1*time.Millisecond)
+    c.Assert(clock.Advance(1*time.Millisecond), Equals, 100*time.Millisecond)
     c.Assert(fired, Equals, true)
 }
 ```

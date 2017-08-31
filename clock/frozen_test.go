@@ -27,10 +27,13 @@ func (s *FrozenSuite) TearDownTest(c *C) {
 	Unfreeze()
 }
 
-func (s *FrozenSuite) TestNow(c *C) {
+func (s *FrozenSuite) TestAdvanceNow(c *C) {
 	c.Assert(Now(), Equals, s.epoch)
-	Advance(42 * time.Millisecond)
+	c.Assert(Advance(42*time.Millisecond), Equals, 42*time.Millisecond)
 	c.Assert(Now(), Equals, s.epoch.Add(42*time.Millisecond))
+	c.Assert(Advance(13*time.Millisecond), Equals, 55*time.Millisecond)
+	c.Assert(Advance(19*time.Millisecond), Equals, 74*time.Millisecond)
+	c.Assert(Now(), Equals, s.epoch.Add(74*time.Millisecond))
 }
 
 func (s *FrozenSuite) TestSleep(c *C) {

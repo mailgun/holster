@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/mailgun/holster/secret"
+	"github.com/sirupsen/logrus"
 )
 
 type bunker struct {

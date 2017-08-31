@@ -95,9 +95,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sirupsen/logrus"
 	"github.com/mailgun/holster/stack"
 	pkg "github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // New returns an error with the supplied message.

@@ -2,12 +2,10 @@ package errors_test
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
-	"io"
-
-	"github.com/ahmetalpbalkan/go-linq"
 	"github.com/mailgun/holster/errors"
 	"github.com/mailgun/holster/stack"
 	. "gopkg.in/check.v1"

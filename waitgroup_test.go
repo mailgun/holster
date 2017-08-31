@@ -16,11 +16,9 @@ limitations under the License.
 package holster
 
 import (
+	"sync/atomic"
 	"time"
 
-	"sync/atomic"
-
-	"github.com/ahmetalpbalkan/go-linq"
 	"github.com/pkg/errors"
 	. "gopkg.in/check.v1"
 )
