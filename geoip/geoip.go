@@ -21,6 +21,7 @@ import (
 	"net"
 
 	"github.com/mailgun/events"
+	"github.com/oschwald/geoip2-golang"
 )
 
 const (
