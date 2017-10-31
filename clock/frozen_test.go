@@ -253,6 +253,37 @@ func (s *FrozenSuite) TestNewStoppedTimer(c *C) {
 	c.Assert(t.Stop(), Equals, false)
 }
 
+func (s *FrozenSuite) TestWait4Scheduled(c *C) {
+	After(100 * Millisecond)
+	After(100 * Millisecond)
+	c.Assert(Wait4Scheduled(3, 0), Equals, false)
+
+	startedCh := make(chan struct{})
+	resultCh := make(chan bool)
+	go func() {
+		close(startedCh)
+		resultCh <- Wait4Scheduled(3, 5*Second)
+	}()
+	// Allow some time for waiter to be set and start waiting for a signal.
+	<-startedCh
+	time.Sleep(50 * Millisecond)
+
+	// When
+	After(100 * Millisecond)
+
+	// Then
+	c.Assert(<-resultCh, Equals, true)
+}
+
+// If there is enough timers scheduled already, then a shortcut execution path
+// is taken and Wait4Scheduled returns immediately.
+func (s *FrozenSuite) TestWait4ScheduledImmediate(c *C) {
+	After(100 * Millisecond)
+	After(100 * Millisecond)
+	// When/Then
+	c.Assert(Wait4Scheduled(2, 0), Equals, true)
+}
+
 func assertHits(c *C, got <-chan int, want []int) {
 	for i, w := range want {
 		var g int
