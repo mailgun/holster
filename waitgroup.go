@@ -46,7 +46,9 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 // the `done` channel is closed. Implementations of the callBack function can listen
 // for the close to indicate a stop was requested.
 func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
-	wg.done = make(chan struct{})
+	if wg.done == nil {
+		wg.done = make(chan struct{})
+	}
 	wg.wg.Add(1)
 	go func() {
 		for {
