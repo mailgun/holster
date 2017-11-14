@@ -13,25 +13,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package holster
+package holster_test
 
 import (
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/suite"
+	"gopkg.in/ahmetb/go-linq.v3"
+	"testing"
+	"github.com/mailgun/holster"
 )
 
-type WaitGroupTestSuite struct{}
-
-var _ = Suite(&WaitGroupTestSuite{})
-
-func (s *WaitGroupTestSuite) SetUpSuite(c *C) {
+type WaitGroupTestSuite struct{
+	suite.Suite
 }
 
-func (s *WaitGroupTestSuite) TestRun(c *C) {
-	var wg WaitGroup
+func TestWaitGroup(t *testing.T) {
+	suite.Run(t, new(WaitGroupTestSuite))
+}
+
+func (s *WaitGroupTestSuite) TestRun() {
+	var wg holster.WaitGroup
 
 	items := []error{
 		errors.New("Error 1"),
@@ -49,15 +53,15 @@ func (s *WaitGroupTestSuite) TestRun(c *C) {
 	}
 
 	errs := wg.Wait()
-	c.Assert(errs, NotNil)
-	c.Assert(len(errs), Equals, 2)
-	c.Assert(linq.From(errs).Contains(items[0]), Equals, true)
-	c.Assert(linq.From(errs).Contains(items[1]), Equals, true)
+	s.NotNil(errs)
+	s.Equal(2, len(errs))
+	s.Equal(true, linq.From(errs).Contains(items[0]))
+	s.Equal(true, linq.From(errs).Contains(items[1]))
 }
 
-func (s *WaitGroupTestSuite) TestLoop(c *C) {
+func (s *WaitGroupTestSuite) TestLoop() {
 	pipe := make(chan int32, 0)
-	var wg WaitGroup
+	var wg holster.WaitGroup
 	var count int32
 
 	wg.Loop(func() bool {
@@ -80,14 +84,24 @@ func (s *WaitGroupTestSuite) TestLoop(c *C) {
 	// Wait for the routine to end
 	// no error collection when using Loop()
 	errs := wg.Wait()
-	c.Assert(errs, IsNil)
-	c.Assert(count, Equals, int32(16))
+	s.Nil(errs)
+	s.Equal(int32(16), count)
 }
 
-func (s *WaitGroupTestSuite) TestUntil(c *C) {
+func (s *WaitGroupTestSuite) TestUntil() {
 	pipe := make(chan int32, 0)
-	var wg WaitGroup
+	var wg holster.WaitGroup
 	var count int32
+
+	wg.Until(func(done chan struct{}) bool {
+		select {
+		case inc := <-pipe:
+			atomic.AddInt32(&count, inc)
+		case <-done:
+			return false
+		}
+		return true
+	})
 
 	wg.Until(func(done chan struct{}) bool {
 		select {
@@ -106,5 +120,5 @@ func (s *WaitGroupTestSuite) TestUntil(c *C) {
 
 	// Wait for the routine to end
 	wg.Stop()
-	c.Assert(count, Equals, int32(16))
+	s.Equal(int32(16), count)
 }

@@ -46,9 +46,12 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 // the `done` channel is closed. Implementations of the callBack function can listen
 // for the close to indicate a stop was requested.
 func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
+	wg.mutex.Lock()
 	if wg.done == nil {
 		wg.done = make(chan struct{})
 	}
+	wg.mutex.Unlock()
+
 	wg.wg.Add(1)
 	go func() {
 		for {
@@ -62,9 +65,11 @@ func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
 
 // closes the done channel passed into `Until()` calls and waits for the `Until()` callBack to return false
 func (wg *WaitGroup) Stop() {
+	wg.mutex.Lock()
 	if wg.done != nil {
 		close(wg.done)
 	}
+	wg.mutex.Unlock()
 	wg.Wait()
 }
 
@@ -84,6 +89,10 @@ func (wg *WaitGroup) Loop(callBack func() bool) {
 // Wait for all the routines to complete and return any errors collected
 func (wg *WaitGroup) Wait() []error {
 	wg.wg.Wait()
+
+	wg.mutex.Lock()
+	defer wg.mutex.Unlock()
+
 	if len(wg.errs) == 0 {
 		return nil
 	}
