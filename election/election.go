@@ -51,9 +51,10 @@ func New(conf Config) (*LeaderElection, error) {
 		return nil, err
 	}
 
-	if host, err := os.Hostname(); err != nil {
+	if host, err := os.Hostname(); err == nil {
 		holster.SetDefault(&conf.Candidate, host)
 	}
+
 	holster.SetDefault(&conf.Election, "default-election")
 	holster.SetDefault(&conf.TTL, time.Second*5)
 
