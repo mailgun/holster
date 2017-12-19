@@ -177,8 +177,8 @@ func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value 
 
 // Retrieve stats about the cache
 func (c *ExpireCache) GetStats() ExpireCacheStats {
-	c.stats.Size = c.Size()
 	c.mutex.Lock()
+	c.stats.Size = int64(len(c.cache))
 	defer func() {
 		c.stats = ExpireCacheStats{}
 		c.mutex.Unlock()
