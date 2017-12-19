@@ -67,15 +67,15 @@ func NewLRUCache(maxEntries int) *LRUCache {
 	}
 }
 
-// Adds a value to the cache
-func (c *LRUCache) Add(key Key, value interface{}) {
-	c.addRecord(&cacheRecord{key: key, value: value})
+// Add or Update a value in the cache, return true if the key already existed
+func (c *LRUCache) Add(key Key, value interface{}) bool {
+	return c.addRecord(&cacheRecord{key: key, value: value})
 }
 
 // Adds a value to the cache with a TTL
-func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL time.Duration) {
+func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL time.Duration) bool {
 	expireAt := time.Now().UTC().Add(TTL)
-	c.addRecord(&cacheRecord{
+	return c.addRecord(&cacheRecord{
 		key:      key,
 		value:    value,
 		expireAt: &expireAt,
@@ -83,7 +83,7 @@ func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL time.Duration) {
 }
 
 // Adds a value to the cache.
-func (c *LRUCache) addRecord(record *cacheRecord) {
+func (c *LRUCache) addRecord(record *cacheRecord) bool {
 	defer c.mutex.Unlock()
 	c.mutex.Lock()
 
@@ -92,14 +92,15 @@ func (c *LRUCache) addRecord(record *cacheRecord) {
 		c.ll.MoveToFront(ee)
 		temp := ee.Value.(*cacheRecord)
 		*temp = *record
-		return
+		return true
 	}
 
 	ele := c.ll.PushFront(record)
 	c.cache[record.key] = ele
 	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
-		c.RemoveOldest()
+		c.removeOldest()
 	}
+	return false
 }
 
 // Get looks up a key's value from the cache.
@@ -135,10 +136,7 @@ func (c *LRUCache) Remove(key Key) {
 }
 
 // RemoveOldest removes the oldest item from the cache.
-func (c *LRUCache) RemoveOldest() {
-	defer c.mutex.Unlock()
-	c.mutex.Lock()
-
+func (c *LRUCache) removeOldest() {
 	ele := c.ll.Back()
 	if ele != nil {
 		c.removeElement(ele)

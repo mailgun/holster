@@ -12,7 +12,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type LeaderElection struct {
+type LeaderElector interface {
+	Watch(context.Context, uint64) chan bool
+	IsLeader() bool
+	Concede() bool
+	Start()
+	Stop()
+}
+
+type EtcdElection struct {
 	cancel   context.CancelFunc
 	conf     Config
 	wg       holster.WaitGroup
@@ -35,31 +43,24 @@ type Config struct {
 // Use leader election if you have several instances of a service running in production
 // and you only want one of the service instances to preform a periodic task.
 //
-//	leader, _ := holster.NewLeaderElection(holster.LeaderElectionConf{
+//	election, _ := election.New(election.Config{
 //		Endpoints:     []string{"http://192.168.99.100:2379"},
 //	})
 //
+//  // Start the leader election and attempt to become leader
+//  election.Start()
+//
 //	// Returns true if we are leader (thread safe)
-//	if leader.IsLeader() {
+//	if election.IsLeader() {
 //		// Do periodic thing
 //	}
-func New(conf Config) (*LeaderElection, error) {
+func New(conf Config) (*EtcdElection, error) {
 	client, err := etcd.New(etcd.Config{
 		Endpoints: conf.Endpoints,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	if host, err := os.Hostname(); err == nil {
-		holster.SetDefault(&conf.Candidate, host)
-	}
-
-	holster.SetDefault(&conf.Election, "default-election")
-	holster.SetDefault(&conf.TTL, time.Second*5)
-
-	// Set a root prefix for `/elections`
-	conf.Election = path.Join("elections", conf.Election)
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
@@ -69,23 +70,39 @@ func New(conf Config) (*LeaderElection, error) {
 			if err == context.DeadlineExceeded || err == context.Canceled {
 				break
 			}
-			logrus.Infof("LeaderElection sync: %s", err)
+			logrus.WithField("category", "election").
+				Infof("EtcdElection sync: %s", err)
 			time.Sleep(time.Second * 10)
 		}
 	}()
 
-	leader := &LeaderElection{
+	leader, err := NewFromClient(conf, client)
+	leader.ctx = ctx
+	leader.cancel = cancelFunc
+	return leader, err
+}
+
+func NewFromClient(conf Config, client etcd.Client) (*EtcdElection, error) {
+	holster.SetDefault(&conf.Election, "default-election")
+	holster.SetDefault(&conf.TTL, time.Second*5)
+	if host, err := os.Hostname(); err == nil {
+		holster.SetDefault(&conf.Candidate, host)
+	}
+	// Set a root prefix for `/elections`
+	conf.Election = path.Join("elections", conf.Election)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	leader := &EtcdElection{
 		api:    etcd.NewKeysAPI(client),
 		cancel: cancelFunc,
 		conf:   conf,
 		ctx:    ctx,
 	}
-	leader.Start()
 	return leader, nil
 }
 
 // Watch the prefix for any events and send a 'true' if we should attempt grab leader
-func (s *LeaderElection) Watch(ctx context.Context, startIndex uint64) chan bool {
+func (s *EtcdElection) Watch(ctx context.Context, startIndex uint64) chan bool {
 	results := make(chan bool)
 	var cancel atomic.Value
 	var stop int32
@@ -119,7 +136,7 @@ func (s *LeaderElection) Watch(ctx context.Context, startIndex uint64) chan bool
 			if cErr, ok := err.(etcd.Error); ok {
 				if cErr.Code == etcd.ErrorCodeEventIndexCleared {
 					logrus.WithField("category", "election").
-						Infof("LeaderElection %s - new index is %d",
+						Infof("EtcdElection %s - new index is %d",
 							err, cErr.Index+1)
 
 					// Re-create the watcher with a newer index until we catch up
@@ -129,12 +146,12 @@ func (s *LeaderElection) Watch(ctx context.Context, startIndex uint64) chan bool
 			}
 			if err != context.DeadlineExceeded {
 				logrus.WithField("category", "election").
-					Errorf("LeaderElection etcd error: %s", err)
+					Errorf("EtcdElection etcd error: %s", err)
 				time.Sleep(time.Second * 10)
 			}
 		} else {
 			logrus.WithField("category", "election").
-				Debugf("LeaderElection etcd event: %+v\n", resp)
+				Debugf("EtcdElection etcd event: %+v\n", resp)
 			results <- true
 		}
 		return true
@@ -142,7 +159,7 @@ func (s *LeaderElection) Watch(ctx context.Context, startIndex uint64) chan bool
 	return results
 }
 
-func (s *LeaderElection) Start() {
+func (s *EtcdElection) Start() {
 	opts := etcd.SetOptions{
 		PrevExist: etcd.PrevNoExist,
 		TTL:       s.conf.TTL,
@@ -153,9 +170,13 @@ func (s *LeaderElection) Start() {
 	// Attempt to become leader
 	resp, err := s.api.Set(s.ctx, s.conf.Election, s.conf.Candidate, &opts)
 	if err == nil {
+		logrus.WithField("category", "election").
+			Debug("IS Leader")
 		atomic.StoreInt32(&s.isLeader, 1)
 		index = resp.Index
 	} else {
+		logrus.WithField("category", "election").
+			Debug("NOT Leader")
 		if cast, ok := err.(etcd.Error); ok {
 			index = cast.Index
 		}
@@ -206,17 +227,17 @@ func (s *LeaderElection) Start() {
 	})
 }
 
-func (s *LeaderElection) Stop() {
+func (s *EtcdElection) Stop() {
 	s.cancel()
 	s.wg.Wait()
 }
 
-func (s *LeaderElection) IsLeader() bool {
+func (s *EtcdElection) IsLeader() bool {
 	return atomic.LoadInt32(&s.isLeader) == 1
 }
 
 // Release leadership and return true if we own it, else do nothing and return false
-func (s *LeaderElection) Concede() bool {
+func (s *EtcdElection) Concede() bool {
 	if atomic.LoadInt32(&s.isLeader) == 1 {
 		atomic.StoreInt32(&s.conceded, 1)
 		s.api.Delete(context.Background(), s.conf.Election, nil)
@@ -225,3 +246,13 @@ func (s *LeaderElection) Concede() bool {
 	}
 	return false
 }
+
+type LeaderElectionMock struct{}
+
+func (s *LeaderElectionMock) Watch(ctx context.Context, startIndex uint64) chan bool {
+	return make(chan bool)
+}
+func (s *LeaderElectionMock) IsLeader() bool { return true }
+func (s *LeaderElectionMock) Concede() bool  { return true }
+func (s *LeaderElectionMock) Start()         {}
+func (s *LeaderElectionMock) Stop()          {}
