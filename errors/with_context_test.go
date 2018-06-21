@@ -9,6 +9,7 @@ import (
 	"github.com/mailgun/holster/errors"
 	"github.com/mailgun/holster/stack"
 	. "gopkg.in/check.v1"
+	"github.com/ahmetb/go-linq"
 )
 
 type TestError struct {
@@ -65,4 +66,14 @@ func (s *WithContextTestSuite) TestWithStack(c *C) {
 	}
 	c.Assert(linq.From(files).Contains("with_context_test.go"), Equals, true)
 	c.Assert(linq.From(funcs).Contains("(*WithContextTestSuite).TestWithStack"), Equals, true)
+}
+
+func (s *WithContextTestSuite) TestWrapfNil(c *C) {
+	got := errors.WithContext{"some": "context"}.Wrapf(nil, "no error")
+	c.Assert(got, IsNil)
+}
+
+func (s *WithContextTestSuite) TestWrapNil(c *C) {
+	got := errors.WithContext{"some": "context"}.Wrap(nil, "no error")
+	c.Assert(got, IsNil)
 }
