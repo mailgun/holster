@@ -15,7 +15,9 @@ limitations under the License.
 */
 package holster
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // If 'value' is empty or of zero value, assign the default value.
 // This panics if the value is not a pointer or if value and
@@ -27,14 +29,25 @@ import "reflect"
 //	}
 // 	holster.SetDefault(&config.Foo, "default")
 // 	holster.SetDefault(&config.Bar, 200)
-func SetDefault(value, defaultValue interface{}) {
-	v := reflect.ValueOf(value)
-	if v.Kind() != reflect.Ptr {
-		panic("holster.IfEmpty: Expected first argument to be of type reflect.Ptr")
+//
+// Supply additional default values and SetDefault will
+// choose the first default that is not of zero value
+//  holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+func SetDefault(dest interface{}, defaultValue ...interface{}) {
+	d := reflect.ValueOf(dest)
+	if d.Kind() != reflect.Ptr {
+		panic("holster.SetDefault: Expected first argument to be of type reflect.Ptr")
 	}
-	v = reflect.Indirect(v)
-	if IsZeroValue(v) {
-		v.Set(reflect.ValueOf(defaultValue))
+	d = reflect.Indirect(d)
+	if IsZeroValue(d) {
+		// Use the first non zero default value we find
+		for _, value := range defaultValue {
+			v := reflect.ValueOf(value)
+			if !IsZeroValue(v) {
+				d.Set(reflect.ValueOf(value))
+				return
+			}
+		}
 	}
 }
 

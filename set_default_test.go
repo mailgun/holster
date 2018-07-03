@@ -53,6 +53,25 @@ func (s *SetDefaultTestSuite) TestIfEmpty(c *C) {
 	c.Assert(conf.Bar, Equals, 500)
 }
 
+func (s *SetDefaultTestSuite) TestIfDefaultPrecedence(c *C) {
+	var conf struct {
+		Foo string
+		Bar string
+	}
+	c.Assert(conf.Foo, Equals, "")
+	c.Assert(conf.Bar, Equals, "")
+
+	// Should use the final default value
+	envValue := ""
+	holster.SetDefault(&conf.Foo, envValue, "default")
+	c.Assert(conf.Foo, Equals, "default")
+
+	// Should use envValue
+	envValue = "bar"
+	holster.SetDefault(&conf.Bar, envValue, "default")
+	c.Assert(conf.Bar, Equals, "bar")
+}
+
 func (s *SetDefaultTestSuite) TestIsEmpty(c *C) {
 	var count64 int64
 	var thing string
@@ -83,7 +102,7 @@ func (s *SetDefaultTestSuite) TestIfEmptyTypePanic(c *C) {
 func (s *SetDefaultTestSuite) TestIfEmptyNonPtrPanic(c *C) {
 	defer func() {
 		if r := recover(); r != nil {
-			c.Assert(r, Equals, "holster.IfEmpty: Expected first argument to be of type reflect.Ptr")
+			c.Assert(r, Equals, "holster.SetDefault: Expected first argument to be of type reflect.Ptr")
 		}
 	}()
 

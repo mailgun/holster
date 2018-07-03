@@ -274,6 +274,10 @@ var config struct {
 }
 holster.SetDefault(&config.Foo, "default")
 holster.SetDefault(&config.Bar, 200)
+
+// Supply additional default values and SetDefault will
+// choose the first default that is not of zero value
+//  holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
 ```
 
 ## GetEnv
