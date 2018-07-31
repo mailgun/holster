@@ -1,0 +1,19 @@
+language: go
+go:
+  - 1.9
+install:
+  - cd etcdutil
+  - docker-compose up -d
+  - cd ..
+  - go get -u github.com/golang/dep/cmd/dep
+  - dep ensure
+script:
+  - ./enable-etcd-auth.sh
+  - go test -v -test.parallel=1 . ./etcdutil
+  - cd etcdutil
+  - docker-compose down
+sudo: required
+services:
+  - docker
+notifications:
+  email: false
