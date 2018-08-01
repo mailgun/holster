@@ -20,6 +20,13 @@ const (
 	localInsecureEndpoint = "http://127.0.0.1:23790"
 )
 
+func init() {
+	// We check this here to avoid data race with GRPC go routines writing to the logger
+	if os.Getenv("ETCD3_DEBUG") != "" {
+		etcd.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+	}
+}
+
 func NewSecureClient(cfg *etcd.Config) (*etcd.Client, error) {
 	var err error
 	if cfg, err = NewEtcdConfig(cfg); err != nil {
@@ -51,10 +58,6 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	holster.SetDefault(&tlsCertFile, os.Getenv("ETCD3_TLS_CERT"), ifExists(pathToCert))
 	holster.SetDefault(&tlsKeyFile, os.Getenv("ETCD3_TLS_KEY"), ifExists(pathToKey))
 	holster.SetDefault(&tlsCaFile, os.Getenv("ETCD3_CA"), ifExists(pathToCA))
-
-	if os.Getenv("ETCD3_DEBUG") != "" {
-		etcd.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
-	}
 
 	// If the CA file was provided
 	if tlsCaFile != "" {
