@@ -164,5 +164,5 @@ type LeaderElectionMock struct{}
 
 func (s *LeaderElectionMock) IsLeader() bool { return true }
 func (s *LeaderElectionMock) Concede() bool  { return true }
-func (s *LeaderElectionMock) Start()         {}
+func (s *LeaderElectionMock) Start() error   { return nil }
 func (s *LeaderElectionMock) Stop()          {}
