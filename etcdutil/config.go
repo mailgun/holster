@@ -10,6 +10,7 @@ import (
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/grpclog"
+	"time"
 )
 
 const (
@@ -58,6 +59,18 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	holster.SetDefault(&tlsCertFile, os.Getenv("ETCD3_TLS_CERT"), ifExists(pathToCert))
 	holster.SetDefault(&tlsKeyFile, os.Getenv("ETCD3_TLS_KEY"), ifExists(pathToKey))
 	holster.SetDefault(&tlsCaFile, os.Getenv("ETCD3_CA"), ifExists(pathToCA))
+
+	// Default to 5 second timeout, else connections hang indefinitely
+	holster.SetDefault(&cfg.DialTimeout, time.Second*5)
+	// Or if the user provided a timeout
+	if timeout := os.Getenv("ETCD3_DIAL_TIMEOUT"); timeout != "" {
+		duration, err := time.ParseDuration(timeout)
+		if err != nil {
+			return nil, errors.Errorf(
+				"ETCD3_DIAL_TIMEOUT='%s' is not a duration (1m|15s|24h): %s", timeout, err)
+		}
+		cfg.DialTimeout = duration
+	}
 
 	// If the CA file was provided
 	if tlsCaFile != "" {
