@@ -5,20 +5,19 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 	"os"
+	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/grpclog"
-	"time"
 )
 
 const (
-	pathToCA              = "/etc/mailgun/ssl/localhost/ca.pem"
-	pathToKey             = "/etc/mailgun/ssl/localhost/etcd-key.pem"
-	pathToCert            = "/etc/mailgun/ssl/localhost/etcd-cert.pem"
-	localSecureEndpoint   = "https://127.0.0.1:23790"
-	localInsecureEndpoint = "http://127.0.0.1:23790"
+	pathToCA          = "/etc/mailgun/ssl/localhost/ca.pem"
+	pathToKey         = "/etc/mailgun/ssl/localhost/etcd-key.pem"
+	pathToCert        = "/etc/mailgun/ssl/localhost/etcd-cert.pem"
+	localEtcdEndpoint = "127.0.0.1:2379"
 )
 
 func init() {
@@ -45,7 +44,7 @@ func NewSecureClient(cfg *etcd.Config) (*etcd.Client, error) {
 // variables or defaults if they exists on the local system.
 
 // If no environment variables are set, will return a config set to
-// connect without TLS via http://localhost:23790
+// connect without TLS via localhost:2379
 func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	var envEndpoint, tlsCertFile, tlsKeyFile, tlsCaFile string
 
@@ -98,7 +97,7 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 		holster.SetDefault(&cfg.TLS.Certificates, []tls.Certificate{tlsCert})
 	}
 
-	holster.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), secureOrInsecure(cfg.TLS))
+	holster.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), localEtcdEndpoint)
 	holster.SetDefault(&cfg.Endpoints, []string{envEndpoint})
 
 	// Override here if user REALLY wants this
@@ -115,11 +114,4 @@ func ifExists(file string) string {
 		return file
 	}
 	return ""
-}
-
-func secureOrInsecure(tlsConfig *tls.Config) string {
-	if tlsConfig == nil {
-		return localInsecureEndpoint
-	}
-	return localSecureEndpoint
 }
