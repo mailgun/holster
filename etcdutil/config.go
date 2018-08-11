@@ -30,6 +30,7 @@ func init() {
 func NewSecureClient(cfg *etcd.Config) (*etcd.Client, error) {
 	var err error
 	if cfg, err = NewEtcdConfig(cfg); err != nil {
+		return nil, errors.Wrap(err, "failed to build etcd config")
 	}
 
 	etcdClt, err := etcd.New(*cfg)
