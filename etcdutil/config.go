@@ -102,8 +102,10 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	holster.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), localEtcdEndpoint)
 	holster.SetDefault(&cfg.Endpoints, strings.Split(envEndpoint, ","))
 
-	// Override here if user REALLY wants this
-	if cfg.TLS != nil && os.Getenv("ETCD3_SKIP_VERIFY") != "" {
+	// If no other TLS config is provided this will force connecting with TLS,
+	// without cert verification
+	if os.Getenv("ETCD3_SKIP_VERIFY") != "" {
+		holster.SetDefault(&cfg.TLS, &tls.Config{})
 		cfg.TLS.InsecureSkipVerify = true
 	}
 
