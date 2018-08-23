@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
@@ -99,7 +100,7 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	}
 
 	holster.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), localEtcdEndpoint)
-	holster.SetDefault(&cfg.Endpoints, []string{envEndpoint})
+	holster.SetDefault(&cfg.Endpoints, strings.Split(envEndpoint, ","))
 
 	// Override here if user REALLY wants this
 	if cfg.TLS != nil && os.Getenv("ETCD3_SKIP_VERIFY") != "" {
