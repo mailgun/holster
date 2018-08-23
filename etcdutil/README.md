@@ -76,6 +76,9 @@ func main() {
     os.Setenv("ETCD3_TLS_CERT", "/path/to/etcd-cert.pem")
     os.Setenv("ETCD3_TLS_KEY", "/path/to/etcd-key.pem")
     os.Setenv("ETCD3_CA", "/path/to/etcd-ca.pem")
+    
+    // Set this to force connecting with TLS, but without cert verification
+    os.Setenv("ETCD3_SKIP_VERIFY", "true")
 
     // Create a new etc config from available environment variables
     cfg, err := etcdutil.NewEtcdConfig(nil)
