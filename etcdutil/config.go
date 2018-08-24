@@ -109,6 +109,11 @@ func NewEtcdConfig(cfg *etcd.Config) (*etcd.Config, error) {
 		cfg.TLS.InsecureSkipVerify = true
 	}
 
+	// Enable TLS with no additional configuration
+	if os.Getenv("ETCD3_ENABLE_TLS") != "" {
+		holster.SetDefault(&cfg.TLS, &tls.Config{})
+	}
+
 	return cfg, nil
 }
 
