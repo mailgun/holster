@@ -73,7 +73,7 @@ func NewElection(election, candidate string, etcdConfig *etcd.Config) (*Election
 	e.Election = path.Join("/elections", e.Election)
 
 	var err error
-	e.etcdConfig, err = NewEtcdConfig(etcdConfig)
+	e.etcdConfig, err = NewConfig(etcdConfig)
 	if err != nil {
 		return nil, err
 	}
