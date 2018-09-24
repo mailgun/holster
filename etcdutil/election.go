@@ -31,14 +31,13 @@ type Election struct {
 	// Seconds to wait before giving up the election if leader disconnected
 	TTL int
 
-	etcdConfig *etcd.Config
-	session    *concurrency.Session
-	election   *concurrency.Election
-	client     *etcd.Client
-	cancel     context.CancelFunc
-	wg         holster.WaitGroup
-	ctx        context.Context
-	isLeader   int32
+	session  *concurrency.Session
+	election *concurrency.Election
+	client   *etcd.Client
+	cancel   context.CancelFunc
+	wg       holster.WaitGroup
+	ctx      context.Context
+	isLeader int32
 }
 
 // Use leader election if you have several instances of a service running in production
@@ -53,16 +52,16 @@ type Election struct {
 //	if election.IsLeader() {
 //		// Do periodic thing
 //	}
-func NewElection(election, candidate string, etcdConfig *etcd.Config) (*Election, error) {
+func NewElection(election, candidate string, client *etcd.Client) (*Election, error) {
 	log = logrus.WithField("category", "election")
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	e := &Election{
-		Candidate:  candidate,
-		Election:   election,
-		TTL:        5,
-		etcdConfig: etcdConfig,
-		cancel:     cancelFunc,
-		ctx:        ctx,
+		Candidate: candidate,
+		Election:  election,
+		TTL:       5,
+		cancel:    cancelFunc,
+		ctx:       ctx,
+		client:    client,
 	}
 
 	if host, err := os.Hostname(); err == nil {
@@ -72,22 +71,11 @@ func NewElection(election, candidate string, etcdConfig *etcd.Config) (*Election
 	// Set a prefix key for elections
 	e.Election = path.Join("/elections", e.Election)
 
-	var err error
-	e.etcdConfig, err = NewConfig(etcdConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	e.client, err = etcd.New(*e.etcdConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// Test the connection
+	// Test the client
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	_, err = e.client.Get(ctx, e.Election)
+	_, err := e.client.Get(ctx, e.Election)
 	if err != nil {
 		return nil, errors.Wrap(err, "while connecting to etcd")
 	}
