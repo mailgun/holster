@@ -2,15 +2,39 @@ package clock
 
 import (
 	"encoding/json"
-	"fmt"
-	"time"
 
 	"github.com/pkg/errors"
 )
 
 type DurationJSON struct {
-	Duration time.Duration
-	str      string
+	Duration Duration
+}
+
+func NewDurationJSON(v interface{}) (DurationJSON, error) {
+	switch v := v.(type) {
+	case Duration:
+		return DurationJSON{Duration: v}, nil
+	case float64:
+		return DurationJSON{Duration: Duration(v)}, nil
+	case int64:
+		return DurationJSON{Duration: Duration(v)}, nil
+	case int:
+		return DurationJSON{Duration: Duration(v)}, nil
+	case []byte:
+		duration, err := ParseDuration(string(v))
+		if err != nil {
+			return DurationJSON{}, errors.Wrap(err, "while parsing []byte")
+		}
+		return DurationJSON{Duration: duration}, nil
+	case string:
+		duration, err := ParseDuration(v)
+		if err != nil {
+			return DurationJSON{}, errors.Wrap(err, "while parsing string")
+		}
+		return DurationJSON{Duration: duration}, nil
+	default:
+		return DurationJSON{}, errors.Errorf("bad type %T", v)
+	}
 }
 
 func (d DurationJSON) MarshalJSON() ([]byte, error) {
@@ -25,19 +49,10 @@ func (d *DurationJSON) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	switch value := v.(type) {
-	case float64:
-		d.Duration = time.Duration(value)
-		d.str = fmt.Sprintf("%f", value)
-	case string:
-		d.Duration, err = time.ParseDuration(value)
-		d.str = value
-	default:
-		return errors.New("invalid duration")
-	}
+	*d, err = NewDurationJSON(v)
 	return err
 }
 
 func (d DurationJSON) String() string {
-	return d.str
+	return d.Duration.String()
 }
