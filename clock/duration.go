@@ -37,6 +37,14 @@ func NewDurationJSON(v interface{}) (DurationJSON, error) {
 	}
 }
 
+func NewDurationJSONOrPanic(v interface{}) DurationJSON {
+	d, err := NewDurationJSON(v)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
 func (d DurationJSON) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.Duration.String())
 }
