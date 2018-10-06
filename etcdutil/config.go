@@ -38,7 +38,7 @@ func NewClient(cfg *etcd.Config) (*etcd.Client, error) {
 
 	etcdClt, err := etcd.New(*cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create secure etcd client")
+		return nil, errors.Wrap(err, "failed to create etcd client")
 	}
 	return etcdClt, nil
 }

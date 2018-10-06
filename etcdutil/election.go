@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -83,8 +84,9 @@ func NewElection(election, candidate string, client *etcd.Client) (*Election, er
 	return e, nil
 }
 
-func (e *Election) Start() error {
-	var err error
+func (e *Election) Start() (err error) {
+	var once sync.Once
+	var completed sync.WaitGroup
 
 	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL))
 	if err != nil {
@@ -94,12 +96,15 @@ func (e *Election) Start() error {
 	// Start a new election
 	e.election = concurrency.NewElection(e.session, e.Election)
 
+	completed.Add(1)
 	e.wg.Until(func(done chan struct{}) bool {
 		log.Debugf("attempting to become leader '%s'\n", e.Candidate)
 
 		// Start a new campaign and attempt to become leader
-		if err := e.election.Campaign(e.ctx, e.Candidate); err != nil {
-			errors.Wrap(err, "while starting a new campaign")
+		if err = e.election.Campaign(e.ctx, e.Candidate); err != nil {
+			err = errors.Wrap(err, "while starting a new campaign")
+			completed.Done()
+			return false
 		}
 
 		observeChan := e.election.Observe(e.ctx)
@@ -107,6 +112,7 @@ func (e *Election) Start() error {
 			select {
 			case node, ok := <-observeChan:
 				if !ok {
+					once.Do(completed.Done)
 					return false
 				}
 				if string(node.Kvs[0].Value) == e.Candidate {
@@ -114,15 +120,19 @@ func (e *Election) Start() error {
 					atomic.StoreInt32(&e.isLeader, 1)
 				} else {
 					// We are not leader
-					logrus.Debug("NOT Leader")
+					log.Debug("NOT Leader")
 					atomic.StoreInt32(&e.isLeader, 0)
 				}
+				once.Do(completed.Done)
 			case <-done:
 				return false
 			}
 		}
 	})
-	return nil
+
+	// Wait until the first election has completed
+	completed.Wait()
+	return err
 }
 
 func (e *Election) Stop() {
@@ -139,7 +149,7 @@ func (e *Election) IsLeader() bool {
 func (e *Election) Concede() bool {
 	if atomic.LoadInt32(&e.isLeader) == 1 {
 		if err := e.election.Resign(e.ctx); err != nil {
-			logrus.WithField("err", err).
+			log.WithField("err", err).
 				Error("while attempting to concede the election")
 		}
 		atomic.StoreInt32(&e.isLeader, 0)

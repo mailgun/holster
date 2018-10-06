@@ -1,11 +1,6 @@
 # Holster
 A place to holster mailgun's golang libraries and tools
 
-## Bunker
-Bunker is a key/value store library for efficiently storing large chunks of data into a cassandra cluster.
- Bunker provides support for encryption, compression and data signing
-See the [bunker readme](https://github.com/mailgun/holster/blob/master/bunker/README.md) for details
-
 ## Clock
 A drop in (almost) replacement for the system `time` package to make scheduled
 events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/clock/README.md) for details
@@ -24,7 +19,8 @@ See the [secret readme](https://github.com/mailgun/holster/blob/master/secret/RE
 
 ## Distributed Election
 A distributed election implementation using etcd to coordinate elections
-See the [election readme](https://github.com/mailgun/holster/blob/master/election/README.md) for details
+See the [etcd v2 readme](https://github.com/mailgun/holster/blob/master/election/README.md) for details
+See the [etcd v3 readme](https://github.com/mailgun/holster/blob/master/etcdutil/README.md) for details
 
 ## Errors
 Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
