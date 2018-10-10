@@ -22,8 +22,17 @@ func main() {
         return
     }
 
+    client, err := etcdutil.NewClient(nil)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "while creating etcd client: %s\n", err)
+        return
+    }
+
     // Preform an election called 'my-service' with hostname as the candidate name
-    leader, _ := etcdutil.NewElection("my-service", hostname, nil)
+    election, _ := etcdutil.NewElection("my-service", hostname, client)
+
+    // Start the election, will block until a leader is elected
+    election.Start()
 
     // Handle graceful shutdown
     signalChan := make(chan os.Signal, 1)
@@ -35,16 +44,16 @@ func main() {
         select {
         case <-tick.C:
             // Are we currently leader?
-            if leader.IsLeader() {
+            if election.IsLeader() {
                 err := DoThing()
                 if err != nil {
                     // Have another instance DoThing(), we can't for some reason
-                    leader.Concede()
+                    election.Concede()
                 }
             }
             return true
         case <-signalChan:
-            leader.Stop()
+            election.Stop()
             return false
         }
     })
@@ -52,7 +61,7 @@ func main() {
 }
 ```
 
-## NewEtcdConfig()
+## NewConfig()
 Designed to be used in applications that share the same etcd config
 and wish to reuse the same config throughout the application.
 
@@ -66,7 +75,7 @@ import (
 
 func main() {
     // These environment variables provided by the environment,
-    // we set them here to only to illustrate how `NewEtcdConfig()`
+    // we set them here to only to illustrate how `NewConfig()`
     // uses the environment to create a new etcd config
     os.Setenv("ETCD3_USER", "root")
     os.Setenv("ETCD3_PASSWORD", "rootpw")
@@ -81,20 +90,16 @@ func main() {
     os.Setenv("ETCD3_SKIP_VERIFY", "true")
 
     // Create a new etc config from available environment variables
-    cfg, err := etcdutil.NewEtcdConfig(nil)
+    cfg, err := etcdutil.NewConfig(nil)
     if err != nil {
         fmt.Fprintf(os.Stderr, "while creating etcd config: %s\n", err)
         return
     }
-
-    // Use cfg to init scroll
-    // Use cfg to init eventbus
-    // Use cfg to init leader election
 }
 ```
 
-## NewSecureClient()
-Just like `NewEtcdConfig()` but returns a connected etcd client for use by the
+## NewClient()
+Just like `NewConfig()` but returns a connected etcd client for use by the
 rest of the application.
 
 ```go
@@ -107,7 +112,7 @@ import (
 
 func main() {
     // Create a new etc client from available environment variables
-    client, err := etcdutil.NewSecureClient(nil)
+    client, err := etcdutil.NewClient(nil)
     if err != nil {
         fmt.Fprintf(os.Stderr, "while creating etcd client: %s\n", err)
         return
