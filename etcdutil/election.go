@@ -32,9 +32,9 @@ type Election struct {
 	// Seconds to wait before giving up the election if leader disconnected
 	TTL int
 
-	session  *concurrency.Session
-	election *concurrency.Election
 	client   *etcd.Client
+	concede  chan struct{}
+	conceded sync.WaitGroup
 	cancel   context.CancelFunc
 	wg       holster.WaitGroup
 	ctx      context.Context
@@ -51,7 +51,7 @@ type Election struct {
 //
 //	// Returns true if we are leader (thread safe)
 //	if election.IsLeader() {
-//		// Do periodic thing
+//		// Do thing
 //	}
 func NewElection(election, candidate string, client *etcd.Client) (*Election, error) {
 	log = logrus.WithField("category", "election")
@@ -60,6 +60,7 @@ func NewElection(election, candidate string, client *etcd.Client) (*Election, er
 		Candidate: candidate,
 		Election:  election,
 		TTL:       5,
+		concede:   make(chan struct{}),
 		cancel:    cancelFunc,
 		ctx:       ctx,
 		client:    client,
@@ -87,58 +88,72 @@ func NewElection(election, candidate string, client *etcd.Client) (*Election, er
 func (e *Election) Start() (err error) {
 	var once sync.Once
 	var completed sync.WaitGroup
+	var election *concurrency.Election
 
-	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL))
-	if err != nil {
-		return errors.Wrap(err, "while creating new session")
+	var concede = func() {
+		ctx, cancel := context.WithTimeout(context.Background(),
+			time.Duration(e.TTL)*time.Second)
+
+		if err := election.Resign(ctx); err != nil {
+			log.WithField("err", err).
+				Error("while attempting to concede the election")
+		}
+		atomic.StoreInt32(&e.isLeader, 0)
+		cancel()
 	}
-
-	// Start a new election
-	e.election = concurrency.NewElection(e.session, e.Election)
 
 	completed.Add(1)
 	e.wg.Until(func(done chan struct{}) bool {
-		log.Debugf("attempting to become leader '%s'\n", e.Candidate)
 
-		// Start a new campaign and attempt to become leader
-		if err = e.election.Campaign(e.ctx, e.Candidate); err != nil {
-			err = errors.Wrap(err, "while starting a new campaign")
-			completed.Done()
+		session, err := concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL))
+		if err != nil {
+			err = errors.Wrap(err, "while creating new session")
 			return false
 		}
 
-		observeChan := e.election.Observe(e.ctx)
-		for {
-			select {
-			case node, ok := <-observeChan:
-				if !ok {
-					once.Do(completed.Done)
-					return false
-				}
-				if string(node.Kvs[0].Value) == e.Candidate {
-					log.Debug("IS Leader")
-					atomic.StoreInt32(&e.isLeader, 1)
-				} else {
-					// We are not leader
-					log.Debug("NOT Leader")
-					atomic.StoreInt32(&e.isLeader, 0)
-				}
-				once.Do(completed.Done)
-			case <-done:
-				return false
-			}
+		election = concurrency.NewElection(session, e.Election)
+		once.Do(completed.Done)
+
+		// Start a new campaign and attempt to become leader
+		if err = election.Campaign(e.ctx, e.Candidate); err != nil {
+			err = errors.Wrap(err, "while starting a new campaign")
+			return false
 		}
+
+		atomic.StoreInt32(&e.isLeader, 1)
+
+		select {
+		case <-session.Done():
+			return true
+		case <-e.concede:
+			concede()
+			e.conceded.Done()
+			return true
+		case <-done:
+			concede()
+			return false
+		}
+		return true
 	})
 
-	// Wait until the first election has completed
+	// Get the outcome of the election
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	completed.Wait()
+	observeChan := election.Observe(ctx)
+	select {
+	case item := <-observeChan:
+		if string(item.Kvs[0].Value) == e.Candidate {
+			atomic.StoreInt32(&e.isLeader, 1)
+		}
+	}
 	return err
 }
 
 func (e *Election) Stop() {
-	e.Concede()
 	e.cancel()
-	e.wg.Wait()
+	e.wg.Stop()
 }
 
 func (e *Election) IsLeader() bool {
@@ -147,20 +162,34 @@ func (e *Election) IsLeader() bool {
 
 // Release leadership and return true if we own it, else do nothing and return false
 func (e *Election) Concede() bool {
-	if atomic.LoadInt32(&e.isLeader) == 1 {
-		if err := e.election.Resign(e.ctx); err != nil {
-			log.WithField("err", err).
-				Error("while attempting to concede the election")
-		}
-		atomic.StoreInt32(&e.isLeader, 0)
-		return true
+	wasLeader := e.IsLeader()
+	e.conceded.Add(1)
+	e.concede <- struct{}{}
+	e.conceded.Wait()
+	return wasLeader
+}
+
+// Return the current leader of the election without joining the election
+func (e *Election) LeaderPeek() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+
+	session, err := concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL))
+	if err != nil {
+		return "", errors.Wrap(err, "while creating new session")
 	}
-	return false
+	election := concurrency.NewElection(session, e.Election)
+	leader, err := election.Leader(ctx)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	return string(leader.Kvs[0].Value), nil
 }
 
 type LeaderElectionMock struct{}
 
-func (s *LeaderElectionMock) IsLeader() bool { return true }
-func (s *LeaderElectionMock) Concede() bool  { return true }
-func (s *LeaderElectionMock) Start() error   { return nil }
-func (s *LeaderElectionMock) Stop()          {}
+func (s *LeaderElectionMock) LeaderPeek() (string, error) { return "", nil }
+func (s *LeaderElectionMock) IsLeader() bool              { return true }
+func (s *LeaderElectionMock) Concede() bool               { return true }
+func (s *LeaderElectionMock) Start() error                { return nil }
+func (s *LeaderElectionMock) Stop()                       {}

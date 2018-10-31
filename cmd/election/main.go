@@ -19,10 +19,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	e, err := etcdutil.NewElection("cli-election", os.Args[1], nil)
+	client, err := etcdutil.NewClient(nil)
+	if err != nil {
+		fmt.Printf("while creating etcd client: %s\n", err)
+		os.Exit(1)
+	}
+
+	e, err := etcdutil.NewElection("cli-election", os.Args[1], client)
 	if err != nil {
 		fmt.Printf("while creating a new election: %s\n", err)
 		os.Exit(1)
+	}
+
+	// Call the app with an additional arg and it will report the leader
+	// and exit without joining the election
+	if len(os.Args) > 2 {
+		leader, err := e.LeaderPeek()
+		if err != nil {
+			fmt.Printf("while peeking at leader: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(leader)
+		os.Exit(0)
 	}
 
 	e.Start()
