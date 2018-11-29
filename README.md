@@ -397,3 +397,55 @@ Provides user agent parsing into Mailgun [ClientInfo](https://github.com/mailgun
 ```
 clientInfo := useragent.Parse("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.70 Safari/537.17")
 ```
+
+## Broadcaster
+Allow the user to notify multiple goroutines of an event. This implementation guarantees every goroutine will wake
+for every broadcast sent. In the event the goroutine falls behind and more broadcasts() are sent than the goroutine
+has handled the broadcasts are buffered up to 10,000 broadcasts. Once the broadcast buffer limit is reached calls
+ to broadcast() will block until goroutines consuming the broadcasts can catch up.
+ 
+```go
+	broadcaster := holster.NewBroadcaster()
+	done := make(chan struct{})
+	var mutex sync.Mutex
+	var chat []string
+
+	// Start some simple chat clients that are responsible for
+	// sending the contents of the []chat slice to their clients
+	for i := 0; i < 2; i++ {
+		go func(idx int) {
+			var clientIndex int
+			for {
+				mutex.Lock()
+				if clientIndex != len(chat) {
+					// Pretend we are sending a message to our client via a socket
+					fmt.Printf("Client [%d] Chat: %s\n", idx, chat[clientIndex])
+					clientIndex++
+					mutex.Unlock()
+					continue
+				}
+				mutex.Unlock()
+
+				// Wait for more chats to be added to chat[]
+				select {
+				case <-broadcaster.WaitChan(string(idx)):
+				case <-done:
+					return
+				}
+			}
+		}(i)
+	}
+
+	// Add some chat lines to the []chat slice
+	for i := 0; i < 5; i++ {
+		mutex.Lock()
+		chat = append(chat, fmt.Sprintf("Message '%d'", i))
+		mutex.Unlock()
+
+		// Notify any clients there are new chats to read
+		broadcaster.Broadcast()
+	}
+
+	// Tell the clients to quit
+	close(done)
+```
