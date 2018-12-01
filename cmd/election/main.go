@@ -19,7 +19,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	e, err := etcdutil.NewElection("cli-election", os.Args[1], nil)
+	client, err := etcdutil.NewClient(nil)
+	if err != nil {
+		fmt.Printf("while creating a new etcd client: %s\n", err)
+		os.Exit(1)
+	}
+
+	e, err := etcdutil.NewElection("cli-election", os.Args[1], client)
 	if err != nil {
 		fmt.Printf("while creating a new election: %s\n", err)
 		os.Exit(1)

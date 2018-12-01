@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -84,37 +83,83 @@ func NewElection(election, candidate string, client *etcd.Client) (*Election, er
 	return e, nil
 }
 
-func (e *Election) Start() (err error) {
-	var once sync.Once
-	var completed sync.WaitGroup
-
-	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL))
+func (e *Election) newSession() (err error) {
+	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL),
+		concurrency.WithContext(e.ctx))
 	if err != nil {
 		return errors.Wrap(err, "while creating new session")
 	}
-
-	// Start a new election
 	e.election = concurrency.NewElection(e.session, e.Election)
+	return nil
+}
 
-	completed.Add(1)
+func (e *Election) Start() error {
+	err := e.newSession()
+	if err != nil {
+		return errors.Wrap(err, "while creating new initial etcd session")
+	}
+
 	e.wg.Until(func(done chan struct{}) bool {
-		log.Debugf("attempting to become leader '%s'\n", e.Candidate)
+		var node *etcd.GetResponse
+		var observe <-chan etcd.GetResponse
+		errChan := make(chan error)
 
-		// Start a new campaign and attempt to become leader
-		if err = e.election.Campaign(e.ctx, e.Candidate); err != nil {
-			err = errors.Wrap(err, "while starting a new campaign")
-			completed.Done()
-			return false
+		// Get the current leader if any
+		node, err = e.election.Leader(e.ctx)
+		if err != nil {
+			if err != concurrency.ErrElectionNoLeader {
+				log.Errorf("while determining election leader: %s", err)
+				goto sleep
+			}
+		} else {
+			// If we are resuming an election from which we previously had leadership
+			// we should resign immediately to allow a new leader to be elected instead
+			// of waiting for the lease to expire
+			if string(node.Kvs[0].Value) == e.Candidate {
+				// Existing election, resume the election
+				election := concurrency.ResumeElection(e.session, e.Election,
+					string(node.Kvs[0].Key), node.Kvs[0].CreateRevision)
+				err = election.Resign(e.ctx)
+				if err != nil {
+					log.Errorf("while resigning a previous election: %s", err)
+					goto sleep
+				}
+			}
 		}
 
-		observeChan := e.election.Observe(e.ctx)
-		for {
-			select {
-			case node, ok := <-observeChan:
-				if !ok {
-					once.Do(completed.Done)
+		// Reset leadership if we had it previously
+		atomic.StoreInt32(&e.isLeader, 0)
+
+		// Start a new campaign and attempt to become leader
+		go func() {
+			// This blocks indefinitely so place it in a goroutine
+			errChan <- e.election.Campaign(e.ctx, e.Candidate)
+		}()
+
+		select {
+		case err = <-errChan:
+			if err != nil {
+				if errors.Cause(err) == context.Canceled {
 					return false
 				}
+				log.Errorf("while attempting to become leader: %s", err)
+				e.session.Close()
+				goto sleep
+			}
+		// Session was cancelled or we lost connection to etcd
+		case <-e.session.Done():
+			e.session.Close()
+			goto sleep
+		}
+
+		// If Campaign() returned without error, we are leader
+		atomic.StoreInt32(&e.isLeader, 1)
+
+		// Observe changes to leadership
+		observe = e.election.Observe(e.ctx)
+		for {
+			select {
+			case node := <-observe:
 				if string(node.Kvs[0].Value) == e.Candidate {
 					log.Debug("IS Leader")
 					atomic.StoreInt32(&e.isLeader, 1)
@@ -122,16 +167,48 @@ func (e *Election) Start() (err error) {
 					// We are not leader
 					log.Debug("NOT Leader")
 					atomic.StoreInt32(&e.isLeader, 0)
+					return true
 				}
-				once.Do(completed.Done)
-			case <-done:
-				return false
+			case <-e.session.Done():
+				e.session.Close()
+				goto sleep
 			}
 		}
+
+	sleep:
+		// Back off timeout
+		tick := time.NewTicker(time.Second * 3)
+		defer tick.Stop()
+		select {
+		case <-done:
+			return false
+		case <-e.ctx.Done():
+			return false
+		case <-tick.C:
+		}
+
+		log.Debug("Disconnected, creating new session")
+		err = e.newSession()
+		if err != nil {
+			log.Errorf("while creating new etcd session: %s", err)
+		} else {
+			log.Debug("New session created")
+		}
+		return true
 	})
 
-	// Wait until the first election has completed
-	completed.Wait()
+	// Wait until we have a leader before returning
+	for {
+		_, err := e.election.Leader(e.ctx)
+		if err != nil {
+			if err != concurrency.ErrElectionNoLeader {
+				return err
+			}
+			time.Sleep(time.Millisecond * 300)
+			continue
+		}
+		break
+	}
 	return err
 }
 
