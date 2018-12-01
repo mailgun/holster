@@ -31,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	e.Start()
+	err = e.Start()
 	if err != nil {
 		fmt.Printf("during election start: %s\n", err)
 		os.Exit(1)

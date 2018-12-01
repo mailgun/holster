@@ -30,6 +30,8 @@ type Election struct {
 	Candidate string
 	// Seconds to wait before giving up the election if leader disconnected
 	TTL int
+	// Report not leader when etcd connection is interrupted
+	LoseLeaderOnDisconnect bool
 
 	session  *concurrency.Session
 	election *concurrency.Election
@@ -52,6 +54,11 @@ type Election struct {
 //	if election.IsLeader() {
 //		// Do periodic thing
 //	}
+//
+// NOTE: If this instance is elected leader and connection is interrupted to etcd,
+// this library will continue to report it is leader until connection to etcd is resumed
+// and a new leader is elected. If you wish to lose leadership on disconnect set
+// `LoseLeaderOnDisconnect = true`
 func NewElection(election, candidate string, client *etcd.Client) (*Election, error) {
 	log = logrus.WithField("category", "election")
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -83,9 +90,10 @@ func NewElection(election, candidate string, client *etcd.Client) (*Election, er
 	return e, nil
 }
 
-func (e *Election) newSession() (err error) {
+func (e *Election) newSession(id int64) error {
+	var err error
 	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.TTL),
-		concurrency.WithContext(e.ctx))
+		concurrency.WithContext(e.ctx), concurrency.WithLease(etcd.LeaseID(id)))
 	if err != nil {
 		return errors.Wrap(err, "while creating new session")
 	}
@@ -94,7 +102,7 @@ func (e *Election) newSession() (err error) {
 }
 
 func (e *Election) Start() error {
-	err := e.newSession()
+	err := e.newSession(0)
 	if err != nil {
 		return errors.Wrap(err, "while creating new initial etcd session")
 	}
@@ -102,54 +110,52 @@ func (e *Election) Start() error {
 	e.wg.Until(func(done chan struct{}) bool {
 		var node *etcd.GetResponse
 		var observe <-chan etcd.GetResponse
-		errChan := make(chan error)
 
 		// Get the current leader if any
-		node, err = e.election.Leader(e.ctx)
-		if err != nil {
+		if node, err = e.election.Leader(e.ctx); err != nil {
 			if err != concurrency.ErrElectionNoLeader {
 				log.Errorf("while determining election leader: %s", err)
-				goto sleep
+				goto reconnect
 			}
 		} else {
-			// If we are resuming an election from which we previously had leadership
-			// we should resign immediately to allow a new leader to be elected instead
-			// of waiting for the lease to expire
+			// If we are resuming an election from which we previously had leadership we
+			// have 2 options
+			// 1. Resume the leadership if the lease has not expired. This is a race as the
+			//    lease could expire in between the `Leader()` call and `Campaign()` calls.
+			//    If this happens `Campaign()` should return with an error as the resumed
+			//    session has expired.
+			// 2. Resign the leadership immediately to allow a new leader to be chosen.
+			//    This option will almost always result in transfer of leadership.
+			//
+			// We choose option 1 here because transfer of leadership might be expensive
+			// for some users of this library and being a bit more chatty on reconnect can
+			// be worth the price of switching leadership needlessly.
+
+			// If we were the leader previously
 			if string(node.Kvs[0].Value) == e.Candidate {
-				// Existing election, resume the election
-				election := concurrency.ResumeElection(e.session, e.Election,
-					string(node.Kvs[0].Key), node.Kvs[0].CreateRevision)
-				err = election.Resign(e.ctx)
-				if err != nil {
-					log.Errorf("while resigning a previous election: %s", err)
-					goto sleep
+				// Recreate our session with the old lease
+				if err = e.newSession(node.Kvs[0].Lease); err != nil {
+					log.Errorf("while re-establishing session: %s", err)
+					// abandon resuming leadership
+					goto reconnect
 				}
+				e.election = concurrency.ResumeElection(e.session, e.Election,
+					string(node.Kvs[0].Key), node.Kvs[0].CreateRevision)
 			}
+			// TODO: Sleep here to test race condition after resuming old session
 		}
 
 		// Reset leadership if we had it previously
 		atomic.StoreInt32(&e.isLeader, 0)
 
-		// Start a new campaign and attempt to become leader
-		go func() {
-			// This blocks indefinitely so place it in a goroutine
-			errChan <- e.election.Campaign(e.ctx, e.Candidate)
-		}()
-
-		select {
-		case err = <-errChan:
-			if err != nil {
-				if errors.Cause(err) == context.Canceled {
-					return false
-				}
-				log.Errorf("while attempting to become leader: %s", err)
-				e.session.Close()
-				goto sleep
+		// Attempt to become leader
+		if err := e.election.Campaign(e.ctx, e.Candidate); err != nil {
+			if errors.Cause(err) == context.Canceled {
+				return false
 			}
-		// Session was cancelled or we lost connection to etcd
-		case <-e.session.Done():
+			log.Debug("campaign err: %s\n", err)
 			e.session.Close()
-			goto sleep
+			goto reconnect
 		}
 
 		// If Campaign() returned without error, we are leader
@@ -159,7 +165,12 @@ func (e *Election) Start() error {
 		observe = e.election.Observe(e.ctx)
 		for {
 			select {
-			case node := <-observe:
+			case node, ok := <-observe:
+				if !ok {
+					log.Debug("observe chan closed\n")
+					e.session.Close()
+					goto reconnect
+				}
 				if string(node.Kvs[0].Value) == e.Candidate {
 					log.Debug("IS Leader")
 					atomic.StoreInt32(&e.isLeader, 1)
@@ -169,27 +180,25 @@ func (e *Election) Start() error {
 					atomic.StoreInt32(&e.isLeader, 0)
 					return true
 				}
+			case <-e.ctx.Done():
+				log.Debug("context cancelled")
+				return false
 			case <-e.session.Done():
-				e.session.Close()
-				goto sleep
+				log.Debug("session cancelled\n")
+				goto reconnect
 			}
 		}
 
-	sleep:
-		// Back off timeout
-		tick := time.NewTicker(time.Second * 3)
-		defer tick.Stop()
-		select {
-		case <-done:
-			return false
-		case <-e.ctx.Done():
-			return false
-		case <-tick.C:
+	reconnect:
+		if e.LoseLeaderOnDisconnect {
+			atomic.StoreInt32(&e.isLeader, 0)
 		}
 
-		log.Debug("Disconnected, creating new session")
-		err = e.newSession()
-		if err != nil {
+		log.Debug("disconnected, creating new session")
+		if err = e.newSession(0); err != nil {
+			if errors.Cause(err) == context.Canceled {
+				return false
+			}
 			log.Errorf("while creating new etcd session: %s", err)
 		} else {
 			log.Debug("New session created")
@@ -209,7 +218,7 @@ func (e *Election) Start() error {
 		}
 		break
 	}
-	return err
+	return nil
 }
 
 func (e *Election) Stop() {
@@ -225,10 +234,13 @@ func (e *Election) IsLeader() bool {
 // Release leadership and return true if we own it, else do nothing and return false
 func (e *Election) Concede() bool {
 	if atomic.LoadInt32(&e.isLeader) == 1 {
-		if err := e.election.Resign(e.ctx); err != nil {
+		// If resign takes longer than our TTL then lease is expired and we are no longer leader anyway.
+		ctx, cancel := context.WithTimeout(e.ctx, time.Duration(e.TTL)*time.Second)
+		if err := e.election.Resign(ctx); err != nil {
 			log.WithField("err", err).
 				Error("while attempting to concede the election")
 		}
+		cancel()
 		atomic.StoreInt32(&e.isLeader, 0)
 		return true
 	}
