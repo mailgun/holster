@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/mailgun/holster/etcdutil"
 	"github.com/sirupsen/logrus"
@@ -19,13 +19,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	e, err := etcdutil.NewElection("cli-election", os.Args[1], nil)
+	client, err := etcdutil.NewClient(nil)
 	if err != nil {
-		fmt.Printf("while creating a new election: %s\n", err)
+		fmt.Printf("while creating a new etcd client: %s\n", err)
 		os.Exit(1)
 	}
 
-	e.Start()
+	/*resp, err := client.Get(context.Background(), "/elections/cli-election", clientv3.WithPrefix())
+	if err != nil {
+		fmt.Printf("while creating a new etcd client: %s\n", err)
+		os.Exit(1)
+	}*/
+
+	e := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+		Election:                "cli-election",
+		Candidate:               os.Args[1],
+		LeaderChannelSize:       10,
+		ResumeLeaderOnReconnect: true,
+		TTL: 10,
+	})
+
+	err = e.Start()
 	if err != nil {
 		fmt.Printf("during election start: %s\n", err)
 		os.Exit(1)
@@ -47,8 +61,8 @@ func main() {
 		}
 	}()
 
-	for {
-		fmt.Printf("[%s] Leader: %t\n", os.Args[1], e.IsLeader())
-		time.Sleep(time.Second)
+	for leader := range e.LeaderChan() {
+		fmt.Printf("[%s] Leader: %t\n", os.Args[1], leader)
 	}
+
 }

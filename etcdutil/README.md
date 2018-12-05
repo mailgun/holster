@@ -29,10 +29,19 @@ func main() {
     }
 
     // Preform an election called 'my-service' with hostname as the candidate name
-    election, _ := etcdutil.NewElection("my-service", hostname, client)
+	e := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+		Election:                "my-service",
+		Candidate:               hostname,
+		LeaderChannelSize:       10,
+		ResumeLeaderOnReconnect: true,
+		TTL: 10,
+	})
 
     // Start the election, will block until a leader is elected
-    election.Start()
+	if err = e.Start(); err != nil {
+		fmt.Printf("during election start: %s\n", err)
+		os.Exit(1)
+	}
 
     // Handle graceful shutdown
     signalChan := make(chan os.Signal, 1)
@@ -58,6 +67,11 @@ func main() {
         }
     })
     wg.Wait()
+    
+    // Or you can listen on a channel for leadership updates
+    for leader := range e.LeaderChan() {
+    	fmt.Printf("Leader: %t\n", leader)
+    }
 }
 ```
 
