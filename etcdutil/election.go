@@ -339,7 +339,8 @@ func (e *Election) notifyLeaderChange(set bool) {
 
 type LeaderElectionMock struct{}
 
-func (s *LeaderElectionMock) IsLeader() bool { return true }
-func (s *LeaderElectionMock) Concede() bool  { return true }
-func (s *LeaderElectionMock) Start() error   { return nil }
-func (s *LeaderElectionMock) Stop()          {}
+func (s *LeaderElectionMock) IsLeader() bool        { return true }
+func (s *LeaderElectionMock) LeaderChan() chan bool { return nil }
+func (s *LeaderElectionMock) Concede() bool         { return true }
+func (s *LeaderElectionMock) Start() error          { return nil }
+func (s *LeaderElectionMock) Stop()                 {}
