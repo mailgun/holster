@@ -2,10 +2,15 @@ package clock
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
 	. "gopkg.in/check.v1"
 )
+
+func TestFreezeUnfreeze(t *testing.T) {
+	defer Freeze(Now()).Unfreeze()
+}
 
 type FrozenSuite struct {
 	epoch time.Time
