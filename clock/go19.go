@@ -93,14 +93,14 @@ func ParseInLocation(layout, value string, loc *Location) (Time, error) {
 	return time.ParseInLocation(layout, value, loc)
 }
 
-func Since(t Time) Duration {
-	return time.Since(t)
-}
-
 func Unix(sec int64, nsec int64) Time {
 	return time.Unix(sec, nsec)
 }
 
+func Since(t Time) Duration {
+	return provider.Now().Sub(t)
+}
+
 func Until(t Time) Duration {
-	return time.Until(t)
+	return t.Sub(provider.Now())
 }

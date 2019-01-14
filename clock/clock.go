@@ -22,10 +22,18 @@ var (
 
 // Freeze after this function is called all time related functions start
 // generate deterministic timers that are triggered by Advance function. It is
-// supposed to be used in tests only.
-func Freeze(now time.Time) {
+// supposed to be used in tests only. Returns an Unfreezer so it can be a
+// one-liner in tests: defer clock.Freeze(clock.Now()).Unfreeze()
+func Freeze(now time.Time) Unfreezer {
 	frozenAt = now.UTC()
 	provider = &frozenTime{now: now}
+	return Unfreezer{}
+}
+
+type Unfreezer struct{}
+
+func (u Unfreezer) Unfreeze() {
+	Unfreeze()
 }
 
 // Unfreeze reverses effect of Freeze.

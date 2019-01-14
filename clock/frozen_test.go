@@ -2,10 +2,15 @@ package clock
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
 	. "gopkg.in/check.v1"
 )
+
+func TestFreezeUnfreeze(t *testing.T) {
+	defer Freeze(Now()).Unfreeze()
+}
 
 type FrozenSuite struct {
 	epoch time.Time
@@ -282,6 +287,18 @@ func (s *FrozenSuite) TestWait4ScheduledImmediate(c *C) {
 	After(100 * Millisecond)
 	// When/Then
 	c.Assert(Wait4Scheduled(2, 0), Equals, true)
+}
+
+func (s *FrozenSuite) TestSince(c *C) {
+	c.Assert(Since(Now()), Equals, Duration(0))
+	c.Assert(Since(Now().Add(Millisecond)), Equals, -Millisecond)
+	c.Assert(Since(Now().Add(-Millisecond)), Equals, Millisecond)
+}
+
+func (s *FrozenSuite) TestUntil(c *C) {
+	c.Assert(Until(Now()), Equals, Duration(0))
+	c.Assert(Until(Now().Add(Millisecond)), Equals, Millisecond)
+	c.Assert(Until(Now().Add(-Millisecond)), Equals, -Millisecond)
 }
 
 func assertHits(c *C, got <-chan int, want []int) {
