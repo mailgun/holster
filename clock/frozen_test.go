@@ -284,6 +284,18 @@ func (s *FrozenSuite) TestWait4ScheduledImmediate(c *C) {
 	c.Assert(Wait4Scheduled(2, 0), Equals, true)
 }
 
+func (s *FrozenSuite) TestSince(c *C) {
+	c.Assert(Since(Now()), Equals, Duration(0))
+	c.Assert(Since(Now().Add(Millisecond)), Equals, -Millisecond)
+	c.Assert(Since(Now().Add(-Millisecond)), Equals, Millisecond)
+}
+
+func (s *FrozenSuite) TestUntil(c *C) {
+	c.Assert(Until(Now()), Equals, Duration(0))
+	c.Assert(Until(Now().Add(Millisecond)), Equals, Millisecond)
+	c.Assert(Until(Now().Add(-Millisecond)), Equals, -Millisecond)
+}
+
 func assertHits(c *C, got <-chan int, want []int) {
 	for i, w := range want {
 		var g int
