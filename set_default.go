@@ -19,10 +19,10 @@ import (
 	"reflect"
 )
 
-// If 'value' is empty or of zero value, assign the default value.
+// If 'dest' is empty or of zero value, assign the default value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
-//      var config struct {
+//  var config struct {
 //		Verbose *bool
 //		Foo string
 //		Bar int
@@ -47,6 +47,41 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 				d.Set(reflect.ValueOf(value))
 				return
 			}
+		}
+	}
+}
+
+// Assign the first value that is not empty or of zero value.
+// This panics if the value is not a pointer or if value and
+// default value are not of the same type.
+//  var config struct {
+//		Verbose *bool
+//		Foo string
+//		Bar int
+//	}
+//
+//  loadFromFile(&config)
+//  argFoo = flag.String("foo", "", "foo via cli arg")
+//
+//  // Override the config file if 'foo' is provided via
+//  // the cli or defined in the environment.
+// 	holster.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
+//
+// Supply additional values and SetOverride() will
+// choose the first value that is not of zero value. If all
+// values are empty or zero the 'dest' will remain unchanged.
+func SetOverride(dest interface{}, values ...interface{}) {
+	d := reflect.ValueOf(dest)
+	if d.Kind() != reflect.Ptr {
+		panic("holster.SetOverride: Expected first argument to be of type reflect.Ptr")
+	}
+	d = reflect.Indirect(d)
+	// Use the first non zero value value we find
+	for _, value := range values {
+		v := reflect.ValueOf(value)
+		if !IsZeroValue(v) {
+			d.Set(reflect.ValueOf(value))
+			return
 		}
 	}
 }

@@ -261,7 +261,7 @@ holster.IsZero(value)
 // Returns true if 'value' is zero (the default golang value)
 holster.IsZeroValue(reflect.ValueOf(value))
 
-// If 'value' is empty or of zero value, assign the default value.
+// If 'dest' is empty or of zero value, assign the default value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
 var config struct {
@@ -273,7 +273,16 @@ holster.SetDefault(&config.Bar, 200)
 
 // Supply additional default values and SetDefault will
 // choose the first default that is not of zero value
-//  holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+
+// Use 'SetOverride() to assign the first value that is not empty or of zero
+// value.  The following will override the config file if 'foo' is provided via
+// the cli or defined in the environment.
+
+loadFromFile(&config)
+argFoo = flag.String("foo", "", "foo via cli arg")
+
+holster.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
 ```
 
 ## GetEnv
