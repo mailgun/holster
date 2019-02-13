@@ -25,7 +25,6 @@ type WaitGroup struct {
 }
 
 // Run a routine and collect errors if any
-//func (wg *WaitGroup) Run(callBack func() error) {
 func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 	wg.wg.Add(1)
 	go func() {
@@ -36,6 +35,21 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 		}
 		wg.mutex.Lock()
 		wg.errs = append(wg.errs, err)
+		wg.wg.Done()
+		wg.mutex.Unlock()
+	}()
+}
+
+// Execute a long running routine
+func (wg *WaitGroup) Go(cb func()) {
+	wg.wg.Add(1)
+	go func() {
+		err := cb
+		if err == nil {
+			wg.wg.Done()
+			return
+		}
+		wg.mutex.Lock()
 		wg.wg.Done()
 		wg.mutex.Unlock()
 	}()
