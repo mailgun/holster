@@ -17,16 +17,16 @@ package holster_test
 
 import (
 	"sync/atomic"
+	"testing"
 	"time"
 
+	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/ahmetb/go-linq.v3"
-	"testing"
-	"github.com/mailgun/holster"
 )
 
-type WaitGroupTestSuite struct{
+type WaitGroupTestSuite struct {
 	suite.Suite
 }
 
@@ -57,6 +57,23 @@ func (s *WaitGroupTestSuite) TestRun() {
 	s.Equal(2, len(errs))
 	s.Equal(true, linq.From(errs).Contains(items[0]))
 	s.Equal(true, linq.From(errs).Contains(items[1]))
+}
+
+func (s *WaitGroupTestSuite) TestGo() {
+	var wg holster.WaitGroup
+
+	wg.Go(func() {
+		// Do some long running thing
+		time.Sleep(time.Nanosecond * 500)
+	})
+
+	wg.Go(func() {
+		// Do some long running thing
+		time.Sleep(time.Nanosecond * 50)
+	})
+
+	errs := wg.Wait()
+	s.Nil(errs)
 }
 
 func (s *WaitGroupTestSuite) TestLoop() {
