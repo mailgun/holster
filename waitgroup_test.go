@@ -61,16 +61,30 @@ func (s *WaitGroupTestSuite) TestRun() {
 
 func (s *WaitGroupTestSuite) TestGo() {
 	var wg holster.WaitGroup
+	result := make(chan struct{})
 
 	wg.Go(func() {
 		// Do some long running thing
 		time.Sleep(time.Nanosecond * 500)
+		result <- struct{}{}
 	})
 
 	wg.Go(func() {
 		// Do some long running thing
 		time.Sleep(time.Nanosecond * 50)
+		result <- struct{}{}
 	})
+
+OUT:
+	for i := 0; i < 2; {
+		select {
+		case <-result:
+			i++
+		case <-time.After(time.Second):
+			s.Fail("waited to long for Go() to run")
+			break OUT
+		}
+	}
 
 	errs := wg.Wait()
 	s.Nil(errs)

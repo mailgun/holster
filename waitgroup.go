@@ -44,14 +44,8 @@ func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 func (wg *WaitGroup) Go(cb func()) {
 	wg.wg.Add(1)
 	go func() {
-		err := cb
-		if err == nil {
-			wg.wg.Done()
-			return
-		}
-		wg.mutex.Lock()
+		cb()
 		wg.wg.Done()
-		wg.mutex.Unlock()
 	}()
 }
 
