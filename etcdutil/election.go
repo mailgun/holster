@@ -2,13 +2,13 @@ package etcdutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"sync/atomic"
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -17,23 +17,51 @@ import (
 var log *logrus.Entry
 
 type LeaderElector interface {
-	IsLeader() bool
+	Start(context.Context) error
 	LeaderChan() chan bool
+	IsLeader() bool
 	Concede() bool
-	Start() error
 	Stop()
 }
 
+type ElectionObserver func(ElectionEvent)
+
+type Event int64
+
+const (
+	EventInfo       Event = 0
+	EventErr        Event = 1
+	EventGainLeader Event = 2
+	EventLostLeader Event = 3
+	EventGainLease Event = 4
+	EventLostLease Event = 5
+)
+
+type ElectionEvent struct {
+	// Identifies this event type
+	Event Event
+	// If `Event` is EventErr then `msg` is the context for the error
+	// if `Event` is EventGainLeader `msg` is the name of the leader
+	// if `Event` is EventLostLeader `msg` is the name of the leader
+	// if `Event` is EventInfo then `msg` is the informational message
+	Msg string
+	// Contains the etcd revision we lost or gained leadership at
+	Revision int64
+	// Contains the lease id when we gained a lease
+	LeaseID etcd.LeaseID
+	// If `Event` is ERROR then this contains the error
+	Err  error
+}
+
 type Election struct {
-	conf       ElectionConfig
-	session    *concurrency.Session
-	election   *concurrency.Election
-	client     *etcd.Client
-	cancel     context.CancelFunc
-	wg         holster.WaitGroup
-	ctx        context.Context
-	isLeader   int32
-	leaderChan chan bool
+	conf        ElectionConfig
+	client      *etcd.Client
+	cancel      context.CancelFunc
+	wg          holster.WaitGroup
+	ctx         context.Context
+	isLeader    int32
+	observers   []ElectionObserver
+	eventChan chan ElectionEvent
 }
 
 type ElectionConfig struct {
@@ -42,17 +70,12 @@ type ElectionConfig struct {
 	// The name of this instance (IE: worker-n01, worker-n02, etc...)
 	Candidate string
 	// Seconds to wait before giving up the election if leader disconnected
-	TTL int
-	// Report not leader when etcd connection is interrupted
-	LoseLeaderOnDisconnect bool
-	// If we were leader before connection or service interruption attempt
-	// to resume leadership without initiating a new election
-	ResumeLeaderOnReconnect bool
-	// How long to wait until attempting to establish a new session between failures
-	ReconnectBackOff time.Duration
+	TTL int64
 	// The size of the leader channel buffer as returned by LeaderChan(). Set this to
 	// something other than zero to avoid losing leadership changes.
 	LeaderChannelSize int
+	// The logger entry to be used
+	Log  *logrus.Entry
 }
 
 // Use leader election if you have several instances of a service running in production
@@ -67,7 +90,7 @@ type ElectionConfig struct {
 //  })
 //
 //  // Start the leader election and attempt to become leader
-//  if err := election.Start(); err != nil {
+//  if err := election.Start(ctx); err != nil {
 //      panic(err)
 //  }
 //
@@ -85,20 +108,17 @@ type ElectionConfig struct {
 // this library will continue to report it is leader until connection to etcd is resumed
 // and a new leader is elected. If you wish to lose leadership on disconnect set
 // `LoseLeaderOnDisconnect = true`
-func NewElection(client *etcd.Client, conf ElectionConfig) LeaderElector {
+func NewElection(client *etcd.Client, conf ElectionConfig) *Election {
 	log = logrus.WithField("category", "election")
-	ctx, cancelFunc := context.WithCancel(context.Background())
 	e := &Election{
 		conf:   conf,
 		client: client,
-		cancel: cancelFunc,
-		ctx:    ctx,
 	}
 
 	// Default to short 5 second leadership TTL
 	holster.SetDefault(&e.conf.TTL, 5)
 
-	e.leaderChan = make(chan bool, e.conf.LeaderChannelSize)
+	e.eventChan = make(chan ElectionEvent, 10)
 	e.conf.Election = path.Join("/elections", e.conf.Election)
 
 	// Use the hostname if no candidate name provided
@@ -108,179 +128,193 @@ func NewElection(client *etcd.Client, conf ElectionConfig) LeaderElector {
 	return e
 }
 
-func (e *Election) newSession(id int64) error {
-	var err error
-	e.session, err = concurrency.NewSession(e.client, concurrency.WithTTL(e.conf.TTL),
-		concurrency.WithContext(e.ctx), concurrency.WithLease(etcd.LeaseID(id)))
-	if err != nil {
-		return errors.Wrap(err, "while creating new session")
-	}
-	e.election = concurrency.NewElection(e.session, e.conf.Election)
-	return nil
+// Register adds an election observer
+func (e *Election) Register(obs ElectionObserver) {
+	// TODO: Add a mutex or refuse to add or delete if election has already started
+	e.observers = append(e.observers, obs)
 }
 
-func (e *Election) Start() error {
+// UnRegister removes an election emit
+/*func (e *Election) UnRegister(name string) {
+	delete(e.observers, name)
+}*/
+
+func (e *Election) Start(ctx context.Context) error {
 	if e.conf.Election == "" {
 		return errors.New("ElectionConfig.Election can not be empty")
 	}
 
-	err := e.newSession(0)
-	if err != nil {
-		return errors.Wrap(err, "while creating new initial etcd session")
+	// Create a new Session
+	var err error
+	if e.session, err = newSession(ctx, e.conf); err != nil {
+		return err
 	}
 
+	e.ctx, e.cancel = context.WithCancel(context.Background())
+
+	/*ready := make(chan ElectionEvent, 5)
+	e.Register("__internal", func(e ElectionEvent){
+		ready <- e
+	})
+	defer e.UnRegister("__internal")*/
+
+	// Monitor the status of our Session
 	e.wg.Until(func(done chan struct{}) bool {
-		var node *etcd.GetResponse
-		var observe <-chan etcd.GetResponse
+		select {
+			case event := <- e.eventChan:
+				switch event.Event {
+				case EventLostLease:
+					// TODO: Shutdown any active watchers and cancel our leadership if we have it
+				case EventGainLease:
+						// TODO: Loop until we gain leader or find out who is leader
 
-		// Get the current leader if any
-		if node, err = e.election.Leader(e.ctx); err != nil {
-			if err != concurrency.ErrElectionNoLeader {
-				log.Errorf("while determining election leader: %s", err)
-				goto reconnect
-			}
-		} else {
-			// If we are resuming an election from which we previously had leadership we
-			// have 2 options
-			// 1. Resume the leadership if the lease has not expired. This is a race as the
-			//    lease could expire in between the `Leader()` call and when we resume
-			//    observing changes to the election. If this happens we should detect the
-			//    session has expired during the observation loop.
-			// 2. Resign the leadership immediately to allow a new leader to be chosen.
-			//    This option will almost always result in transfer of leadership.
+				//if lease == nil {
+					// Revoke leader if we have it
+					/*if _, err := e.Concede(); err != nil {
+						e.emitLog(err, "while conceding campaign '%s' after losing the heartbeat",
+							e.conf.Candidate)
+					}*/
 
-			// If we were the leader previously
-			if string(node.Kvs[0].Value) == e.conf.Candidate {
-				log.Debug("etcd reports we are still leader")
-				if e.conf.ResumeLeaderOnReconnect {
-					log.Debug("attempting to resume leadership")
-					// Recreate our session with the old lease id
-					if err = e.newSession(node.Kvs[0].Lease); err != nil {
-						log.Errorf("while re-establishing session with lease: %s", err)
-						// abandon resuming leadership
-						e.notifyLeaderChange(false)
-						goto reconnect
-					}
-					e.election = concurrency.ResumeElection(e.session, e.conf.Election,
-						string(node.Kvs[0].Key), node.Kvs[0].CreateRevision)
-
-					// Because Campaign() only returns if the election entry doesn't exist
-					// we must skip the campaign call and go directly to observe when resuming
-					goto observe
+					case <- e.
 				} else {
-					log.Debug("resigning leadership")
-					// If resign takes longer than our TTL then lease is expired and we are no longer leader anyway.
-					ctx, cancel := context.WithTimeout(e.ctx, time.Duration(e.conf.TTL)*time.Second)
-					election := concurrency.ResumeElection(e.session, e.conf.Election,
-						string(node.Kvs[0].Key), node.Kvs[0].CreateRevision)
-					err = election.Resign(ctx)
-					cancel()
-					e.notifyLeaderChange(false)
-					if err != nil {
-						log.Errorf("while resigning leadership after reconnect: %s", err)
-						goto reconnect
+					// Attempt to become leader
+					if err := e.campaign(lease.ID); err != nil {
+						e.emitLog(err, "while campaigning as '%s'", e.conf.Candidate)
 					}
 				}
-			}
 		}
-
-		// Reset leadership if we had it previously
-		e.setLeader(false)
-
-		// Attempt to become leader
-		if err := e.election.Campaign(e.ctx, e.conf.Candidate); err != nil {
-			if errors.Cause(err) == context.Canceled {
-				return false
-			}
-			// Campaign does not return an error if session expires
-			log.Errorf("while campaigning for leader: %s", err)
-			e.session.Close()
-			goto reconnect
-		}
-
-	observe:
-		// If Campaign() returned without error, we are leader
-		e.setLeader(true)
-
-		// Observe changes to leadership
-		observe = e.election.Observe(e.ctx)
-		for {
-			select {
-			case resp, ok := <-observe:
-				if !ok {
-					// Observe does not close if the session expires
-					e.session.Close()
-					goto reconnect
-				}
-				if string(resp.Kvs[0].Value) == e.conf.Candidate {
-					log.Debug("is Leader")
-					e.setLeader(true)
-				} else {
-					// We are not leader
-					log.Debug("not Leader")
-					e.setLeader(false)
-					return true
-				}
-			case <-e.ctx.Done():
-				return false
-			case <-e.session.Done():
-				log.Debug("session cancelled while observing election")
-				goto reconnect
-			}
-		}
-
-	reconnect:
-		if e.conf.LoseLeaderOnDisconnect {
-			e.setLeader(false)
-		}
-
-		for {
-			log.Debug("disconnected, creating new session")
-			if err = e.newSession(0); err != nil {
-				if errors.Cause(err) == context.Canceled {
-					return false
-				}
-				log.Errorf("while creating new etcd session: %s", err)
-				tick := time.NewTicker(e.conf.ReconnectBackOff)
-				select {
-				case <-e.ctx.Done():
-					tick.Stop()
-					return false
-				case <-tick.C:
-					tick.Stop()
-				}
-				continue
-			}
-			break
-		}
-		log.Debug("New session created")
 		return true
 	})
 
-	// Wait until we have a leader before returning
-	for {
-		resp, err := e.election.Leader(e.ctx)
-		if err != nil {
-			if err != concurrency.ErrElectionNoLeader {
-				return err
-			}
-			time.Sleep(time.Millisecond * 300)
-			continue
+	// TODO: Get the start index
+	//s := &engine.Snapshot{Index: uint64(response.Header.Revision)}
+
+	select {
+	case e := <- ready:
+		switch e.Event {
+		case IsLeaderEvent, NotLeaderEvent:
+			// TODO: Start watcher
+			return nil
 		}
-		// If we are not leader, notify the channel
-		if string(resp.Kvs[0].Value) != e.conf.Candidate {
-			e.notifyLeaderChange(false)
-		}
-		break
+		case <- ctx.Done():
+			// TODO: Shutdown any running routinues
+			return ctx.Err()
 	}
 	return nil
+}
+
+func (e *Election) campaign(l etcd.LeaseID) error {
+	// Simple transaction on a key. The first one to create the key is the leader.
+	txn := e.client.Txn(e.ctx).If(etcd.Compare(etcd.CreateRevision(e.conf.Election), "=", 0))
+	txn = txn.Then(etcd.OpPut(e.conf.Election, e.conf.Candidate, etcd.WithLease(l)))
+	txn = txn.Else(etcd.OpGet(e.conf.Election))
+	resp, err := txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	// We are leader
+	if resp.Succeeded {
+		e.emit(ElectionEvent{
+			Event:    EventGainLeader,
+			Revision: resp.Header.Revision,
+			Msg:      e.conf.Candidate,
+		})
+		return nil
+	}
+	kv := resp.Responses[0].GetResponseRange().Kvs[0]
+
+	// If we got disconnected previously and we are still leader
+	// NOTE: The other possibility is that another candidate has our name, in this
+	// case we are stuck in a loop until we are canceled by the context
+	if string(kv.Value) == e.conf.Candidate {
+		if _, err := e.Concede(); err != nil {
+			return err
+		}
+		return fmt.Errorf("current leader matches our "+
+			"candidate name '%s'; forcing a new election", e.conf.Candidate)
+	}
+
+	// We are not leader
+	e.emit(ElectionEvent{
+		Event:    EventLostLeader,
+		Revision: kv.CreateRevision,
+		Msg:      string(kv.Value),
+	})
+	return nil
+}
+
+func (e *Election) watch(ctx context.Context, afterIdx int) error {
+	var watchChan etcd.WatchChan
+	ready := make(chan struct{})
+
+	watcher := etcd.NewWatcher(e.client)
+	defer watcher.Close()
+
+	go func() {
+		watchChan = watcher.Watch(etcd.WithRequireLeader(ctx), e.conf.Election,
+			etcd.WithRev(int64(afterIdx)), etcd.WithPrefix())
+		close(ready)
+	}()
+
+	select {
+	case <-ready:
+	case <-ctx.Done():
+		return errors.Wrap(ctx.Err(), "while waiting for etcd watch to start")
+	}
+
+	e.wg.Until(func(done chan struct{}) bool {
+		for response := range watchChan {
+			if response.Canceled {
+				log.Infof("watch cancelled")
+				return false
+			}
+			if err := response.Err(); err != nil {
+				log.Errorf("watch error: %v", err)
+				return false
+			}
+
+			// TODO: Handle changes in leadership
+			/*for _, event := range response.Events {
+				log.Infof("%s", eventToString(event))
+				change, err := n.parseChange(event)
+				if err != nil {
+					log.Warningf("ignore '%s', error: %s", eventToString(event), err)
+					continue
+				}
+				if change != nil {
+					log.Infof("%v", change)
+					select {
+					case changes <- change:
+					case <-cancelC:
+						return nil
+					}
+				}
+			}*/
+			select {
+			case <-done:
+				break
+			}
+		}
+		return false
+	})
+
+		// TODO:
+		//   e.notifyLeaderChange(false)
+		//   Reset leadership if we had it previously
+		//   e.setLeader(false)
+
+		// TODO: Wait until we have a leader before returning
+
+		return nil
+	})
 }
 
 func (e *Election) Stop() {
 	e.Concede()
 	e.cancel()
 	e.wg.Wait()
-	close(e.leaderChan)
+	close(e.eventChan)
 }
 
 func (e *Election) IsLeader() bool {
@@ -288,23 +322,22 @@ func (e *Election) IsLeader() bool {
 }
 
 func (e *Election) LeaderChan() chan bool {
-	return e.leaderChan
+	return e.eventChan
 }
 
 // Release leadership and return true if we own it, else do nothing and return false
-func (e *Election) Concede() bool {
+func (e *Election) Concede() (bool, error) {
 	if atomic.LoadInt32(&e.isLeader) == 1 {
 		// If resign takes longer than our TTL then lease is expired and we are no longer leader anyway.
 		ctx, cancel := context.WithTimeout(e.ctx, time.Duration(e.conf.TTL)*time.Second)
 		if err := e.election.Resign(ctx); err != nil {
-			log.WithField("err", err).
-				Error("while attempting to concede the election")
+			return true, err
 		}
 		cancel()
 		e.setLeader(false)
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
 func (e *Election) setLeader(set bool) {
@@ -319,22 +352,31 @@ func (e *Election) setLeader(set bool) {
 	}
 
 	atomic.StoreInt32(&e.isLeader, requested)
-	e.notifyLeaderChange(set)
 }
 
-func (e *Election) notifyLeaderChange(set bool) {
-	// If user expects to receive all leadership changes
-	if e.conf.LeaderChannelSize != 0 {
-		// Block until the leadership change is delivered
-		e.leaderChan <- set
+func (e *Election) emitLog(err error, msg string, args ...interface{}) {
+	logMsg := fmt.Sprintf(msg, args...)
+	if err != nil {
+		e.emit(ElectionEvent{
+			Event: EventErr,
+			Msg:   logMsg,
+			Err:   err,
+		})
 		return
 	}
+	e.emit(ElectionEvent{
+		Event: EventInfo,
+		Msg:   logMsg,
+	})
+}
 
-	// Else do not block if channel is not ready to received
-	select {
-	case e.leaderChan <- set:
-	default:
+func (e *Election) emit(event ElectionEvent) {
+	for _, obs := range e.observers {
+		obs(event)
 	}
+}
+
+/*func (e *Election) notifyLeaderChange(set bool) {
 }
 
 type LeaderElectionMock struct{}
@@ -343,4 +385,4 @@ func (s *LeaderElectionMock) IsLeader() bool        { return true }
 func (s *LeaderElectionMock) LeaderChan() chan bool { return nil }
 func (s *LeaderElectionMock) Concede() bool         { return true }
 func (s *LeaderElectionMock) Start() error          { return nil }
-func (s *LeaderElectionMock) Stop()                 {}
+func (s *LeaderElectionMock) Stop()                 {}*/
