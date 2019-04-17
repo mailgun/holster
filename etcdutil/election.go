@@ -24,44 +24,17 @@ type LeaderElector interface {
 	Stop()
 }
 
-type ElectionObserver func(ElectionEvent)
-
-type Event int64
-
-const (
-	EventInfo       Event = 0
-	EventErr        Event = 1
-	EventGainLeader Event = 2
-	EventLostLeader Event = 3
-	EventGainLease Event = 4
-	EventLostLease Event = 5
-)
-
-type ElectionEvent struct {
-	// Identifies this event type
-	Event Event
-	// If `Event` is EventErr then `msg` is the context for the error
-	// if `Event` is EventGainLeader `msg` is the name of the leader
-	// if `Event` is EventLostLeader `msg` is the name of the leader
-	// if `Event` is EventInfo then `msg` is the informational message
-	Msg string
-	// Contains the etcd revision we lost or gained leadership at
-	Revision int64
-	// Contains the lease id when we gained a lease
-	LeaseID etcd.LeaseID
-	// If `Event` is ERROR then this contains the error
-	Err  error
-}
+type ElectionObserver func(bool, string)
 
 type Election struct {
-	conf        ElectionConfig
-	client      *etcd.Client
-	cancel      context.CancelFunc
-	wg          holster.WaitGroup
-	ctx         context.Context
-	isLeader    int32
-	observers   []ElectionObserver
-	eventChan chan ElectionEvent
+	conf      ElectionConfig
+	client    *etcd.Client
+	cancel    context.CancelFunc
+	wg        holster.WaitGroup
+	ctx       context.Context
+	isLeader  int32
+	observers []ElectionObserver
+	session   *Session
 }
 
 type ElectionConfig struct {
@@ -75,7 +48,7 @@ type ElectionConfig struct {
 	// something other than zero to avoid losing leadership changes.
 	LeaderChannelSize int
 	// The logger entry to be used
-	Log  *logrus.Entry
+	Log *logrus.Entry
 }
 
 // Use leader election if you have several instances of a service running in production
@@ -117,8 +90,6 @@ func NewElection(client *etcd.Client, conf ElectionConfig) *Election {
 
 	// Default to short 5 second leadership TTL
 	holster.SetDefault(&e.conf.TTL, 5)
-
-	e.eventChan = make(chan ElectionEvent, 10)
 	e.conf.Election = path.Join("/elections", e.conf.Election)
 
 	// Use the hostname if no candidate name provided
@@ -134,10 +105,9 @@ func (e *Election) Register(obs ElectionObserver) {
 	e.observers = append(e.observers, obs)
 }
 
-// UnRegister removes an election emit
-/*func (e *Election) UnRegister(name string) {
-	delete(e.observers, name)
-}*/
+func (e *Election) observeSession(leaseID etcd.LeaseID) {
+	fmt.Printf("Lease ID: %s\n", leaseID)
+}
 
 func (e *Election) Start(ctx context.Context) error {
 	if e.conf.Election == "" {
@@ -146,7 +116,11 @@ func (e *Election) Start(ctx context.Context) error {
 
 	// Create a new Session
 	var err error
-	if e.session, err = newSession(ctx, e.conf); err != nil {
+	if e.session, err = NewSession(ctx, e.client, SessionConfig{
+		Observer: e.observeSession,
+		Log:      e.conf.Log,
+		TTL:      e.conf.TTL,
+	}); err != nil {
 		return err
 	}
 
@@ -159,7 +133,7 @@ func (e *Election) Start(ctx context.Context) error {
 	defer e.UnRegister("__internal")*/
 
 	// Monitor the status of our Session
-	e.wg.Until(func(done chan struct{}) bool {
+	/*e.wg.Until(func(done chan struct{}) bool {
 		select {
 			case event := <- e.eventChan:
 				switch event.Event {
@@ -170,10 +144,10 @@ func (e *Election) Start(ctx context.Context) error {
 
 				//if lease == nil {
 					// Revoke leader if we have it
-					/*if _, err := e.Concede(); err != nil {
+					if _, err := e.Concede(); err != nil {
 						e.emitLog(err, "while conceding campaign '%s' after losing the heartbeat",
 							e.conf.Candidate)
-					}*/
+					}
 
 					case <- e.
 				} else {
@@ -199,7 +173,7 @@ func (e *Election) Start(ctx context.Context) error {
 		case <- ctx.Done():
 			// TODO: Shutdown any running routinues
 			return ctx.Err()
-	}
+	}*/
 	return nil
 }
 
@@ -299,15 +273,14 @@ func (e *Election) watch(ctx context.Context, afterIdx int) error {
 		return false
 	})
 
-		// TODO:
-		//   e.notifyLeaderChange(false)
-		//   Reset leadership if we had it previously
-		//   e.setLeader(false)
+	// TODO:
+	//   e.notifyLeaderChange(false)
+	//   Reset leadership if we had it previously
+	//   e.setLeader(false)
 
-		// TODO: Wait until we have a leader before returning
+	// TODO: Wait until we have a leader before returning
 
-		return nil
-	})
+	return nil
 }
 
 func (e *Election) Stop() {
@@ -321,18 +294,18 @@ func (e *Election) IsLeader() bool {
 	return atomic.LoadInt32(&e.isLeader) == 1
 }
 
-func (e *Election) LeaderChan() chan bool {
+/*func (e *Election) LeaderChan() chan bool {
 	return e.eventChan
-}
+}*/
 
 // Release leadership and return true if we own it, else do nothing and return false
 func (e *Election) Concede() (bool, error) {
 	if atomic.LoadInt32(&e.isLeader) == 1 {
 		// If resign takes longer than our TTL then lease is expired and we are no longer leader anyway.
-		ctx, cancel := context.WithTimeout(e.ctx, time.Duration(e.conf.TTL)*time.Second)
-		if err := e.election.Resign(ctx); err != nil {
+		_, cancel := context.WithTimeout(e.ctx, time.Duration(e.conf.TTL)*time.Second)
+		/*if err := e.election.Resign(ctx); err != nil {
 			return true, err
-		}
+		}*/
 		cancel()
 		e.setLeader(false)
 		return true, nil
