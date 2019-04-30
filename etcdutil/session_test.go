@@ -1,7 +1,6 @@
 package etcdutil_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/Shopify/toxiproxy"
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/mailgun/holster/etcdutil"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,11 +53,11 @@ func TestNewSession(t *testing.T) {
 		return 0
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	session, err := etcdutil.NewSession(ctx, client, etcdutil.SessionConfig{
-		Observer: func(leaseId etcd.LeaseID) {
+	session, err := etcdutil.NewSession(client, etcdutil.SessionConfig{
+		Observer: func(leaseId etcd.LeaseID, err error) {
+			if err != nil {
+				t.Fatal(err)
+			}
 			leaseChan <- leaseId
 		},
 	})
@@ -72,7 +72,7 @@ func TestNewSession(t *testing.T) {
 }
 
 func TestConnectivityLost(t *testing.T) {
-	leaseChan := make(chan etcd.LeaseID, 1)
+	leaseChan := make(chan etcd.LeaseID, 5)
 
 	getLease := func() etcd.LeaseID {
 		select {
@@ -84,14 +84,14 @@ func TestConnectivityLost(t *testing.T) {
 		return 0
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	logrus.SetLevel(logrus.DebugLevel)
 
-	//logrus.SetLevel(logrus.DebugLevel)
-
-	session, err := etcdutil.NewSession(ctx, client, etcdutil.SessionConfig{
-		//Log: logrus.WithField("category", "test"),
-		Observer: func(leaseId etcd.LeaseID) {
+	session, err := etcdutil.NewSession(client, etcdutil.SessionConfig{
+		Log: logrus.WithField("category", "test"),
+		Observer: func(leaseId etcd.LeaseID, err error) {
+			if err != nil {
+				t.Fatal(err)
+			}
 			leaseChan <- leaseId
 		},
 		TTL: 1,

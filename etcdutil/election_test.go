@@ -12,29 +12,25 @@ import (
 )
 
 func TestElection(t *testing.T) {
-	client, err := etcdutil.NewClient(nil)
-	require.Nil(t, err)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	leader := make(chan bool, 5)
+	defer cancel()
 
-	election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
-		Log:       logrus.WithField("category", "election"),
+	logrus.SetLevel(logrus.DebugLevel)
+
+	election, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
+		ElectionObserver: func(isLeader bool, candidate string, err error) {
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			leader <- isLeader
+		},
 		Election:  "/my-election",
 		Candidate: "me",
 	})
-
-	election.Register(func(e etcdutil.ElectionEvent) {
-		switch e.Event {
-		case etcdutil.EventGainLeader:
-			// I'm leader!
-		case etcdutil.EventLostLeader:
-			// I'm NOT leader!
-		}
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	err = election.Start(ctx)
 	require.Nil(t, err)
 
 	assert.Equal(t, true, election.IsLeader())
+
+	// TODO: Close()
 }
