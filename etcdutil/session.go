@@ -19,7 +19,7 @@ type SessionObserver func(etcd.LeaseID, error)
 type Session struct {
 	keepAlive     <-chan *etcd.LeaseKeepAliveResponse
 	lease         *etcd.LeaseGrantResponse
-	lastKeepAlive time.Time
+	backOff       *holster.BackOffCounter
 	wg            holster.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -27,10 +27,10 @@ type Session struct {
 	client        *etcd.Client
 	timeout       time.Duration
 	once          *sync.Once
+	lastKeepAlive time.Time
 }
 
 type SessionConfig struct {
-	Log      *logrus.Entry
 	TTL      int64
 	Observer SessionObserver
 }
@@ -44,7 +44,6 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 	null := logrus.New()
 	null.SetOutput(ioutil.Discard)
 
-	holster.SetDefault(&conf.Log, null.WithField("category", "null"))
 	holster.SetDefault(&conf.TTL, int64(30))
 
 	if conf.Observer == nil {
@@ -57,12 +56,13 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 
 	s := Session{
 		timeout: time.Second * time.Duration(conf.TTL),
+		backOff: holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
 		once:    &sync.Once{},
 		conf:    conf,
 		client:  c,
 	}
 
-	conf.Log.Debug("New Session")
+	logrus.Debug("New Session")
 	s.run()
 	return &s, nil
 }
@@ -73,13 +73,12 @@ func (s *Session) run() {
 	s.lastKeepAlive = time.Now()
 
 	s.wg.Until(func(done chan struct{}) bool {
-		s.conf.Log.Debug("session loop")
 		// If we have lost our keep alive, attempt to regain it
 		if s.keepAlive == nil {
 			if err := s.gainLease(s.ctx); err != nil {
-				s.conf.Log.WithError(err).Error("while attempting to gain new lease")
+				s.conf.Observer(NoLease, errors.Wrap(err, "while attempting to gain new lease"))
 				select {
-				case <-time.After(s.timeout):
+				case <-time.After(s.backOff.Next()):
 					return true
 				case <-s.ctx.Done():
 					return false
@@ -87,29 +86,28 @@ func (s *Session) run() {
 				return true
 			}
 		}
+		s.backOff.Reset()
 
 		select {
 		case _, ok := <-s.keepAlive:
 			if !ok {
-				s.conf.Log.Warn("heartbeat lost")
+				logrus.Warn("heartbeat lost")
 				s.keepAlive = nil
 			} else {
-				s.conf.Log.Debug("heartbeat received")
+				//logrus.Debug("heartbeat received")
 				s.lastKeepAlive = time.Now()
 			}
 		case <-ticker.C:
-			s.conf.Log.Debugf("ticker '%v'", time.Now().Sub(s.lastKeepAlive))
 			// Ensure we are getting heartbeats regularly
 			if time.Now().Sub(s.lastKeepAlive) > s.timeout {
-				s.conf.Log.Warn("too long between heartbeats")
+				logrus.Warn("too long between heartbeats")
 				s.keepAlive = nil
 			}
 		case <-done:
-			s.conf.Log.Debug("ticker")
 			if s.lease != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 				if _, err := s.client.Revoke(ctx, s.lease.ID); err != nil {
-					s.conf.Log.WithError(err).Error("while revoking our lease during shutdown")
+					s.conf.Observer(NoLease, errors.Wrap(err, "while revoking our lease during shutdown"))
 				}
 				cancel()
 			}
@@ -143,17 +141,17 @@ func (s *Session) Close() {
 }
 
 func (s *Session) gainLease(ctx context.Context) error {
-	s.conf.Log.Debug("attempting to grant new lease")
+	logrus.Debug("attempting to grant new lease")
 	lease, err := s.client.Grant(ctx, s.conf.TTL)
 	if err != nil {
 		return errors.Wrapf(err, "during grant lease")
 	}
 
-	s.keepAlive, err = s.client.KeepAlive(ctx, lease.ID)
+	s.keepAlive, err = s.client.KeepAlive(s.ctx, lease.ID)
 	if err != nil {
 		return err
 	}
-	s.conf.Log.Debugf("new lease %d", lease.ID)
+	logrus.Debugf("new lease %d", lease.ID)
 	s.conf.Observer(lease.ID, nil)
 	return nil
 }

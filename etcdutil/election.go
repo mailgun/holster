@@ -9,12 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/davecgh/go-spew/spew"
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type LeaderElector interface {
@@ -25,10 +26,17 @@ type LeaderElector interface {
 	Stop()
 }
 
-type ElectionObserver func(bool, string, error)
+type Event struct {
+	IsLeader   bool
+	LeaderKey  string
+	LeaderData string
+	Err        error
+}
+
+type EventObserver func(Event)
 
 type Election struct {
-	observers map[string]ElectionObserver
+	observers map[string]EventObserver
 	backOff   *holster.BackOffCounter
 	cancel    context.CancelFunc
 	wg        holster.WaitGroup
@@ -44,7 +52,7 @@ type Election struct {
 
 type ElectionConfig struct {
 	// Optional function when provided is called every time leadership changes or an error occurs
-	ElectionObserver ElectionObserver
+	EventObserver EventObserver
 	// The name of the election (IE: scout, blackbird, etc...)
 	Election string
 	// The name of this instance (IE: worker-n01, worker-n02, etc...)
@@ -102,7 +110,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	e := &Election{
 		backOff:   holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
 		timeout:   time.Duration(conf.TTL) * time.Second,
-		observers: make(map[string]ElectionObserver),
+		observers: make(map[string]EventObserver),
 		client:    client,
 		conf:      conf,
 	}
@@ -111,24 +119,23 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	var err error
 	if e.session, err = NewSession(e.client, SessionConfig{
 		Observer: e.onSessionChange,
-		//Log:      e.conf.Log,
-		TTL: e.conf.TTL,
+		TTL:      e.conf.TTL,
 	}); err != nil {
 		return nil, err
 	}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 
 	// If an observer was provided
-	if conf.ElectionObserver != nil {
-		e.observers["conf"] = conf.ElectionObserver
+	if conf.EventObserver != nil {
+		e.observers["conf"] = conf.EventObserver
 	}
 
 	ready := make(chan struct{})
 	// Register ourselves as an observer for the initial election, then remove before returning
-	e.observers["init"] = func(_ bool, leader string, eErr error) {
+	e.observers["init"] = func(event Event) {
 		// If we get an error while waiting on the election results, pass that back to the caller
-		if eErr != nil {
-			err = eErr
+		if event.Err != nil {
+			err = event.Err
 		}
 		delete(e.observers, "init")
 		close(ready)
@@ -144,10 +151,14 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 }
 
 func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
-	logrus.Debugf("Lease ID: %v err: %v\n", leaseID, err)
+	logrus.Debugf("Lease ID: %v running: %t err: %v", leaseID, e.isRunning, err)
 
 	// If we lost our lease, concede the campaign and stop
 	if leaseID == NoLease {
+		// Avoid stopping twice
+		if !e.isRunning {
+			return
+		}
 		e.wg.Stop()
 		e.isRunning = false
 		if err != nil {
@@ -157,6 +168,7 @@ func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
 	}
 
 	if e.isRunning {
+		logrus.Debugf("already running '%v", leaseID)
 		return
 	}
 
@@ -177,30 +189,10 @@ func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
 				return false
 			}
 		}
-
-		ctx, cancel := context.WithTimeout(e.ctx, e.timeout)
-		ready := make(chan struct{})
 		e.backOff.Reset()
 
-		// We might get a signal we are done before the watch is
-		// setup or if watch is hanging and we don't want to wait
-		// around for the entire TTL before giving up.
-		go func() {
-			select {
-			case <-done:
-				cancel()
-			case <-ready:
-				return
-			}
-		}()
-
-		defer func() {
-			close(ready)
-			cancel()
-		}()
-
 		logrus.Debugf("watching rev %v", rev)
-		if err := e.watchCampaign(ctx, rev); err != nil {
+		if err := e.watchCampaign(rev); err != nil {
 			e.onErr(err, "during campaign watch")
 			select {
 			case <-time.After(e.backOff.Next()):
@@ -218,10 +210,14 @@ func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
 }
 
 func (e *Election) withDrawCampaign() error {
+	logrus.Debugf("withDrawCampaign(%s)", e.key)
 	// If delete takes longer than our TTL then lease is expired
 	// and we are no longer leader anyway.
 	ctx, cancel := context.WithTimeout(e.ctx, e.timeout)
-	defer cancel()
+	defer func() {
+		atomic.StoreInt32(&e.isLeader, 0)
+		cancel()
+	}()
 
 	_, err := e.client.Delete(ctx, e.key)
 	if err != nil {
@@ -269,12 +265,12 @@ func (e *Election) getLeader(ctx context.Context) (*mvccpb.KeyValue, error) {
 
 // watchCampaign monitors the status of the campaign and notifying any
 // changes in leadership to the observer.
-func (e *Election) watchCampaign(ctx context.Context, rev int64) error {
+func (e *Election) watchCampaign(rev int64) error {
 	var watchChan etcd.WatchChan
 	ready := make(chan struct{})
 
 	// Get the current leader of this election
-	leaderKV, err := e.getLeader(ctx)
+	leaderKV, err := e.getLeader(e.ctx)
 	if err != nil {
 		return errors.Wrap(err, "while querying for current leader")
 	}
@@ -282,20 +278,20 @@ func (e *Election) watchCampaign(ctx context.Context, rev int64) error {
 	logrus.Debugf("Current Leader %v", string(leaderKV.Key))
 
 	watcher := etcd.NewWatcher(e.client)
-	defer watcher.Close()
 
 	// We do this because watcher does not reliably return when errors occur on connect
 	// or when cancelled (See https://github.com/etcd-io/etcd/pull/10020)
 	go func() {
-		watchChan = watcher.Watch(etcd.WithRequireLeader(ctx), e.conf.Election,
-			etcd.WithRev(int64(rev)), etcd.WithPrefix())
+		logrus.Debugf("Watching Prefix: %s", e.conf.Election)
+		watchChan = watcher.Watch(etcd.WithRequireLeader(e.ctx), e.conf.Election,
+			etcd.WithRev(int64(rev+1)), etcd.WithPrefix())
 		close(ready)
 	}()
 
 	select {
 	case <-ready:
-	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "while waiting for etcd watch to start")
+	case <-e.ctx.Done():
+		return errors.Wrap(e.ctx.Err(), "while waiting for etcd watch to start")
 	}
 
 	// Notify the observers of the current leader
@@ -303,7 +299,8 @@ func (e *Election) watchCampaign(ctx context.Context, rev int64) error {
 
 	e.wg.Until(func(done chan struct{}) bool {
 		logrus.Debug("Watching...")
-		for resp := range watchChan {
+		select {
+		case resp := <-watchChan:
 			if resp.Canceled {
 				e.onFatalErr(errors.New("remote server cancelled watch"), "during campaign watch")
 				return false
@@ -313,11 +310,19 @@ func (e *Election) watchCampaign(ctx context.Context, rev int64) error {
 				return false
 			}
 
-			// Look for changes in leader ship
+			// Look for changes in leadership
 			for _, event := range resp.Events {
+				spew.Printf("Event: %v\n", event)
 				if event.Type == etcd.EventTypeDelete || event.Type == etcd.EventTypePut {
+					// Skip events that are about us
+					if string(event.Kv.Key) == e.key {
+						continue
+					}
+
+					logrus.Debug("PUT or DELETE")
 					// If the key is for our current leader
 					if bytes.Compare(event.Kv.Key, leaderKV.Key) == 0 {
+						logrus.Debug("Leader Changed")
 						// Check our leadership status
 						resp, err := e.getLeader(e.ctx)
 						if err != nil {
@@ -332,17 +337,16 @@ func (e *Election) watchCampaign(ctx context.Context, rev int64) error {
 					}
 				}
 			}
-			select {
-			case <-done:
-				break
+		case <-done:
+			logrus.Debug("done")
+			watcher.Close()
+			// Withdraw our candidacy because of shutdown
+			if err := e.withDrawCampaign(); err != nil {
+				e.onErr(err, "")
 			}
+			return false
 		}
-
-		// Withdraw our candidacy because of shutdown
-		if err := e.withDrawCampaign(); err != nil {
-			e.onErr(err, "")
-		}
-		return false
+		return true
 	})
 	return nil
 }
@@ -359,7 +363,11 @@ func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
 	}
 
 	for _, v := range e.observers {
-		v(isLeader, string(kv.Value), nil)
+		v(Event{
+			IsLeader:   isLeader,
+			LeaderKey:  string(kv.Key),
+			LeaderData: string(kv.Value),
+		})
 	}
 }
 
@@ -372,7 +380,7 @@ func (e *Election) onErr(err error, msg string) {
 	}
 
 	for _, v := range e.observers {
-		v(false, "", err)
+		v(Event{Err: err})
 	}
 }
 
@@ -386,7 +394,7 @@ func (e *Election) onFatalErr(err error, msg string) {
 // Close cancels the election and concedes the election if we are leader
 func (e *Election) Close() {
 	e.session.Close()
-	e.cancel()
+	//e.cancel()
 	e.wg.Wait()
 }
 
