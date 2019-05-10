@@ -24,10 +24,18 @@ type LeaderElector interface {
 }
 
 type Event struct {
-	IsLeader   bool
-	LeaderKey  string
+	// True if our candidate is leader
+	IsLeader bool
+	// True if the election is shutdown and
+	// no further events will follow.
+	IsDone bool
+	// Holds the current leader key
+	LeaderKey string
+	// Hold the current leaders data
 	LeaderData string
-	Err        error
+	// If not nil, contains an error encountered
+	// while participating in the election.
+	Err error
 }
 
 type EventObserver func(Event)
@@ -360,6 +368,8 @@ func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
 		}
 		event.LeaderKey = string(kv.Key)
 		event.LeaderData = string(kv.Value)
+	} else {
+		event.IsDone = true
 	}
 
 	for _, v := range e.observers {

@@ -48,13 +48,13 @@ func TestTwoCampaigns(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	c2Chan := make(chan bool, 5)
+	c2Chan := make(chan etcdutil.Event, 5)
 	c2, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
 		EventObserver: func(e etcdutil.Event) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			c2Chan <- e.IsLeader
+			c2Chan <- e
 		},
 		Election:  "/my-election",
 		Candidate: "c2",
@@ -69,9 +69,14 @@ func TestTwoCampaigns(t *testing.T) {
 	assert.Equal(t, false, c1.IsLeader())
 
 	// Second campaign should become leader
-	assert.Equal(t, false, <-c2Chan)
-	assert.Equal(t, true, <-c2Chan)
+	e := <-c2Chan
+	assert.Equal(t, false, e.IsLeader)
+	e = <-c2Chan
+	assert.Equal(t, true, e.IsLeader)
+	assert.Equal(t, false, e.IsDone)
 
 	c2.Close()
-	assert.Equal(t, false, <-c2Chan)
+	e = <-c2Chan
+	assert.Equal(t, false, e.IsLeader)
+	assert.Equal(t, true, e.IsDone)
 }

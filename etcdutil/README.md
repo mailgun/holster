@@ -3,8 +3,8 @@ Use etcd for leader election if you have several instances of a service running 
 and you only want one of the service instances to preform a task.
 
 `LeaderElection` starts a goroutine which performs an election and maintains a leader
-while services join and leave the election. Calling `Stop()` will `Concede()` leadership if
-the service currently has it.
+while candidates join and leave the election. Calling `Close()` will concede leadership if
+the service currently has it and will withdraw the candidate from the election.
 
 ```go
 
@@ -16,32 +16,28 @@ import (
 func main() {
     var wg holster.WaitGroup
 
-    hostname, err := os.Hostname()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "while obtaining hostname: %s\n", err)
-        return
-    }
-
     client, err := etcdutil.NewClient(nil)
     if err != nil {
         fmt.Fprintf(os.Stderr, "while creating etcd client: %s\n", err)
         return
     }
+    
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
-    // Preform an election called 'my-service' with hostname as the candidate name
-	e := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+    // Start a leader election and attempt to become leader, only returns after
+    // determining the current leader.
+	election := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
 		Election:                "my-service",
-		Candidate:               hostname,
-		LeaderChannelSize:       10,
-		ResumeLeaderOnReconnect: true,
+		Candidate:               "my-candidate",
+		EventObserver: func(e etcdutil.Event) {
+			leaderChan <- e
+			if e.IsDone {
+				close(leaderChan)
+			}
+		},
 		TTL: 10,
 	})
-
-    // Start the election, will block until a leader is elected
-	if err = e.Start(); err != nil {
-		fmt.Printf("during election start: %s\n", err)
-		os.Exit(1)
-	}
 
     // Handle graceful shutdown
     signalChan := make(chan os.Signal, 1)
@@ -56,7 +52,8 @@ func main() {
             if election.IsLeader() {
                 err := DoThing()
                 if err != nil {
-                    // Have another instance DoThing(), we can't for some reason
+                    // Have another instance run DoThing()
+                    // since we can't for some reason.
                     election.Concede()
                 }
             }
@@ -68,9 +65,9 @@ func main() {
     })
     wg.Wait()
     
-    // Or you can listen on a channel for leadership updates
-    for leader := range e.LeaderChan() {
-    	fmt.Printf("Leader: %t\n", leader)
+    // Or you can pipe events to a channel
+    for leader := range leaderChan {
+    	fmt.Printf("Leader: %v\n", leader)
     }
 }
 ```
