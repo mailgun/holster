@@ -34,11 +34,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	/*resp, err := client.Get(context.Background(), "/elections/cli-election", clientv3.WithPrefix())
-	if err != nil {
-		fmt.Printf("while creating a new etcd client: %s\n", err)
-		os.Exit(1)
-	}*/
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 

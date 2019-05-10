@@ -2,14 +2,12 @@ package etcdutil
 
 import (
 	"context"
-	"io/ioutil"
 	"sync"
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 const NoLease = etcd.LeaseID(-1)
@@ -41,9 +39,6 @@ type SessionConfig struct {
 // as the lease ID. The Session will continue to try to gain another lease, once a new lease
 // is gained SessionConfig.Observer is called again with the new lease id.
 func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
-	null := logrus.New()
-	null.SetOutput(ioutil.Discard)
-
 	holster.SetDefault(&conf.TTL, int64(30))
 
 	if conf.Observer == nil {
@@ -62,7 +57,6 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 		client:  c,
 	}
 
-	logrus.Debug("New Session")
 	s.run()
 	return &s, nil
 }
@@ -91,7 +85,7 @@ func (s *Session) run() {
 		select {
 		case _, ok := <-s.keepAlive:
 			if !ok {
-				logrus.Warn("heartbeat lost")
+				//logrus.Warn("heartbeat lost")
 				s.keepAlive = nil
 			} else {
 				//logrus.Debug("heartbeat received")
@@ -100,7 +94,7 @@ func (s *Session) run() {
 		case <-ticker.C:
 			// Ensure we are getting heartbeats regularly
 			if time.Now().Sub(s.lastKeepAlive) > s.timeout {
-				logrus.Warn("too long between heartbeats")
+				//logrus.Warn("too long between heartbeats")
 				s.keepAlive = nil
 			}
 		case <-done:
@@ -141,7 +135,7 @@ func (s *Session) Close() {
 }
 
 func (s *Session) gainLease(ctx context.Context) error {
-	logrus.Debug("attempting to grant new lease")
+	//logrus.Debug("attempting to grant new lease")
 	lease, err := s.client.Grant(ctx, s.conf.TTL)
 	if err != nil {
 		return errors.Wrapf(err, "during grant lease")
@@ -151,7 +145,7 @@ func (s *Session) gainLease(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logrus.Debugf("new lease %d", lease.ID)
+	//logrus.Debugf("new lease %d", lease.ID)
 	s.conf.Observer(lease.ID, nil)
 	return nil
 }

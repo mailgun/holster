@@ -2,7 +2,6 @@ package etcdutil_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -52,7 +51,6 @@ func TestTwoCampaigns(t *testing.T) {
 	c2Chan := make(chan bool, 5)
 	c2, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
 		EventObserver: func(e etcdutil.Event) {
-			fmt.Printf("Observed: %t err: %v\n", e.IsLeader, err)
 			if err != nil {
 				t.Fatal(err.Error())
 			}
@@ -71,9 +69,9 @@ func TestTwoCampaigns(t *testing.T) {
 	assert.Equal(t, false, c1.IsLeader())
 
 	// Second campaign should become leader
-	/*assert.Equal(t, false, <-c2Chan)
+	assert.Equal(t, false, <-c2Chan)
 	assert.Equal(t, true, <-c2Chan)
 
 	c2.Close()
-	assert.Equal(t, false, <-c2Chan)*/
+	assert.Equal(t, false, <-c2Chan)
 }

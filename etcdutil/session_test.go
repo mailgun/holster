@@ -87,7 +87,6 @@ func TestConnectivityLost(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	session, err := etcdutil.NewSession(client, etcdutil.SessionConfig{
-		Log: logrus.WithField("category", "test"),
 		Observer: func(leaseId etcd.LeaseID, err error) {
 			if err != nil {
 				t.Fatal(err)

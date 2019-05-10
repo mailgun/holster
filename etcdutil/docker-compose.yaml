@@ -21,8 +21,8 @@ services:
         -enable-v2=false
     ports:
         - "22379:22379"
-  proxy:
-    image: shopify/toxiproxy:latest
-    ports:
-      - "2379:2379"
-      - "8474:8474"
+#  proxy:
+#    image: shopify/toxiproxy:latest
+#    ports:
+#      - "2379:2379"
+#      - "8474:8474"
