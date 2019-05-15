@@ -1,15 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
-
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mailgun/holster/etcdutil"
 	"github.com/sirupsen/logrus"
 )
+
+/*func checkErr(err error) {
+	if err != nil {
+		fmt.Printf("err: %s\n", err)
+		os.Exit(1)
+	}
+}*/
 
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
@@ -25,21 +34,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	/*resp, err := client.Get(context.Background(), "/elections/cli-election", clientv3.WithPrefix())
-	if err != nil {
-		fmt.Printf("while creating a new etcd client: %s\n", err)
-		os.Exit(1)
-	}*/
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
-	e := etcdutil.NewElection(client, etcdutil.ElectionConfig{
-		Election:                "cli-election",
-		Candidate:               os.Args[1],
-		LeaderChannelSize:       10,
-		ResumeLeaderOnReconnect: true,
-		TTL: 10,
+	leaderChan := make(chan etcdutil.Event, 5)
+	e, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
+		Election:  "cli-election",
+		Candidate: os.Args[1],
+		EventObserver: func(e etcdutil.Event) {
+			leaderChan <- e
+		},
+		TTL: 5,
 	})
-
-	err = e.Start()
 	if err != nil {
 		fmt.Printf("during election start: %s\n", err)
 		os.Exit(1)
@@ -54,15 +60,14 @@ func main() {
 				switch sig {
 				case syscall.SIGINT:
 					fmt.Printf("[%s] Concede and exit\n", os.Args[1])
-					e.Stop()
+					e.Close()
 					os.Exit(1)
 				}
 			}
 		}
 	}()
 
-	for leader := range e.LeaderChan() {
-		fmt.Printf("[%s] Leader: %t\n", os.Args[1], leader)
+	for e := range leaderChan {
+		spew.Printf("[%s] %v\n", os.Args[1], e)
 	}
-
 }
