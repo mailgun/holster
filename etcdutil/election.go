@@ -16,12 +16,12 @@ import (
 )
 
 type LeaderElector interface {
-	Start(context.Context) error
-	LeaderChan() chan bool
 	IsLeader() bool
-	Concede() bool
-	Stop()
+	Concede() (bool, error)
+	Close()
 }
+
+var _ LeaderElector = &Election{}
 
 type Event struct {
 	// True if our candidate is leader
