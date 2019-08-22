@@ -71,14 +71,17 @@ func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
 	}()
 }
 
-// closes the done channel passed into `Until()` calls and waits for the `Until()` callBack to return false
+// Stop closes the done channel passed into `Until()` calls and waits for
+// the `Until()` callBack to return false.
 func (wg *WaitGroup) Stop() {
 	wg.mutex.Lock()
+	defer wg.mutex.Unlock()
+
 	if wg.done != nil {
 		close(wg.done)
 	}
-	wg.mutex.Unlock()
-	wg.Wait()
+	wg.wg.Wait()
+	wg.done = nil
 }
 
 // Run a goroutine in a loop continuously, if the callBack returns false the loop is broken
