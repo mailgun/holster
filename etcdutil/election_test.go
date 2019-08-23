@@ -78,5 +78,9 @@ func TestTwoCampaigns(t *testing.T) {
 	c2.Close()
 	e = <-c2Chan
 	assert.Equal(t, false, e.IsLeader)
+	assert.Equal(t, false, e.IsDone)
+
+	e = <-c2Chan
+	assert.Equal(t, false, e.IsLeader)
 	assert.Equal(t, true, e.IsDone)
 }
