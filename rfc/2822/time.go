@@ -7,10 +7,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// We use RFC2822 format for timestamps everywhere ('Thu, 13 Oct 2011 18:02:00 GMT'), but
-// by default Go's JSON package uses another format when decoding/encoding timestamps.
-// That's why we declare our own timestamp type and implement its marshal/unmarshal methods
-// so JSON package decodes/encodes it properly.
+// Deprecated, use github.com/holster/clock.RFC822Time
 type RFC2822Time time.Time
 
 func NewRFC2822Time(timestamp int64) RFC2822Time {
