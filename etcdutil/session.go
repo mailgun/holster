@@ -2,7 +2,7 @@ package etcdutil
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
@@ -24,8 +24,8 @@ type Session struct {
 	conf          SessionConfig
 	client        *etcd.Client
 	timeout       time.Duration
-	once          *sync.Once
 	lastKeepAlive time.Time
+	isRunning     int32
 }
 
 type SessionConfig struct {
@@ -52,7 +52,6 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 	s := Session{
 		timeout: time.Second * time.Duration(conf.TTL),
 		backOff: holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
-		once:    &sync.Once{},
 		conf:    conf,
 		client:  c,
 	}
@@ -65,6 +64,7 @@ func (s *Session) run() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	ticker := time.NewTicker(s.timeout)
 	s.lastKeepAlive = time.Now()
+	atomic.StoreInt32(&s.isRunning, 1)
 
 	s.wg.Until(func(done chan struct{}) bool {
 		// If we have lost our keep alive, attempt to regain it
@@ -75,9 +75,11 @@ func (s *Session) run() {
 				case <-time.After(s.backOff.Next()):
 					return true
 				case <-s.ctx.Done():
+					atomic.StoreInt32(&s.isRunning, 0)
 					return false
 				}
-				return true
+				// TODO: Fix this in the library. Unreachable code
+				// return true
 			}
 		}
 		s.backOff.Reset()
@@ -85,19 +87,20 @@ func (s *Session) run() {
 		select {
 		case _, ok := <-s.keepAlive:
 			if !ok {
-				//logrus.Warn("heartbeat lost")
+				//log.Warn("heartbeat lost")
 				s.keepAlive = nil
 			} else {
-				//logrus.Debug("heartbeat received")
+				//log.Debug("heartbeat received")
 				s.lastKeepAlive = time.Now()
 			}
 		case <-ticker.C:
 			// Ensure we are getting heartbeats regularly
 			if time.Now().Sub(s.lastKeepAlive) > s.timeout {
-				//logrus.Warn("too long between heartbeats")
+				//log.Warn("too long between heartbeats")
 				s.keepAlive = nil
 			}
 		case <-done:
+			s.keepAlive = nil
 			if s.lease != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 				if _, err := s.client.Revoke(ctx, s.lease.ID); err != nil {
@@ -105,6 +108,7 @@ func (s *Session) run() {
 				}
 				cancel()
 			}
+			atomic.StoreInt32(&s.isRunning, 0)
 			return false
 		}
 
@@ -115,9 +119,11 @@ func (s *Session) run() {
 	})
 }
 
-func (s *Session) Reset(ctx context.Context) {
+func (s *Session) Reset() {
+	if atomic.LoadInt32(&s.isRunning) != 1 {
+		return
+	}
 	s.Close()
-	s.once = &sync.Once{}
 	s.run()
 }
 
@@ -125,27 +131,26 @@ func (s *Session) Reset(ctx context.Context) {
 // then SessionConfig.Observer is called with -1 (NoLease), only returns
 // once the session has closed successfully.
 func (s *Session) Close() {
-	s.once.Do(func() {
-		if s.cancel != nil {
-			s.cancel()
-		}
-		s.wg.Stop()
-		s.conf.Observer(NoLease, nil)
-	})
+	if atomic.LoadInt32(&s.isRunning) != 1 {
+		return
+	}
+
+	s.cancel()
+	s.wg.Stop()
+	s.conf.Observer(NoLease, nil)
 }
 
 func (s *Session) gainLease(ctx context.Context) error {
-	//logrus.Debug("attempting to grant new lease")
-	lease, err := s.client.Grant(ctx, s.conf.TTL)
+	var err error
+	s.lease, err = s.client.Grant(ctx, s.conf.TTL)
 	if err != nil {
 		return errors.Wrapf(err, "during grant lease")
 	}
 
-	s.keepAlive, err = s.client.KeepAlive(s.ctx, lease.ID)
+	s.keepAlive, err = s.client.KeepAlive(s.ctx, s.lease.ID)
 	if err != nil {
 		return err
 	}
-	//logrus.Debugf("new lease %d", lease.ID)
-	s.conf.Observer(lease.ID, nil)
+	s.conf.Observer(s.lease.ID, nil)
 	return nil
 }
