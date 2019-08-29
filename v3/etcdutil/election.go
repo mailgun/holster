@@ -12,6 +12,7 @@ import (
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 )
 
@@ -44,7 +45,7 @@ type Election struct {
 	observers map[string]EventObserver
 	backOff   *backOffCounter
 	cancel    context.CancelFunc
-	wg        waitGroup
+	wg        syncutil.WaitGroup
 	ctx       context.Context
 	conf      ElectionConfig
 	timeout   time.Duration

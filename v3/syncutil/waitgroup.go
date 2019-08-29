@@ -13,11 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package etcdutil
+package syncutil
 
 import "sync"
 
-type waitGroup struct {
+type WaitGroup struct {
 	wg    sync.WaitGroup
 	mutex sync.Mutex
 	errs  []error
@@ -25,7 +25,7 @@ type waitGroup struct {
 }
 
 // Run a routine and collect errors if any
-func (wg *waitGroup) Run(callBack func(interface{}) error, data interface{}) {
+func (wg *WaitGroup) Run(callBack func(interface{}) error, data interface{}) {
 	wg.wg.Add(1)
 	go func() {
 		err := callBack(data)
@@ -41,7 +41,7 @@ func (wg *waitGroup) Run(callBack func(interface{}) error, data interface{}) {
 }
 
 // Execute a long running routine
-func (wg *waitGroup) Go(cb func()) {
+func (wg *WaitGroup) Go(cb func()) {
 	wg.wg.Add(1)
 	go func() {
 		cb()
@@ -53,7 +53,7 @@ func (wg *waitGroup) Go(cb func()) {
 // `Until()` differs from `Loop()` in that if the `Stop()` is called on the WaitGroup
 // the `done` channel is closed. Implementations of the callBack function can listen
 // for the close to indicate a stop was requested.
-func (wg *waitGroup) Until(callBack func(done chan struct{}) bool) {
+func (wg *WaitGroup) Until(callBack func(done chan struct{}) bool) {
 	wg.mutex.Lock()
 	if wg.done == nil {
 		wg.done = make(chan struct{})
@@ -73,7 +73,7 @@ func (wg *waitGroup) Until(callBack func(done chan struct{}) bool) {
 
 // Stop closes the done channel passed into `Until()` calls and waits for
 // the `Until()` callBack to return false.
-func (wg *waitGroup) Stop() {
+func (wg *WaitGroup) Stop() {
 	wg.mutex.Lock()
 	defer wg.mutex.Unlock()
 
@@ -85,7 +85,7 @@ func (wg *waitGroup) Stop() {
 }
 
 // Run a goroutine in a loop continuously, if the callBack returns false the loop is broken
-func (wg *waitGroup) Loop(callBack func() bool) {
+func (wg *WaitGroup) Loop(callBack func() bool) {
 	wg.wg.Add(1)
 	go func() {
 		for {
@@ -98,7 +98,7 @@ func (wg *waitGroup) Loop(callBack func() bool) {
 }
 
 // Wait for all the routines to complete and return any errors collected
-func (wg *waitGroup) Wait() []error {
+func (wg *WaitGroup) Wait() []error {
 	wg.wg.Wait()
 
 	wg.mutex.Lock()

@@ -7,6 +7,7 @@ import (
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +19,7 @@ type Session struct {
 	keepAlive     <-chan *etcd.LeaseKeepAliveResponse
 	lease         *etcd.LeaseGrantResponse
 	backOff       *backOffCounter
-	wg            waitGroup
+	wg            syncutil.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
 	conf          SessionConfig
