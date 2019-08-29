@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package etcdutil
+package syncutil_test
 
 import (
 	"sync/atomic"
@@ -21,6 +21,7 @@ import (
 	"time"
 
 	linq "github.com/ahmetb/go-linq"
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,7 +35,7 @@ func TestWaitGroup(t *testing.T) {
 }
 
 func (s *WaitGroupTestSuite) TestRun() {
-	var wg waitGroup
+	var wg syncutil.WaitGroup
 
 	items := []error{
 		errors.New("Error 1"),
@@ -59,7 +60,7 @@ func (s *WaitGroupTestSuite) TestRun() {
 }
 
 func (s *WaitGroupTestSuite) TestGo() {
-	var wg waitGroup
+	var wg syncutil.WaitGroup
 	result := make(chan struct{})
 
 	wg.Go(func() {
@@ -91,7 +92,7 @@ OUT:
 
 func (s *WaitGroupTestSuite) TestLoop() {
 	pipe := make(chan int32, 0)
-	var wg waitGroup
+	var wg syncutil.WaitGroup
 	var count int32
 
 	wg.Loop(func() bool {
@@ -120,7 +121,7 @@ func (s *WaitGroupTestSuite) TestLoop() {
 
 func (s *WaitGroupTestSuite) TestUntil() {
 	pipe := make(chan int32, 0)
-	var wg waitGroup
+	var wg syncutil.WaitGroup
 	var count int32
 
 	wg.Until(func(done chan struct{}) bool {
