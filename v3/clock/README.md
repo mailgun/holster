@@ -14,7 +14,7 @@ package foo
 import (
     "time"
 
-    "github.com/mailgun/holster/clock"
+    "github.com/mailgun/holster/v3/clock"
     . "gopkg.in/check.v1"
 )
 

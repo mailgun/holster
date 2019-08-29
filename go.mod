@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
+	github.com/ahmetb/go-linq v3.0.0+incompatible
 	github.com/coreos/bbolt v1.3.2 // indirect
 	github.com/coreos/etcd v3.3.10+incompatible
 	github.com/coreos/go-semver v0.3.0 // indirect
