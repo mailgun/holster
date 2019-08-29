@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 )
 
@@ -139,7 +140,7 @@ func (c *ExpireCache) Peek(key interface{}) (value interface{}, ok bool) {
 // Processes each item in the cache in a thread safe way, such that the cache can be in use
 // while processing items in the cache
 func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
-	fanOut := NewFanOut(concurrent)
+	fanOut := syncutil.NewFanOut(concurrent)
 	keys := c.Keys()
 
 	for _, key := range keys {

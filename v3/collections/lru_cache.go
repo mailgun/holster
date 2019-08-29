@@ -21,6 +21,8 @@ import (
 	"container/list"
 	"sync"
 	"time"
+
+	"github.com/mailgun/holster/v3/syncutil"
 )
 
 // Holds stats collected about the cache
@@ -197,7 +199,7 @@ func (c *LRUCache) Peek(key interface{}) (value interface{}, ok bool) {
 // while processing items in the cache. Processing the cache with `Each()` does not update
 // the expiration or last used.
 func (c LRUCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
-	fanOut := NewFanOut(concurrent)
+	fanOut := syncutil.NewFanOut(concurrent)
 	keys := c.Keys()
 
 	for _, key := range keys {
