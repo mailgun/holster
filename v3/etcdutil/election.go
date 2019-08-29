@@ -11,12 +11,9 @@ import (
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/setter"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Entry
 
 type LeaderElector interface {
 	IsLeader() bool
@@ -45,9 +42,9 @@ type EventObserver func(Event)
 
 type Election struct {
 	observers map[string]EventObserver
-	backOff   *holster.BackOffCounter
+	backOff   *backOffCounter
 	cancel    context.CancelFunc
-	wg        holster.WaitGroup
+	wg        waitGroup
 	ctx       context.Context
 	conf      ElectionConfig
 	timeout   time.Duration
@@ -101,19 +98,17 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		return nil, errors.New("ElectionConfig.Election can not be empty")
 	}
 
-	log = logrus.WithField("category", "election")
-
 	// Default to short 5 second leadership TTL
-	holster.SetDefault(&conf.TTL, int64(5))
+	setter.SetDefault(&conf.TTL, int64(5))
 	conf.Election = path.Join("/elections", conf.Election)
 
 	// Use the hostname if no candidate name provided
 	if host, err := os.Hostname(); err == nil {
-		holster.SetDefault(&conf.Candidate, host)
+		setter.SetDefault(&conf.Candidate, host)
 	}
 
 	e := &Election{
-		backOff:   holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
+		backOff:   newBackOffCounter(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
 		timeout:   time.Duration(conf.TTL) * time.Second,
 		observers: make(map[string]EventObserver),
 		client:    client,
@@ -343,7 +338,7 @@ func (e *Election) watchCampaign(rev int64) error {
 				}
 			}
 		case <-done:
-			watcher.Close()
+			_ = watcher.Close()
 			// If withdraw takes longer than our TTL then lease is expired
 			// and we are no longer leader anyway.
 			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)

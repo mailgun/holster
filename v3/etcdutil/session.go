@@ -6,7 +6,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/setter"
 	"github.com/pkg/errors"
 )
 
@@ -17,8 +17,8 @@ type SessionObserver func(etcd.LeaseID, error)
 type Session struct {
 	keepAlive     <-chan *etcd.LeaseKeepAliveResponse
 	lease         *etcd.LeaseGrantResponse
-	backOff       *holster.BackOffCounter
-	wg            holster.WaitGroup
+	backOff       *backOffCounter
+	wg            waitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
 	conf          SessionConfig
@@ -39,7 +39,7 @@ type SessionConfig struct {
 // as the lease ID. The Session will continue to try to gain another lease, once a new lease
 // is gained SessionConfig.Observer is called again with the new lease id.
 func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
-	holster.SetDefault(&conf.TTL, int64(30))
+	setter.SetDefault(&conf.TTL, int64(30))
 
 	if conf.Observer == nil {
 		return nil, errors.New("provided observer function cannot be nil")
@@ -51,7 +51,7 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 
 	s := Session{
 		timeout: time.Second * time.Duration(conf.TTL),
-		backOff: holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
+		backOff: newBackOffCounter(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
 		conf:    conf,
 		client:  c,
 	}
