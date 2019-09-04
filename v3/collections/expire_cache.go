@@ -17,8 +17,8 @@ package collections
 
 import (
 	"sync"
-	"time"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 )
@@ -53,17 +53,17 @@ type ExpireCacheStats struct {
 type ExpireCache struct {
 	cache map[interface{}]*expireRecord
 	mutex sync.Mutex
-	ttl   time.Duration
+	ttl   clock.Duration
 	stats ExpireCacheStats
 }
 
 type expireRecord struct {
 	Value    interface{}
-	ExpireAt time.Time
+	ExpireAt clock.Time
 }
 
 // New creates a new ExpireCache.
-func NewExpireCache(ttl time.Duration) *ExpireCache {
+func NewExpireCache(ttl clock.Duration) *ExpireCache {
 	return &ExpireCache{
 		cache: make(map[interface{}]*expireRecord),
 		ttl:   ttl,
@@ -83,7 +83,7 @@ func (c *ExpireCache) Get(key interface{}) (interface{}, bool) {
 
 	// Since this was recently accessed, keep it in
 	// the cache by resetting the expire time
-	record.ExpireAt = time.Now().UTC().Add(c.ttl)
+	record.ExpireAt = clock.Now().UTC().Add(c.ttl)
 
 	c.stats.Hit++
 	return record.Value, ok
@@ -96,7 +96,7 @@ func (c *ExpireCache) Add(key interface{}, value interface{}) {
 
 	record := expireRecord{
 		Value:    value,
-		ExpireAt: time.Now().UTC().Add(c.ttl),
+		ExpireAt: clock.Now().UTC().Add(c.ttl),
 	}
 	// Add the record to the cache
 	c.cache[key] = &record
@@ -159,7 +159,7 @@ func (c *ExpireCache) Each(concurrent int, callBack func(key interface{}, value 
 			}
 
 			c.mutex.Lock()
-			if record.ExpireAt.Before(time.Now().UTC()) {
+			if record.ExpireAt.Before(clock.Now().UTC()) {
 				delete(c.cache, key)
 			}
 			c.mutex.Unlock()

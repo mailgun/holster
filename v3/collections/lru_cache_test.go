@@ -18,62 +18,65 @@ This work is derived from github.com/golang/groupcache/lru
 package collections_test
 
 import (
-	"time"
+	"testing"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/mailgun/holster/v3/collections"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-type LRUCacheTestSuite struct{}
-
-var _ = Suite(&LRUCacheTestSuite{})
-
-func (s *LRUCacheTestSuite) SetUpSuite(c *C) {
-}
-
-func (s *LRUCacheTestSuite) TestCache(c *C) {
+func TestLRUCache(t *testing.T) {
 	cache := collections.NewLRUCache(5)
 
 	// Confirm non existent key
 	value, ok := cache.Get("key")
-	c.Assert(value, IsNil)
-	c.Assert(ok, Equals, false)
+	assert.Nil(t, value)
+	assert.Equal(t, false, ok)
 
 	// Confirm add new value
 	cache.Add("key", "value")
 	value, ok = cache.Get("key")
-	c.Assert(value, Equals, "value")
-	c.Assert(ok, Equals, true)
+	assert.Equal(t, "value", value)
+	assert.Equal(t, true, ok)
 
 	// Confirm overwrite current value correctly
 	cache.Add("key", "new")
 	value, ok = cache.Get("key")
-	c.Assert(value, Equals, "new")
-	c.Assert(ok, Equals, true)
+	assert.Equal(t, "new", value)
+	assert.Equal(t, true, ok)
 
 	// Confirm removal works
 	cache.Remove("key")
 	value, ok = cache.Get("key")
-	c.Assert(value, IsNil)
-	c.Assert(ok, Equals, false)
+	assert.Nil(t, value)
+	assert.Equal(t, false, ok)
 
 	// Stats should be correct
 	stats := cache.Stats()
-	c.Assert(stats.Hit, Equals, int64(2))
-	c.Assert(stats.Miss, Equals, int64(2))
-	c.Assert(stats.Size, Equals, int64(0))
+	assert.Equal(t, int64(2), stats.Hit)
+	assert.Equal(t, int64(2), stats.Miss)
+	assert.Equal(t, int64(0), stats.Size)
 }
 
-func (s *LRUCacheTestSuite) TestCacheWithTTL(c *C) {
+func TestLRUCacheWithTTL(t *testing.T) {
 	cache := collections.NewLRUCache(5)
+	start := clock.Now()
+	clock.Freeze(start)
 
-	cache.AddWithTTL("key", "value", time.Nanosecond)
+	cache.AddWithTTL("key", "value", 10*clock.Nanosecond)
+
+	clock.Advance(10 * clock.Nanosecond)
 	value, ok := cache.Get("key")
-	c.Assert(value, Equals, nil)
-	c.Assert(ok, Equals, false)
+	assert.Equal(t, "value", value)
+	assert.Equal(t, true, ok)
+
+	clock.Advance(clock.Nanosecond)
+	value, ok = cache.Get("key")
+	assert.Nil(t, value)
+	assert.Equal(t, false, ok)
 }
 
-func (s *LRUCacheTestSuite) TestCacheEach(c *C) {
+func TestLRUCacheEach(t *testing.T) {
 	cache := collections.NewLRUCache(5)
 
 	cache.Add("1", 1)
@@ -88,11 +91,11 @@ func (s *LRUCacheTestSuite) TestCacheEach(c *C) {
 		count++
 		return nil
 	})
-	c.Assert(count, Equals, 5)
-	c.Assert(errs, IsNil)
+	assert.Nil(t, errs)
+	assert.Equal(t, 5, count)
 
 	stats := cache.Stats()
-	c.Assert(stats.Hit, Equals, int64(0))
-	c.Assert(stats.Miss, Equals, int64(0))
-	c.Assert(stats.Size, Equals, int64(5))
+	assert.Equal(t, int64(0), stats.Hit)
+	assert.Equal(t, int64(0), stats.Miss)
+	assert.Equal(t, int64(5), stats.Size)
 }
