@@ -20,8 +20,8 @@ package collections
 import (
 	"container/list"
 	"sync"
-	"time"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/mailgun/holster/v3/syncutil"
 )
 
@@ -55,7 +55,7 @@ type Key interface{}
 type cacheRecord struct {
 	key      Key
 	value    interface{}
-	expireAt *time.Time
+	expireAt *clock.Time
 }
 
 // New creates a new Cache.
@@ -75,8 +75,8 @@ func (c *LRUCache) Add(key Key, value interface{}) bool {
 }
 
 // Adds a value to the cache with a TTL
-func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL time.Duration) bool {
-	expireAt := time.Now().UTC().Add(TTL)
+func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL clock.Duration) bool {
+	expireAt := clock.Now().UTC().Add(TTL)
 	return c.addRecord(&cacheRecord{
 		key:      key,
 		value:    value,
@@ -114,7 +114,7 @@ func (c *LRUCache) Get(key Key) (value interface{}, ok bool) {
 		entry := ele.Value.(*cacheRecord)
 
 		// If the entry has expired, remove it from the cache
-		if entry.expireAt != nil && entry.expireAt.Before(time.Now().UTC()) {
+		if entry.expireAt != nil && entry.expireAt.Before(clock.Now().UTC()) {
 			c.removeElement(ele)
 			c.stats.Miss++
 			return
