@@ -23,7 +23,7 @@ import (
 	"github.com/mailgun/holster"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/ahmetb/go-linq.v3"
+	"github.com/ahmetb/go-linq/v3"
 )
 
 type WaitGroupTestSuite struct {
