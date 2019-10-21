@@ -36,7 +36,7 @@ import (
 func SetDefault(dest interface{}, defaultValue ...interface{}) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
-		panic("holster.SetDefault: Expected first argument to be of type reflect.Ptr")
+		panic("setter.SetDefault: Expected first argument to be of type reflect.Ptr")
 	}
 	d = reflect.Indirect(d)
 	if IsZeroValue(d) {
@@ -73,7 +73,7 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 func SetOverride(dest interface{}, values ...interface{}) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
-		panic("holster.SetOverride: Expected first argument to be of type reflect.Ptr")
+		panic("setter.SetOverride: Expected first argument to be of type reflect.Ptr")
 	}
 	d = reflect.Indirect(d)
 	// Use the first non zero value value we find

@@ -37,7 +37,6 @@ require (
 	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	google.golang.org/grpc v1.23.0
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
