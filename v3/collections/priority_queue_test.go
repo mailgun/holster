@@ -17,14 +17,11 @@ package collections_test
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/mailgun/holster/v3/collections"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
-
-type MinHeapSuite struct{}
-
-var _ = Suite(&MinHeapSuite{})
 
 func toPtr(i int) interface{} {
 	return &i
@@ -34,7 +31,7 @@ func toInt(i interface{}) int {
 	return *(i.(*int))
 }
 
-func (s *MinHeapSuite) TestPeek(c *C) {
+func TestPeek(t *testing.T) {
 	mh := collections.NewPriorityQueue()
 
 	el := &collections.PQItem{
@@ -43,30 +40,30 @@ func (s *MinHeapSuite) TestPeek(c *C) {
 	}
 
 	mh.Push(el)
-	c.Assert(toInt(mh.Peek().Value), Equals, 1)
-	c.Assert(mh.Len(), Equals, 1)
+	assert.Equal(t, 1, toInt(mh.Peek().Value))
+	assert.Equal(t, 1, mh.Len())
 
 	el = &collections.PQItem{
 		Value:    toPtr(2),
 		Priority: 1,
 	}
 	mh.Push(el)
-	c.Assert(mh.Len(), Equals, 2)
-	c.Assert(toInt(mh.Peek().Value), Equals, 2)
-	c.Assert(toInt(mh.Peek().Value), Equals, 2)
-	c.Assert(mh.Len(), Equals, 2)
+	assert.Equal(t, 2, mh.Len())
+	assert.Equal(t, 2, toInt(mh.Peek().Value))
+	assert.Equal(t, 2, toInt(mh.Peek().Value))
+	assert.Equal(t, 2, mh.Len())
 
 	el = mh.Pop()
 
-	c.Assert(toInt(el.Value), Equals, 2)
-	c.Assert(mh.Len(), Equals, 1)
-	c.Assert(toInt(mh.Peek().Value), Equals, 1)
+	assert.Equal(t, 2, toInt(el.Value))
+	assert.Equal(t, 1, mh.Len())
+	assert.Equal(t, 1, toInt(mh.Peek().Value))
 
 	mh.Pop()
-	c.Assert(mh.Len(), Equals, 0)
+	assert.Equal(t, 0, mh.Len())
 }
 
-func (s *MinHeapSuite) TestUpdate(c *C) {
+func TestUpdate(t *testing.T) {
 	mh := collections.NewPriorityQueue()
 	x := &collections.PQItem{
 		Value:    toPtr(1),
@@ -83,13 +80,13 @@ func (s *MinHeapSuite) TestUpdate(c *C) {
 	mh.Push(x)
 	mh.Push(y)
 	mh.Push(z)
-	c.Assert(toInt(mh.Peek().Value), Equals, 2)
+	assert.Equal(t, 2, toInt(mh.Peek().Value))
 
 	mh.Update(z, 1)
-	c.Assert(toInt(mh.Peek().Value), Equals, 3)
+	assert.Equal(t, 3, toInt(mh.Peek().Value))
 
 	mh.Update(x, 0)
-	c.Assert(toInt(mh.Peek().Value), Equals, 1)
+	assert.Equal(t, 1, toInt(mh.Peek().Value))
 }
 
 func Example_Priority_Queue_Usage() {

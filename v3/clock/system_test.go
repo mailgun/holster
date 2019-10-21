@@ -1,16 +1,13 @@
 package clock
 
 import (
+	"testing"
 	"time"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-type SystemSuite struct{}
-
-var _ = Suite(&SystemSuite{})
-
-func (s *SystemSuite) TestSleep(c *C) {
+func TestSleep(t *testing.T) {
 	start := Now()
 
 	// When
@@ -18,11 +15,11 @@ func (s *SystemSuite) TestSleep(c *C) {
 
 	// Then
 	if Now().Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 }
 
-func (s *SystemSuite) TestAfter(c *C) {
+func TestAfter(t *testing.T) {
 	start := Now()
 
 	// When
@@ -30,11 +27,11 @@ func (s *SystemSuite) TestAfter(c *C) {
 
 	// Then
 	if end.Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 }
 
-func (s *SystemSuite) TestAfterFunc(c *C) {
+func TestAfterFunc(t *testing.T) {
 	start := Now()
 	endCh := make(chan time.Time, 1)
 
@@ -44,79 +41,79 @@ func (s *SystemSuite) TestAfterFunc(c *C) {
 	// Then
 	end := <-endCh
 	if end.Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 }
 
-func (s *SystemSuite) TestNewTimer(c *C) {
+func TestNewTimer(t *testing.T) {
 	start := Now()
 
 	// When
-	t := NewTimer(100 * time.Millisecond)
+	timer := NewTimer(100 * time.Millisecond)
 
 	// Then
-	end := <-t.C()
+	end := <-timer.C()
 	if end.Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 }
 
-func (s *SystemSuite) TestTimerStop(c *C) {
-	t := NewTimer(50 * time.Millisecond)
+func TestTimerStop(t *testing.T) {
+	timer := NewTimer(50 * time.Millisecond)
 
 	// When
-	active := t.Stop()
+	active := timer.Stop()
 
 	// Then
-	c.Assert(active, Equals, true)
+	assert.Equal(t, true, active)
 	time.Sleep(100)
 	select {
-	case <-t.C():
-		c.Error("Timer should not have fired")
+	case <-timer.C():
+		assert.Fail(t, "Timer should not have fired")
 	default:
 	}
 }
 
-func (s *SystemSuite) TestTimerReset(c *C) {
+func TestTimerReset(t *testing.T) {
 	start := time.Now()
-	t := NewTimer(300 * time.Millisecond)
+	timer := NewTimer(300 * time.Millisecond)
 
 	// When
-	t.Reset(100 * time.Millisecond)
+	timer.Reset(100 * time.Millisecond)
 
 	// Then
-	end := <-t.C()
+	end := <-timer.C()
 	if end.Sub(start) > 150*time.Millisecond {
-		c.Error("Waited too long")
+		assert.Fail(t, "Waited too long")
 	}
 }
 
-func (s *SystemSuite) TestNewTicker(c *C) {
+func TestNewTicker(t *testing.T) {
 	start := Now()
 
 	// When
-	t := NewTicker(100 * time.Millisecond)
+	timer := NewTicker(100 * time.Millisecond)
 
 	// Then
-	end := <-t.C()
+	end := <-timer.C()
 	if end.Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
-	end = <-t.C()
+	end = <-timer.C()
 	if end.Sub(start) < 200*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 
-	t.Stop()
+	timer.Stop()
 	time.Sleep(150)
 	select {
-	case <-t.C():
-		c.Error("Ticker should not have fired")
+	case <-timer.C():
+		assert.Fail(t, "Ticker should not have fired")
 	default:
 	}
 }
 
-func (s *SystemSuite) TestTick(c *C) {
+func TestTick(t *testing.T) {
 	start := Now()
 
 	// When
@@ -125,22 +122,22 @@ func (s *SystemSuite) TestTick(c *C) {
 	// Then
 	end := <-ch
 	if end.Sub(start) < 100*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 	end = <-ch
 	if end.Sub(start) < 200*time.Millisecond {
-		c.Error("Sleep did not last long enough")
+		assert.Fail(t, "Sleep did not last long enough")
 	}
 }
 
-func (s *SystemSuite) TestNewStoppedTimer(c *C) {
-	t := NewStoppedTimer()
+func TestNewStoppedTimer(t *testing.T) {
+	timer := NewStoppedTimer()
 
 	// When/Then
 	select {
-	case <-t.C():
-		c.Error("Timer should not have fired")
+	case <-timer.C():
+		assert.Fail(t, "Timer should not have fired")
 	default:
 	}
-	c.Assert(t.Stop(), Equals, false)
+	assert.Equal(t, false, timer.Stop())
 }

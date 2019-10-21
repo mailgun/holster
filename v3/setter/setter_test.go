@@ -16,31 +16,26 @@ limitations under the License.
 package setter_test
 
 import (
+	"testing"
+
 	"github.com/mailgun/holster/v3/setter"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-type SetDefaultTestSuite struct{}
-
-var _ = Suite(&SetDefaultTestSuite{})
-
-func (s *SetDefaultTestSuite) SetUpSuite(c *C) {
-}
-
-func (s *SetDefaultTestSuite) TestIfEmpty(c *C) {
+func TestIfEmpty(t *testing.T) {
 	var conf struct {
 		Foo string
 		Bar int
 	}
-	c.Assert(conf.Foo, Equals, "")
-	c.Assert(conf.Bar, Equals, 0)
+	assert.Equal(t, "", conf.Foo)
+	assert.Equal(t, 0, conf.Bar)
 
 	// Should apply the default values
 	setter.SetDefault(&conf.Foo, "default")
 	setter.SetDefault(&conf.Bar, 200)
 
-	c.Assert(conf.Foo, Equals, "default")
-	c.Assert(conf.Bar, Equals, 200)
+	assert.Equal(t, "default", conf.Foo)
+	assert.Equal(t, 200, conf.Bar)
 
 	conf.Foo = "thrawn"
 	conf.Bar = 500
@@ -49,65 +44,65 @@ func (s *SetDefaultTestSuite) TestIfEmpty(c *C) {
 	setter.SetDefault(&conf.Foo, "default")
 	setter.SetDefault(&conf.Bar, 200)
 
-	c.Assert(conf.Foo, Equals, "thrawn")
-	c.Assert(conf.Bar, Equals, 500)
+	assert.Equal(t, "thrawn", conf.Foo)
+	assert.Equal(t, 500, conf.Bar)
 }
 
-func (s *SetDefaultTestSuite) TestIfDefaultPrecedence(c *C) {
+func TestIfDefaultPrecedence(t *testing.T) {
 	var conf struct {
 		Foo string
 		Bar string
 	}
-	c.Assert(conf.Foo, Equals, "")
-	c.Assert(conf.Bar, Equals, "")
+	assert.Equal(t, "", conf.Foo)
+	assert.Equal(t, "", conf.Bar)
 
 	// Should use the final default value
 	envValue := ""
 	setter.SetDefault(&conf.Foo, envValue, "default")
-	c.Assert(conf.Foo, Equals, "default")
+	assert.Equal(t, "default", conf.Foo)
 
 	// Should use envValue
 	envValue = "bar"
 	setter.SetDefault(&conf.Bar, envValue, "default")
-	c.Assert(conf.Bar, Equals, "bar")
+	assert.Equal(t, "bar", conf.Bar)
 }
 
-func (s *SetDefaultTestSuite) TestIsEmpty(c *C) {
+func TestIsEmpty(t *testing.T) {
 	var count64 int64
 	var thing string
 
 	// Should return true
-	c.Assert(setter.IsZero(count64), Equals, true)
-	c.Assert(setter.IsZero(thing), Equals, true)
+	assert.Equal(t, true, setter.IsZero(count64))
+	assert.Equal(t, true, setter.IsZero(thing))
 
 	thing = "thrawn"
 	count64 = int64(1)
-	c.Assert(setter.IsZero(count64), Equals, false)
-	c.Assert(setter.IsZero(thing), Equals, false)
+	assert.Equal(t, false, setter.IsZero(count64))
+	assert.Equal(t, false, setter.IsZero(thing))
 }
 
-func (s *SetDefaultTestSuite) TestIfEmptyTypePanic(c *C) {
+func TestIfEmptyTypePanic(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			c.Assert(r, Equals, "reflect.Set: value of type int is not assignable to type string")
+			assert.Equal(t, "reflect.Set: value of type int is not assignable to type string", r)
 		}
 	}()
 
 	var thing string
 	// Should panic
 	setter.SetDefault(&thing, 1)
-	c.Fatalf("Should have caught panic")
+	assert.Fail(t, "Should have caught panic")
 }
 
-func (s *SetDefaultTestSuite) TestIfEmptyNonPtrPanic(c *C) {
+func TestIfEmptyNonPtrPanic(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			c.Assert(r, Equals, "setter.SetDefault: Expected first argument to be of type reflect.Ptr")
+			assert.Equal(t, "setter.SetDefault: Expected first argument to be of type reflect.Ptr", r)
 		}
 	}()
 
 	var thing string
 	// Should panic
 	setter.SetDefault(thing, "thrawn")
-	c.Fatalf("Should have caught panic")
+	assert.Fail(t, "Should have caught panic")
 }

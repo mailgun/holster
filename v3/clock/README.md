@@ -12,45 +12,36 @@ scheduled even trigger at certain moments.
 package foo
 
 import (
-    "time"
+    "testing"
 
     "github.com/mailgun/holster/v3/clock"
-    . "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-type FooSuite struct{}
-
-var _ = Suite(&FooSuite{})
-
-func (s *FooSuite) SetUpTest(c *C) {
+func TestSleep(t *testing.T) {
     // Freeze switches the clock package to the frozen clock mode. You need to
     // advance time manually from now on. Note that all scheduled events, timers
     // and ticker created before this call keep operating in real time.
     //
-    // The initial time is set to 0 here, but you can set any datetime.
-    clock.Freeze(time.Time(0))
-}
+    // The initial time is set to now here, but you can set any datetime.
+    clock.Freeze(clock.Now())
+    // Do not forget to revert the effect of Freeze at the end of the test.
+    defer clock.Unfreeze()
 
-func (s *FooSuite) TearDownTest(c *C) {
-    // Reverts the effect of Freeze in test setup.
-    clock.Unfreeze()
-}
-
-func (s *FooSuite) TestSleep(c *C) {
     var fired bool
 
-    clock.AfterFunc(100*time.Millisecond, func() {
+    clock.AfterFunc(100*clock.Millisecond, func() {
         fired = true
     })
-    clock.Advance(93*time.Millisecond)
+    clock.Advance(93*clock.Millisecond)
     
     // Advance will make all fire all events, timers, tickers that are
     // scheduled for the passed period of time. Note that scheduled functions
     // are called from within Advanced unlike system time package that calls
     // them in their own goroutine.
-    c.Assert(clock.Advance(6*time.Millisecond), Equals, 97*time.Millisecond)
-    c.Assert(fired, Equals, false)
-    c.Assert(clock.Advance(1*time.Millisecond), Equals, 100*time.Millisecond)
-    c.Assert(fired, Equals, true)
+    assert.Equal(t, 97*clock.Millisecond, clock.Advance(6*clock.Millisecond))
+    assert.True(t, fired)
+    assert.Equal(t, 100*clock.Millisecond, clock.Advance(1*clock.Millisecond))
+    assert.True(t, fired)
 }
 ```
