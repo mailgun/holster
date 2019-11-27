@@ -42,7 +42,7 @@ type Event struct {
 type EventObserver func(Event)
 
 type Election struct {
-	observers map[string]EventObserver
+	observer  EventObserver
 	backOff   *backOffCounter
 	cancel    context.CancelFunc
 	wg        syncutil.WaitGroup
@@ -109,29 +109,26 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	}
 
 	e := &Election{
-		backOff:   newBackOffCounter(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
-		timeout:   time.Duration(conf.TTL) * time.Second,
-		observers: make(map[string]EventObserver),
-		client:    client,
-		conf:      conf,
+		backOff: newBackOffCounter(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
+		timeout: time.Duration(conf.TTL) * time.Second,
+		client:  client,
+		conf:    conf,
 	}
-
 	e.ctx, e.cancel = context.WithCancel(context.Background())
-
-	// If an observer was provided
-	if conf.EventObserver != nil {
-		e.observers["conf"] = conf.EventObserver
-	}
 
 	var err error
 	ready := make(chan struct{})
-	// Register ourselves as an observer for the initial election, then remove before returning
-	e.observers["init"] = func(event Event) {
+	// Register ourselves as an observer for the initial election, then remove
+	// before returning
+	e.observer = func(event Event) {
 		// If we get an error while waiting on the election results, pass that back to the caller
 		if event.Err != nil {
 			err = event.Err
 		}
-		delete(e.observers, "init")
+		e.observer = conf.EventObserver
+		if e.observer != nil {
+			e.observer(event)
+		}
 		close(ready)
 	}
 
@@ -140,7 +137,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		Observer: e.onSessionChange,
 		TTL:      e.conf.TTL,
 	}); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// Wait for results of leader election
@@ -149,7 +146,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	return e, err
+	return e, errors.WithStack(err)
 }
 
 func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
@@ -359,7 +356,6 @@ func (e *Election) watchCampaign(rev int64) error {
 
 func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
 	event := Event{}
-
 	if kv != nil {
 		if string(kv.Key) == e.key {
 			atomic.StoreInt32(&e.isLeader, 1)
@@ -372,22 +368,19 @@ func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
 	} else {
 		event.IsDone = true
 	}
-
-	for _, v := range e.observers {
-		v(event)
+	if e.observer != nil {
+		e.observer(event)
 	}
 }
 
 // onErr reports errors the the observer
 func (e *Election) onErr(err error, msg string) {
 	atomic.StoreInt32(&e.isLeader, 0)
-
 	if msg != "" {
 		err = errors.Wrap(err, msg)
 	}
-
-	for _, v := range e.observers {
-		v(Event{Err: err})
+	if e.observer != nil {
+		e.observer(Event{Err: err})
 	}
 }
 
@@ -422,7 +415,7 @@ func (e *Election) Concede() (bool, error) {
 	oldCampaignKey := e.key
 	e.session.Reset()
 
-	// Ensure there are no lingering candiates
+	// Ensure there are no lingering candidates
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.conf.TTL)*time.Second)
 	cancel()
 
