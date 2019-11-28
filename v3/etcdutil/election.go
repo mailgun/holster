@@ -125,14 +125,14 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	return e, errors.WithStack(initialElectionErr)
 }
 
-// NewElection creates a new leader election and submits our candidate for
-// leader. It does not wait for a election to complete. The caller must provide
-// an election event observer to monitor events.
+// NewElectionAsync creates a new leader election and submits our candidate for
+// leader. It does not wait for the election to complete. The caller must
+// provide an election event observer to monitor the election outcome.
 //
 //  client, _ := etcdutil.NewClient(nil)
 //
 //  // Start a leader election and returns immediately.
-//  election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+//  election := etcdutil.NewElectionAsync(client, etcdutil.ElectionConfig{
 //      Election: "presidental",
 //      Candidate: "donald",
 //		EventObserver: func(e etcdutil.Event) {
@@ -425,7 +425,8 @@ func (e *Election) Close() {
 	e.onLeaderChange(nil)
 }
 
-// IsLeader returns true if we are leader
+// IsLeader returns true if we are leader. It only makes sense if the election
+// was created with NewElection that block until the initial election is over.
 func (e *Election) IsLeader() bool {
 	return atomic.LoadInt32(&e.isLeader) == 1
 }
