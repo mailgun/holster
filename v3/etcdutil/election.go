@@ -99,6 +99,55 @@ type ElectionConfig struct {
 //  election.Close()
 //
 func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) (*Election, error) {
+	var initialElectionErr error
+	readyCh := make(chan struct{})
+	initialElection := true
+	userObserver := conf.EventObserver
+	// Wrap user's observer to intercept the initial election.
+	conf.EventObserver = func(event ElectionEvent) {
+		if userObserver != nil {
+			userObserver(event)
+		}
+		if initialElection {
+			initialElection = false
+			initialElectionErr = event.Err
+			close(readyCh)
+			return
+		}
+	}
+	e := NewElectionAsync(client, conf)
+	// Wait for results of the initial leader election.
+	select {
+	case <-readyCh:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return e, errors.WithStack(initialElectionErr)
+}
+
+// NewElection creates a new leader election and submits our candidate for
+// leader. It does not wait for a election to complete. The caller must provide
+// an election event observer to monitor events.
+//
+//  client, _ := etcdutil.NewClient(nil)
+//
+//  // Start a leader election and returns immediately.
+//  election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+//      Election: "presidental",
+//      Candidate: "donald",
+//		EventObserver: func(e etcdutil.Event) {
+//		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
+//			if e.IsLeader {
+//				// Do thing as leader
+//			}
+//		},
+//      TTL: 5,
+//  })
+//
+//  // Cancels the election and concedes the election if we are leader.
+//  election.Close()
+//
+func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
 	setter.SetDefault(&conf.Election, "null")
 	conf.Election = path.Join("/elections", conf.Election)
 	if host, err := os.Hostname(); err == nil {
@@ -107,7 +156,8 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	setter.SetDefault(&conf.TTL, int64(5))
 
 	ttlDuration := time.Duration(conf.TTL) * time.Second
-	e := &Election{
+	e := Election{
+		observer:  conf.EventObserver,
 		election:  conf.Election,
 		candidate: conf.Candidate,
 		ttl:       ttlDuration,
@@ -115,22 +165,6 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		client:    client,
 	}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
-
-	var err error
-	ready := make(chan struct{})
-	// Register ourselves as an observer for the initial election, then remove
-	// before returning
-	e.observer = func(event ElectionEvent) {
-		// If we get an error while waiting on the election results, pass that back to the caller
-		if event.Err != nil {
-			err = event.Err
-		}
-		e.observer = conf.EventObserver
-		if e.observer != nil {
-			e.observer(event)
-		}
-		close(ready)
-	}
 	e.session = &Session{
 		observer: e.onSessionChange,
 		ttl:      e.ttl,
@@ -138,14 +172,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		client:   client,
 	}
 	e.session.start()
-
-	// Wait for results of leader election
-	select {
-	case <-ready:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-	return e, errors.WithStack(err)
+	return &e
 }
 
 func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
