@@ -24,7 +24,7 @@ type LeaderElector interface {
 
 var _ LeaderElector = &Election{}
 
-type Event struct {
+type ElectionEvent struct {
 	// True if our candidate is leader
 	IsLeader bool
 	// True if the election is shutdown and
@@ -39,7 +39,10 @@ type Event struct {
 	Err error
 }
 
-type EventObserver func(Event)
+// Deprecated, use ElectionEvent instead
+type Event = ElectionEvent
+
+type EventObserver func(ElectionEvent)
 
 type Election struct {
 	observer  EventObserver
@@ -77,7 +80,7 @@ type ElectionConfig struct {
 //  election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
 //      Election: "presidental",
 //      Candidate: "donald",
-//		EventObserver: func(e etcdutil.Event) {
+//		EventObserver: func(e etcdutil.ElectionEvent) {
 //		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
 //			if e.IsLeader {
 //				// Do thing as leader
@@ -117,7 +120,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 	ready := make(chan struct{})
 	// Register ourselves as an observer for the initial election, then remove
 	// before returning
-	e.observer = func(event Event) {
+	e.observer = func(event ElectionEvent) {
 		// If we get an error while waiting on the election results, pass that back to the caller
 		if event.Err != nil {
 			err = event.Err
@@ -354,7 +357,7 @@ func (e *Election) watchCampaign(rev int64) error {
 }
 
 func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
-	event := Event{}
+	event := ElectionEvent{}
 	if kv != nil {
 		if string(kv.Key) == e.key {
 			atomic.StoreInt32(&e.isLeader, 1)
@@ -379,7 +382,7 @@ func (e *Election) onErr(err error, msg string) {
 		err = errors.Wrap(err, msg)
 	}
 	if e.observer != nil {
-		e.observer(Event{Err: err})
+		e.observer(ElectionEvent{Err: err})
 	}
 }
 

@@ -16,7 +16,7 @@ func TestElection(t *testing.T) {
 	defer cancel()
 
 	election, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
-		EventObserver: func(e etcdutil.Event) {
+		EventObserver: func(e etcdutil.ElectionEvent) {
 			if e.Err != nil {
 				t.Fatal(e.Err.Error())
 			}
@@ -38,7 +38,7 @@ func TestTwoCampaigns(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	c1, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
-		EventObserver: func(e etcdutil.Event) {
+		EventObserver: func(e etcdutil.ElectionEvent) {
 			if e.Err != nil {
 				t.Fatal(e.Err.Error())
 			}
@@ -48,9 +48,9 @@ func TestTwoCampaigns(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	c2Chan := make(chan etcdutil.Event, 5)
+	c2Chan := make(chan etcdutil.ElectionEvent, 5)
 	c2, err := etcdutil.NewElection(ctx, client, etcdutil.ElectionConfig{
-		EventObserver: func(e etcdutil.Event) {
+		EventObserver: func(e etcdutil.ElectionEvent) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
