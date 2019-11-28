@@ -43,12 +43,13 @@ type EventObserver func(Event)
 
 type Election struct {
 	observer  EventObserver
+	election  string
+	candidate string
 	backOff   *backOffCounter
 	cancel    context.CancelFunc
 	wg        syncutil.WaitGroup
 	ctx       context.Context
-	conf      ElectionConfig
-	timeout   time.Duration
+	ttl       time.Duration
 	client    *etcd.Client
 	session   *Session
 	key       string
@@ -95,24 +96,20 @@ type ElectionConfig struct {
 //  election.Close()
 //
 func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) (*Election, error) {
-	if conf.Election == "" {
-		return nil, errors.New("ElectionConfig.Election can not be empty")
-	}
-
-	// Default to short 5 second leadership TTL
-	setter.SetDefault(&conf.TTL, int64(5))
+	setter.SetDefault(&conf.Election, "null")
 	conf.Election = path.Join("/elections", conf.Election)
-
-	// Use the hostname if no candidate name provided
 	if host, err := os.Hostname(); err == nil {
 		setter.SetDefault(&conf.Candidate, host)
 	}
+	setter.SetDefault(&conf.TTL, int64(5))
 
+	ttlDuration := time.Duration(conf.TTL) * time.Second
 	e := &Election{
-		backOff: newBackOffCounter(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
-		timeout: time.Duration(conf.TTL) * time.Second,
-		client:  client,
-		conf:    conf,
+		election:  conf.Election,
+		candidate: conf.Candidate,
+		ttl:       ttlDuration,
+		backOff:   newBackOffCounter(500*time.Millisecond, ttlDuration, 2),
+		client:    client,
 	}
 	e.ctx, e.cancel = context.WithCancel(context.Background())
 
@@ -131,14 +128,16 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		}
 		close(ready)
 	}
-
-	// Create a new Session
-	if e.session, err = NewSession(e.client, SessionConfig{
-		Observer: e.onSessionChange,
-		TTL:      e.conf.TTL,
-	}); err != nil {
-		return nil, errors.WithStack(err)
+	e.session = &Session{
+		timeout: e.ttl,
+		backOff: e.backOff,
+		conf: SessionConfig{
+			Observer: e.onSessionChange,
+			TTL:      conf.TTL,
+		},
+		client: client,
 	}
+	e.session.start()
 
 	// Wait for results of leader election
 	select {
@@ -199,7 +198,7 @@ func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
 
 			// If delete takes longer than our TTL then lease is expired
 			// and we are no longer leader anyway.
-			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 			// Withdraw our candidacy since an error occurred
 			if err := e.withDrawCampaign(ctx); err != nil {
 				e.onErr(err, "")
@@ -226,9 +225,9 @@ func (e *Election) withDrawCampaign(ctx context.Context) error {
 
 func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error) {
 	// Create an entry under the election prefix with our lease ID as the key name
-	e.key = fmt.Sprintf("%s%x", e.conf.Election, id)
+	e.key = fmt.Sprintf("%s%x", e.election, id)
 	txn := e.client.Txn(e.ctx).If(etcd.Compare(etcd.CreateRevision(e.key), "=", 0))
-	txn = txn.Then(etcd.OpPut(e.key, e.conf.Candidate, etcd.WithLease(id)))
+	txn = txn.Then(etcd.OpPut(e.key, e.candidate, etcd.WithLease(id)))
 	txn = txn.Else(etcd.OpGet(e.key))
 	resp, err := txn.Commit()
 	if err != nil {
@@ -242,8 +241,8 @@ func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error)
 	if !resp.Succeeded {
 		kv := resp.Responses[0].GetResponseRange().Kvs[0]
 		revision = kv.CreateRevision
-		if string(kv.Value) != e.conf.Candidate {
-			if _, err = e.client.Put(e.ctx, e.key, e.conf.Candidate); err != nil {
+		if string(kv.Value) != e.candidate {
+			if _, err = e.client.Put(e.ctx, e.key, e.candidate); err != nil {
 				return 0, err
 			}
 		}
@@ -254,7 +253,7 @@ func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error)
 // getLeader returns a KV pair for the current leader
 func (e *Election) getLeader(ctx context.Context) (*mvccpb.KeyValue, error) {
 	// The leader is the first entry under the election prefix
-	resp, err := e.client.Get(ctx, e.conf.Election, etcd.WithFirstCreate()...)
+	resp, err := e.client.Get(ctx, e.election, etcd.WithFirstCreate()...)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +283,7 @@ func (e *Election) watchCampaign(rev int64) error {
 	// We do this because watcher does not reliably return when errors occur on connect
 	// or when cancelled (See https://github.com/etcd-io/etcd/pull/10020)
 	go func() {
-		watchChan = watcher.Watch(etcd.WithRequireLeader(e.ctx), e.conf.Election,
+		watchChan = watcher.Watch(etcd.WithRequireLeader(e.ctx), e.election,
 			etcd.WithRev(int64(rev+1)), etcd.WithPrefix())
 		close(ready)
 	}()
@@ -339,7 +338,7 @@ func (e *Election) watchCampaign(rev int64) error {
 			_ = watcher.Close()
 			// If withdraw takes longer than our TTL then lease is expired
 			// and we are no longer leader anyway.
-			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 
 			// Withdraw our candidacy because of shutdown
 			if err := e.withDrawCampaign(ctx); err != nil {
@@ -416,7 +415,7 @@ func (e *Election) Concede() (bool, error) {
 	e.session.Reset()
 
 	// Ensure there are no lingering candidates
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.conf.TTL)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 	cancel()
 
 	_, err := e.client.Delete(ctx, oldCampaignKey)

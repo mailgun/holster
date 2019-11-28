@@ -57,11 +57,11 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 		client:  c,
 	}
 
-	s.run()
+	s.start()
 	return &s, nil
 }
 
-func (s *Session) run() {
+func (s *Session) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	ticker := time.NewTicker(s.timeout)
 	s.lastKeepAlive = time.Now()
@@ -125,7 +125,7 @@ func (s *Session) Reset() {
 		return
 	}
 	s.Close()
-	s.run()
+	s.start()
 }
 
 // Close terminates the session shutting down all network operations,
