@@ -132,13 +132,10 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 		close(ready)
 	}
 	e.session = &Session{
-		timeout: e.ttl,
-		backOff: e.backOff,
-		conf: SessionConfig{
-			Observer: e.onSessionChange,
-			TTL:      conf.TTL,
-		},
-		client: client,
+		observer: e.onSessionChange,
+		ttl:      e.ttl,
+		backOff:  e.backOff,
+		client:   client,
 	}
 	e.session.start()
 
