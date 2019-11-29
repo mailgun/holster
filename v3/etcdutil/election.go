@@ -168,7 +168,7 @@ func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
 	e.session = &Session{
 		observer: e.onSessionChange,
 		ttl:      e.ttl,
-		backOff:  e.backOff,
+		backOff:  newBackOffCounter(500*time.Millisecond, ttlDuration, 2),
 		client:   client,
 	}
 	e.session.start()
