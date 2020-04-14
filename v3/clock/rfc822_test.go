@@ -79,6 +79,18 @@ func TestRFC822Unmarshaling(t *testing.T) {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 +0330",
 		outRFC3339: "2019-08-29T11:20:07+03:30",
 		outRFC822:  "Thu, 29 Aug 2019 11:20:07 +0330",
+	}, {
+		inRFC822:   "Sun, 01 Sep 2019 11:20:07 +0300",
+		outRFC3339: "2019-09-01T11:20:07+03:00",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
+	}, {
+		inRFC822:   "Sun,  1 Sep 2019 11:20:07 +0300",
+		outRFC3339: "2019-09-01T11:20:07+03:00",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
+	}, {
+		inRFC822:   "Sun, 1 Sep 2019 11:20:07 +0300",
+		outRFC3339: "2019-09-01T11:20:07+03:00",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
 	}} {
 		tcDesc := fmt.Sprintf("Test case #%d: %v", i, tc)
 		var ts testStruct
