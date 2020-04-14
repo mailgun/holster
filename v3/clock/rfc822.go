@@ -30,13 +30,13 @@ func (t *RFC822Time) UnmarshalJSON(s []byte) error {
 	if err != nil {
 		return err
 	}
-	if t.Time, err = Parse(RFC1123, q); err == nil {
+	if t.Time, err = Parse("Mon, 2 Jan 2006 15:04:05 MST", q); err == nil {
 		return nil
 	}
 	if err, ok := err.(*ParseError); !ok || err.LayoutElem != "MST" {
 		return err
 	}
-	if t.Time, err = Parse(RFC1123Z, q); err != nil {
+	if t.Time, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700", q); err != nil {
 		return err
 	}
 	return nil
