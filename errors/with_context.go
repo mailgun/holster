@@ -3,7 +3,7 @@ package errors
 import (
 	"fmt"
 
-	"github.com/mailgun/holster/stack"
+	"github.com/mailgun/holster/v3/stack"
 )
 
 // Implement this interface to pass along unstructured context to the logger
