@@ -6,7 +6,8 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
 )
 
@@ -17,13 +18,13 @@ type SessionObserver func(etcd.LeaseID, error)
 type Session struct {
 	keepAlive     <-chan *etcd.LeaseKeepAliveResponse
 	lease         *etcd.LeaseGrantResponse
-	backOff       *holster.BackOffCounter
-	wg            holster.WaitGroup
+	backOff       *backOffCounter
+	wg            syncutil.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
-	conf          SessionConfig
+	observer      SessionObserver
 	client        *etcd.Client
-	timeout       time.Duration
+	ttl           time.Duration
 	lastKeepAlive time.Time
 	isRunning     int32
 }
@@ -39,7 +40,7 @@ type SessionConfig struct {
 // as the lease ID. The Session will continue to try to gain another lease, once a new lease
 // is gained SessionConfig.Observer is called again with the new lease id.
 func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
-	holster.SetDefault(&conf.TTL, int64(30))
+	setter.SetDefault(&conf.TTL, int64(30))
 
 	if conf.Observer == nil {
 		return nil, errors.New("provided observer function cannot be nil")
@@ -49,20 +50,21 @@ func NewSession(c *etcd.Client, conf SessionConfig) (*Session, error) {
 		return nil, errors.New("provided etcd client cannot be nil")
 	}
 
+	ttlDuration := time.Second * time.Duration(conf.TTL)
 	s := Session{
-		timeout: time.Second * time.Duration(conf.TTL),
-		backOff: holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
-		conf:    conf,
-		client:  c,
+		observer: conf.Observer,
+		ttl:      ttlDuration,
+		backOff:  newBackOffCounter(time.Millisecond*500, ttlDuration, 2),
+		client:   c,
 	}
 
-	s.run()
+	s.start()
 	return &s, nil
 }
 
-func (s *Session) run() {
+func (s *Session) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	ticker := time.NewTicker(s.timeout)
+	ticker := time.NewTicker(s.ttl)
 	s.lastKeepAlive = time.Now()
 	atomic.StoreInt32(&s.isRunning, 1)
 
@@ -70,7 +72,7 @@ func (s *Session) run() {
 		// If we have lost our keep alive, attempt to regain it
 		if s.keepAlive == nil {
 			if err := s.gainLease(s.ctx); err != nil {
-				s.conf.Observer(NoLease, errors.Wrap(err, "while attempting to gain new lease"))
+				s.observer(NoLease, errors.Wrap(err, "while attempting to gain new lease"))
 				select {
 				case <-time.After(s.backOff.Next()):
 					return true
@@ -95,16 +97,16 @@ func (s *Session) run() {
 			}
 		case <-ticker.C:
 			// Ensure we are getting heartbeats regularly
-			if time.Now().Sub(s.lastKeepAlive) > s.timeout {
+			if time.Now().Sub(s.lastKeepAlive) > s.ttl {
 				//log.Warn("too long between heartbeats")
 				s.keepAlive = nil
 			}
 		case <-done:
 			s.keepAlive = nil
 			if s.lease != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+				ctx, cancel := context.WithTimeout(context.Background(), s.ttl)
 				if _, err := s.client.Revoke(ctx, s.lease.ID); err != nil {
-					s.conf.Observer(NoLease, errors.Wrap(err, "while revoking our lease during shutdown"))
+					s.observer(NoLease, errors.Wrap(err, "while revoking our lease during shutdown"))
 				}
 				cancel()
 			}
@@ -113,7 +115,7 @@ func (s *Session) run() {
 		}
 
 		if s.keepAlive == nil {
-			s.conf.Observer(NoLease, nil)
+			s.observer(NoLease, nil)
 		}
 		return true
 	})
@@ -124,7 +126,7 @@ func (s *Session) Reset() {
 		return
 	}
 	s.Close()
-	s.run()
+	s.start()
 }
 
 // Close terminates the session shutting down all network operations,
@@ -137,12 +139,12 @@ func (s *Session) Close() {
 
 	s.cancel()
 	s.wg.Stop()
-	s.conf.Observer(NoLease, nil)
+	s.observer(NoLease, nil)
 }
 
 func (s *Session) gainLease(ctx context.Context) error {
 	var err error
-	s.lease, err = s.client.Grant(ctx, s.conf.TTL)
+	s.lease, err = s.client.Grant(ctx, int64(s.ttl/time.Second))
 	if err != nil {
 		return errors.Wrapf(err, "during grant lease")
 	}
@@ -151,6 +153,6 @@ func (s *Session) gainLease(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.conf.Observer(s.lease.ID, nil)
+	s.observer(s.lease.ID, nil)
 	return nil
 }

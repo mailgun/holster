@@ -11,12 +11,10 @@ import (
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Entry
 
 type LeaderElector interface {
 	IsLeader() bool
@@ -26,7 +24,7 @@ type LeaderElector interface {
 
 var _ LeaderElector = &Election{}
 
-type Event struct {
+type ElectionEvent struct {
 	// True if our candidate is leader
 	IsLeader bool
 	// True if the election is shutdown and
@@ -41,16 +39,20 @@ type Event struct {
 	Err error
 }
 
-type EventObserver func(Event)
+// Deprecated, use ElectionEvent instead
+type Event = ElectionEvent
+
+type EventObserver func(ElectionEvent)
 
 type Election struct {
-	observers map[string]EventObserver
-	backOff   *holster.BackOffCounter
+	observer  EventObserver
+	election  string
+	candidate string
+	backOff   *backOffCounter
 	cancel    context.CancelFunc
-	wg        holster.WaitGroup
+	wg        syncutil.WaitGroup
 	ctx       context.Context
-	conf      ElectionConfig
-	timeout   time.Duration
+	ttl       time.Duration
 	client    *etcd.Client
 	session   *Session
 	key       string
@@ -78,7 +80,7 @@ type ElectionConfig struct {
 //  election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
 //      Election: "presidental",
 //      Candidate: "donald",
-//		EventObserver: func(e etcdutil.Event) {
+//		EventObserver: func(e etcdutil.ElectionEvent) {
 //		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
 //			if e.IsLeader {
 //				// Do thing as leader
@@ -97,63 +99,80 @@ type ElectionConfig struct {
 //  election.Close()
 //
 func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) (*Election, error) {
-	if conf.Election == "" {
-		return nil, errors.New("ElectionConfig.Election can not be empty")
-	}
-
-	log = logrus.WithField("category", "election")
-
-	// Default to short 5 second leadership TTL
-	holster.SetDefault(&conf.TTL, int64(5))
-	conf.Election = path.Join("/elections", conf.Election)
-
-	// Use the hostname if no candidate name provided
-	if host, err := os.Hostname(); err == nil {
-		holster.SetDefault(&conf.Candidate, host)
-	}
-
-	e := &Election{
-		backOff:   holster.NewBackOff(time.Millisecond*500, time.Duration(conf.TTL)*time.Second, 2),
-		timeout:   time.Duration(conf.TTL) * time.Second,
-		observers: make(map[string]EventObserver),
-		client:    client,
-		conf:      conf,
-	}
-
-	e.ctx, e.cancel = context.WithCancel(context.Background())
-
-	// If an observer was provided
-	if conf.EventObserver != nil {
-		e.observers["conf"] = conf.EventObserver
-	}
-
-	var err error
-	ready := make(chan struct{})
-	// Register ourselves as an observer for the initial election, then remove before returning
-	e.observers["init"] = func(event Event) {
-		// If we get an error while waiting on the election results, pass that back to the caller
-		if event.Err != nil {
-			err = event.Err
+	var initialElectionErr error
+	readyCh := make(chan struct{})
+	initialElection := true
+	userObserver := conf.EventObserver
+	// Wrap user's observer to intercept the initial election.
+	conf.EventObserver = func(event ElectionEvent) {
+		if userObserver != nil {
+			userObserver(event)
 		}
-		delete(e.observers, "init")
-		close(ready)
+		if initialElection {
+			initialElection = false
+			initialElectionErr = event.Err
+			close(readyCh)
+			return
+		}
 	}
-
-	// Create a new Session
-	if e.session, err = NewSession(e.client, SessionConfig{
-		Observer: e.onSessionChange,
-		TTL:      e.conf.TTL,
-	}); err != nil {
-		return nil, err
-	}
-
-	// Wait for results of leader election
+	e := NewElectionAsync(client, conf)
+	// Wait for results of the initial leader election.
 	select {
-	case <-ready:
+	case <-readyCh:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	return e, err
+	return e, errors.WithStack(initialElectionErr)
+}
+
+// NewElectionAsync creates a new leader election and submits our candidate for
+// leader. It does not wait for the election to complete. The caller must
+// provide an election event observer to monitor the election outcome.
+//
+//  client, _ := etcdutil.NewClient(nil)
+//
+//  // Start a leader election and returns immediately.
+//  election := etcdutil.NewElectionAsync(client, etcdutil.ElectionConfig{
+//      Election: "presidental",
+//      Candidate: "donald",
+//		EventObserver: func(e etcdutil.Event) {
+//		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
+//			if e.IsLeader {
+//				// Do thing as leader
+//			}
+//		},
+//      TTL: 5,
+//  })
+//
+//  // Cancels the election and concedes the election if we are leader.
+//  election.Close()
+//
+func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
+	setter.SetDefault(&conf.Election, "null")
+	conf.Election = path.Join("/elections", conf.Election)
+	if host, err := os.Hostname(); err == nil {
+		setter.SetDefault(&conf.Candidate, host)
+	}
+	setter.SetDefault(&conf.TTL, int64(5))
+
+	ttlDuration := time.Duration(conf.TTL) * time.Second
+	e := Election{
+		observer:  conf.EventObserver,
+		election:  conf.Election,
+		candidate: conf.Candidate,
+		ttl:       ttlDuration,
+		backOff:   newBackOffCounter(500*time.Millisecond, ttlDuration, 2),
+		client:    client,
+	}
+	e.ctx, e.cancel = context.WithCancel(context.Background())
+	e.session = &Session{
+		observer: e.onSessionChange,
+		ttl:      e.ttl,
+		backOff:  newBackOffCounter(500*time.Millisecond, ttlDuration, 2),
+		client:   client,
+	}
+	e.session.start()
+	return &e
 }
 
 func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
@@ -206,7 +225,7 @@ func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
 
 			// If delete takes longer than our TTL then lease is expired
 			// and we are no longer leader anyway.
-			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 			// Withdraw our candidacy since an error occurred
 			if err := e.withDrawCampaign(ctx); err != nil {
 				e.onErr(err, "")
@@ -233,9 +252,9 @@ func (e *Election) withDrawCampaign(ctx context.Context) error {
 
 func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error) {
 	// Create an entry under the election prefix with our lease ID as the key name
-	e.key = fmt.Sprintf("%s%x", e.conf.Election, id)
+	e.key = fmt.Sprintf("%s%x", e.election, id)
 	txn := e.client.Txn(e.ctx).If(etcd.Compare(etcd.CreateRevision(e.key), "=", 0))
-	txn = txn.Then(etcd.OpPut(e.key, e.conf.Candidate, etcd.WithLease(id)))
+	txn = txn.Then(etcd.OpPut(e.key, e.candidate, etcd.WithLease(id)))
 	txn = txn.Else(etcd.OpGet(e.key))
 	resp, err := txn.Commit()
 	if err != nil {
@@ -249,8 +268,8 @@ func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error)
 	if !resp.Succeeded {
 		kv := resp.Responses[0].GetResponseRange().Kvs[0]
 		revision = kv.CreateRevision
-		if string(kv.Value) != e.conf.Candidate {
-			if _, err = e.client.Put(e.ctx, e.key, e.conf.Candidate); err != nil {
+		if string(kv.Value) != e.candidate {
+			if _, err = e.client.Put(e.ctx, e.key, e.candidate); err != nil {
 				return 0, err
 			}
 		}
@@ -261,7 +280,7 @@ func (e *Election) registerCampaign(id etcd.LeaseID) (revision int64, err error)
 // getLeader returns a KV pair for the current leader
 func (e *Election) getLeader(ctx context.Context) (*mvccpb.KeyValue, error) {
 	// The leader is the first entry under the election prefix
-	resp, err := e.client.Get(ctx, e.conf.Election, etcd.WithFirstCreate()...)
+	resp, err := e.client.Get(ctx, e.election, etcd.WithFirstCreate()...)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +310,7 @@ func (e *Election) watchCampaign(rev int64) error {
 	// We do this because watcher does not reliably return when errors occur on connect
 	// or when cancelled (See https://github.com/etcd-io/etcd/pull/10020)
 	go func() {
-		watchChan = watcher.Watch(etcd.WithRequireLeader(e.ctx), e.conf.Election,
+		watchChan = watcher.Watch(etcd.WithRequireLeader(e.ctx), e.election,
 			etcd.WithRev(int64(rev+1)), etcd.WithPrefix())
 		close(ready)
 	}()
@@ -343,10 +362,10 @@ func (e *Election) watchCampaign(rev int64) error {
 				}
 			}
 		case <-done:
-			watcher.Close()
+			_ = watcher.Close()
 			// If withdraw takes longer than our TTL then lease is expired
 			// and we are no longer leader anyway.
-			ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 
 			// Withdraw our candidacy because of shutdown
 			if err := e.withDrawCampaign(ctx); err != nil {
@@ -362,8 +381,7 @@ func (e *Election) watchCampaign(rev int64) error {
 }
 
 func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
-	event := Event{}
-
+	event := ElectionEvent{}
 	if kv != nil {
 		if string(kv.Key) == e.key {
 			atomic.StoreInt32(&e.isLeader, 1)
@@ -376,22 +394,19 @@ func (e *Election) onLeaderChange(kv *mvccpb.KeyValue) {
 	} else {
 		event.IsDone = true
 	}
-
-	for _, v := range e.observers {
-		v(event)
+	if e.observer != nil {
+		e.observer(event)
 	}
 }
 
 // onErr reports errors the the observer
 func (e *Election) onErr(err error, msg string) {
 	atomic.StoreInt32(&e.isLeader, 0)
-
 	if msg != "" {
 		err = errors.Wrap(err, msg)
 	}
-
-	for _, v := range e.observers {
-		v(Event{Err: err})
+	if e.observer != nil {
+		e.observer(ElectionEvent{Err: err})
 	}
 }
 
@@ -410,7 +425,8 @@ func (e *Election) Close() {
 	e.onLeaderChange(nil)
 }
 
-// IsLeader returns true if we are leader
+// IsLeader returns true if we are leader. It only makes sense if the election
+// was created with NewElection that block until the initial election is over.
 func (e *Election) IsLeader() bool {
 	return atomic.LoadInt32(&e.isLeader) == 1
 }
@@ -426,8 +442,8 @@ func (e *Election) Concede() (bool, error) {
 	oldCampaignKey := e.key
 	e.session.Reset()
 
-	// Ensure there are no lingering candiates
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.conf.TTL)*time.Second)
+	// Ensure there are no lingering candidates
+	ctx, cancel := context.WithTimeout(context.Background(), e.ttl)
 	cancel()
 
 	_, err := e.client.Delete(ctx, oldCampaignKey)

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mailgun/holster/clock"
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/suite"
 )
 

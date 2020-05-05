@@ -15,7 +15,7 @@ type frozenTime struct {
 }
 
 type waiter struct {
-	count int
+	count    int
 	signalCh chan struct{}
 }
 

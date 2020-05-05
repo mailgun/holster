@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mailgun/holster/v3/stack"
+	"github.com/mailgun/holster/v3/callstack"
 	pkg "github.com/pkg/errors"
 )
 
@@ -14,7 +14,7 @@ type withContext struct {
 	context WithContext
 	msg     string
 	cause   error
-	stack   *stack.Stack
+	stack   *callstack.CallStack
 }
 
 func (c *withContext) Cause() error {
@@ -29,7 +29,7 @@ func (c *withContext) Error() string {
 }
 
 func (c *withContext) StackTrace() pkg.StackTrace {
-	if child, ok := c.cause.(stack.HasStackTrace); ok {
+	if child, ok := c.cause.(callstack.HasStackTrace); ok {
 		return child.StackTrace()
 	}
 	return c.stack.StackTrace()
@@ -58,9 +58,9 @@ func (c *withContext) Context() map[string]interface{} {
 func (c *withContext) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
-		fmt.Fprintf(s, "%s: %+v (%s)", c.msg, c.Cause(), c.FormatFields())
+		_, _ = fmt.Fprintf(s, "%s: %+v (%s)", c.msg, c.Cause(), c.FormatFields())
 	case 's', 'q':
-		io.WriteString(s, c.Error())
+		_, _ = io.WriteString(s, c.Error())
 	}
 }
 

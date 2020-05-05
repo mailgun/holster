@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestFreezeUnfreeze(t *testing.T) {
@@ -13,35 +13,38 @@ func TestFreezeUnfreeze(t *testing.T) {
 }
 
 type FrozenSuite struct {
+	suite.Suite
 	epoch time.Time
 }
 
-var _ = Suite(&FrozenSuite{})
-
-func (s *FrozenSuite) SetUpSuite(c *C) {
-	var err error
-	s.epoch, err = time.Parse(time.RFC3339, "2009-02-19T00:00:00Z")
-	c.Assert(err, IsNil)
+func TestFrozenSuite(t *testing.T) {
+	suite.Run(t, new(FrozenSuite))
 }
 
-func (s *FrozenSuite) SetUpTest(c *C) {
+func (s *FrozenSuite) SetupSuite() {
+	var err error
+	s.epoch, err = time.Parse(time.RFC3339, "2009-02-19T00:00:00Z")
+	s.Require().NoError(err)
+}
+
+func (s *FrozenSuite) SetupTest() {
 	Freeze(s.epoch)
 }
 
-func (s *FrozenSuite) TearDownTest(c *C) {
+func (s *FrozenSuite) TearDownTest() {
 	Unfreeze()
 }
 
-func (s *FrozenSuite) TestAdvanceNow(c *C) {
-	c.Assert(Now(), Equals, s.epoch)
-	c.Assert(Advance(42*time.Millisecond), Equals, 42*time.Millisecond)
-	c.Assert(Now(), Equals, s.epoch.Add(42*time.Millisecond))
-	c.Assert(Advance(13*time.Millisecond), Equals, 55*time.Millisecond)
-	c.Assert(Advance(19*time.Millisecond), Equals, 74*time.Millisecond)
-	c.Assert(Now(), Equals, s.epoch.Add(74*time.Millisecond))
+func (s *FrozenSuite) TestAdvanceNow() {
+	s.Require().Equal(s.epoch, Now())
+	s.Require().Equal(42*time.Millisecond, Advance(42*time.Millisecond))
+	s.Require().Equal(s.epoch.Add(42*time.Millisecond), Now())
+	s.Require().Equal(55*time.Millisecond, Advance(13*time.Millisecond))
+	s.Require().Equal(74*time.Millisecond, Advance(19*time.Millisecond))
+	s.Require().Equal(s.epoch.Add(74*time.Millisecond), Now())
 }
 
-func (s *FrozenSuite) TestSleep(c *C) {
+func (s *FrozenSuite) TestSleep() {
 	hits := make(chan int, 100)
 
 	delays := []int{60, 100, 90, 131, 999, 5}
@@ -95,25 +98,25 @@ func (s *FrozenSuite) TestSleep(c *C) {
 			delta := delayMs - runningMs - 1
 			Advance(time.Duration(delta) * time.Millisecond)
 			// Check before each timer deadline that it is not triggered yet.
-			assertHits(c, hits, []int{})
+			s.assertHits(hits, []int{})
 
 			// When
 			Advance(1 * time.Millisecond)
 
 			// Then
-			assertHits(c, hits, []int{delayMs})
+			s.assertHits(hits, []int{delayMs})
 
 			runningMs += delta + 1
 		}
 
 		Advance(1000 * time.Millisecond)
-		assertHits(c, hits, []int{})
+		s.assertHits(hits, []int{})
 	}
 }
 
 // Timers scheduled to trigger at the same time do that in the order they were
 // created.
-func (s *FrozenSuite) TestSameTime(c *C) {
+func (s *FrozenSuite) TestSameTime() {
 	var hits []int
 
 	AfterFunc(100, func() { hits = append(hits, 3) })
@@ -127,57 +130,57 @@ func (s *FrozenSuite) TestSameTime(c *C) {
 	Advance(100)
 
 	// Then
-	c.Assert(hits, DeepEquals, []int{2, 3, 1, 5})
+	s.Require().Equal([]int{2, 3, 1, 5}, hits)
 }
 
-func (s *FrozenSuite) TestTimerStop(c *C) {
+func (s *FrozenSuite) TestTimerStop() {
 	hits := []int{}
 
 	AfterFunc(100, func() { hits = append(hits, 1) })
 	t := AfterFunc(100, func() { hits = append(hits, 2) })
 	AfterFunc(100, func() { hits = append(hits, 3) })
 	Advance(99)
-	c.Assert(hits, DeepEquals, []int{})
+	s.Require().Equal([]int{}, hits)
 
 	// When
 	active1 := t.Stop()
 	active2 := t.Stop()
 
 	// Then
-	c.Assert(active1, Equals, true)
-	c.Assert(active2, Equals, false)
+	s.Require().Equal(true, active1)
+	s.Require().Equal(false, active2)
 	Advance(1)
-	c.Assert(hits, DeepEquals, []int{1, 3})
+	s.Require().Equal([]int{1, 3}, hits)
 }
 
-func (s *FrozenSuite) TestReset(c *C) {
+func (s *FrozenSuite) TestReset() {
 	hits := []int{}
 
 	t1 := AfterFunc(100, func() { hits = append(hits, 1) })
 	t2 := AfterFunc(100, func() { hits = append(hits, 2) })
 	AfterFunc(100, func() { hits = append(hits, 3) })
 	Advance(99)
-	c.Assert(hits, DeepEquals, []int{})
+	s.Require().Equal([]int{}, hits)
 
 	// When
 	active1 := t1.Reset(1) // Reset to the same time
 	active2 := t2.Reset(7)
 
 	// Then
-	c.Assert(active1, Equals, true)
-	c.Assert(active2, Equals, true)
+	s.Require().Equal(true, active1)
+	s.Require().Equal(true, active2)
 
 	Advance(1)
-	c.Assert(hits, DeepEquals, []int{3, 1})
+	s.Require().Equal([]int{3, 1}, hits)
 	Advance(5)
-	c.Assert(hits, DeepEquals, []int{3, 1})
+	s.Require().Equal([]int{3, 1}, hits)
 	Advance(1)
-	c.Assert(hits, DeepEquals, []int{3, 1, 2})
+	s.Require().Equal([]int{3, 1, 2}, hits)
 }
 
 // Reset to the same time just puts the timer at the end of the trigger list
 // for the date.
-func (s *FrozenSuite) TestResetSame(c *C) {
+func (s *FrozenSuite) TestResetSame() {
 	hits := []int{}
 
 	t := AfterFunc(100, func() { hits = append(hits, 1) })
@@ -190,78 +193,78 @@ func (s *FrozenSuite) TestResetSame(c *C) {
 	active := t.Reset(91)
 
 	// Then
-	c.Assert(active, Equals, true)
+	s.Require().Equal(true, active)
 
 	Advance(90)
-	c.Assert(hits, DeepEquals, []int{})
+	s.Require().Equal([]int{}, hits)
 	Advance(1)
-	c.Assert(hits, DeepEquals, []int{2, 3, 1})
+	s.Require().Equal([]int{2, 3, 1}, hits)
 }
 
-func (s *FrozenSuite) TestTicker(c *C) {
+func (s *FrozenSuite) TestTicker() {
 	t := NewTicker(100)
 
 	Advance(99)
-	assertNotFired(c, t.C())
+	s.assertNotFired(t.C())
 	Advance(1)
-	c.Assert(s.epoch.Add(100), Equals, <-t.C())
+	s.Require().Equal(<-t.C(), s.epoch.Add(100))
 	Advance(750)
-	c.Assert(s.epoch.Add(200), Equals, <-t.C())
+	s.Require().Equal(<-t.C(), s.epoch.Add(200))
 	Advance(49)
-	assertNotFired(c, t.C())
+	s.assertNotFired(t.C())
 	Advance(1)
-	c.Assert(s.epoch.Add(900), Equals, <-t.C())
+	s.Require().Equal(<-t.C(), s.epoch.Add(900))
 
 	t.Stop()
 	Advance(300)
-	assertNotFired(c, t.C())
+	s.assertNotFired(t.C())
 }
 
-func (s *FrozenSuite) TestTickerZero(c *C) {
+func (s *FrozenSuite) TestTickerZero() {
 	defer func() {
 		recover()
 	}()
 
 	NewTicker(0)
-	c.Error("Should panic")
+	s.Fail("Should panic")
 }
 
-func (s *FrozenSuite) TestTick(c *C) {
+func (s *FrozenSuite) TestTick() {
 	ch := Tick(100)
 
 	Advance(99)
-	assertNotFired(c, ch)
+	s.assertNotFired(ch)
 	Advance(1)
-	c.Assert(s.epoch.Add(100), Equals, <-ch)
+	s.Require().Equal(<-ch, s.epoch.Add(100))
 	Advance(750)
-	c.Assert(s.epoch.Add(200), Equals, <-ch)
+	s.Require().Equal(<-ch, s.epoch.Add(200))
 	Advance(49)
-	assertNotFired(c, ch)
+	s.assertNotFired(ch)
 	Advance(1)
-	c.Assert(s.epoch.Add(900), Equals, <-ch)
+	s.Require().Equal(<-ch, s.epoch.Add(900))
 }
 
-func (s *FrozenSuite) TestTickZero(c *C) {
+func (s *FrozenSuite) TestTickZero() {
 	ch := Tick(0)
-	c.Assert(ch, IsNil)
+	s.Require().Nil(ch)
 }
 
-func (s *FrozenSuite) TestNewStoppedTimer(c *C) {
+func (s *FrozenSuite) TestNewStoppedTimer() {
 	t := NewStoppedTimer()
 
 	// When/Then
 	select {
 	case <-t.C():
-		c.Error("Timer should not have fired")
+		s.Fail("Timer should not have fired")
 	default:
 	}
-	c.Assert(t.Stop(), Equals, false)
+	s.Require().Equal(false, t.Stop())
 }
 
-func (s *FrozenSuite) TestWait4Scheduled(c *C) {
+func (s *FrozenSuite) TestWait4Scheduled() {
 	After(100 * Millisecond)
 	After(100 * Millisecond)
-	c.Assert(Wait4Scheduled(3, 0), Equals, false)
+	s.Require().Equal(false, Wait4Scheduled(3, 0))
 
 	startedCh := make(chan struct{})
 	resultCh := make(chan bool)
@@ -277,55 +280,55 @@ func (s *FrozenSuite) TestWait4Scheduled(c *C) {
 	After(100 * Millisecond)
 
 	// Then
-	c.Assert(<-resultCh, Equals, true)
+	s.Require().Equal(true, <-resultCh)
 }
 
 // If there is enough timers scheduled already, then a shortcut execution path
 // is taken and Wait4Scheduled returns immediately.
-func (s *FrozenSuite) TestWait4ScheduledImmediate(c *C) {
+func (s *FrozenSuite) TestWait4ScheduledImmediate() {
 	After(100 * Millisecond)
 	After(100 * Millisecond)
 	// When/Then
-	c.Assert(Wait4Scheduled(2, 0), Equals, true)
+	s.Require().Equal(true, Wait4Scheduled(2, 0))
 }
 
-func (s *FrozenSuite) TestSince(c *C) {
-	c.Assert(Since(Now()), Equals, Duration(0))
-	c.Assert(Since(Now().Add(Millisecond)), Equals, -Millisecond)
-	c.Assert(Since(Now().Add(-Millisecond)), Equals, Millisecond)
+func (s *FrozenSuite) TestSince() {
+	s.Require().Equal(Duration(0), Since(Now()))
+	s.Require().Equal(-Millisecond, Since(Now().Add(Millisecond)))
+	s.Require().Equal(Millisecond, Since(Now().Add(-Millisecond)))
 }
 
-func (s *FrozenSuite) TestUntil(c *C) {
-	c.Assert(Until(Now()), Equals, Duration(0))
-	c.Assert(Until(Now().Add(Millisecond)), Equals, Millisecond)
-	c.Assert(Until(Now().Add(-Millisecond)), Equals, -Millisecond)
+func (s *FrozenSuite) TestUntil() {
+	s.Require().Equal(Duration(0), Until(Now()))
+	s.Require().Equal(Millisecond, Until(Now().Add(Millisecond)))
+	s.Require().Equal(-Millisecond, Until(Now().Add(-Millisecond)))
 }
 
-func assertHits(c *C, got <-chan int, want []int) {
+func (s *FrozenSuite) assertHits(got <-chan int, want []int) {
 	for i, w := range want {
 		var g int
 		select {
 		case g = <-got:
 		case <-time.After(100 * time.Millisecond):
-			c.Errorf("Missing hit: want=%v", w)
+			s.Failf("Missing hit", "want=%v", w)
 			return
 		}
-		c.Assert(g, Equals, w, Commentf("Hit #%d", i))
+		s.Require().Equal(w, g, "Hit #%d", i)
 	}
 	for {
 		select {
 		case g := <-got:
-			c.Errorf("Unexpected hit: %v", g)
+			s.Failf("Unexpected hit", "got=%v", g)
 		default:
 			return
 		}
 	}
 }
 
-func assertNotFired(c *C, ch <-chan time.Time) {
+func (s *FrozenSuite) assertNotFired(ch <-chan time.Time) {
 	select {
 	case <-ch:
-		c.Error("Premature fire")
+		s.Fail("Premature fire")
 	default:
 	}
 }

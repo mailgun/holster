@@ -24,7 +24,6 @@ func yesErrors(at, depth int) error {
 }
 
 func BenchmarkErrors(b *testing.B) {
-	var toperr error
 	type run struct {
 		stack int
 		std   bool
@@ -44,17 +43,15 @@ func BenchmarkErrors(b *testing.B) {
 		}
 		name := fmt.Sprintf("%s-stack-%d", part, r.stack)
 		b.Run(name, func(b *testing.B) {
-			var err error
 			f := yesErrors
 			if r.std {
 				f = noErrors
 			}
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				err = f(0, r.stack)
+				_ = f(0, r.stack)
 			}
 			b.StopTimer()
-			toperr = err
 		})
 	}
 }

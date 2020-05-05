@@ -3,7 +3,7 @@ package errors
 import (
 	"fmt"
 
-	"github.com/mailgun/holster/v3/stack"
+	"github.com/mailgun/holster/v3/callstack"
 )
 
 // Implement this interface to pass along unstructured context to the logger
@@ -27,7 +27,7 @@ func (c WithContext) Wrapf(err error, format string, args ...interface{}) error 
 		return nil
 	}
 	return &withContext{
-		stack:   stack.New(1),
+		stack:   callstack.New(1),
 		context: c,
 		cause:   err,
 		msg:     fmt.Sprintf(format, args...),
@@ -42,7 +42,7 @@ func (c WithContext) Wrap(err error, msg string) error {
 		return nil
 	}
 	return &withContext{
-		stack:   stack.New(1),
+		stack:   callstack.New(1),
 		context: c,
 		cause:   err,
 		msg:     msg,
@@ -51,7 +51,7 @@ func (c WithContext) Wrap(err error, msg string) error {
 
 func (c WithContext) Error(msg string) error {
 	return &withContext{
-		stack:   stack.New(1),
+		stack:   callstack.New(1),
 		context: c,
 		cause:   fmt.Errorf(msg),
 		msg:     "",
@@ -60,7 +60,7 @@ func (c WithContext) Error(msg string) error {
 
 func (c WithContext) Errorf(format string, args ...interface{}) error {
 	return &withContext{
-		stack:   stack.New(1),
+		stack:   callstack.New(1),
 		context: c,
 		cause:   fmt.Errorf(format, args...),
 		msg:     "",

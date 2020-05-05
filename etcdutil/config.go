@@ -9,7 +9,7 @@ import (
 	"time"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/setter"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/grpclog"
 )
@@ -52,15 +52,15 @@ func NewClient(cfg *etcd.Config) (*etcd.Client, error) {
 func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	var envEndpoint, tlsCertFile, tlsKeyFile, tlsCAFile string
 
-	holster.SetDefault(&cfg, &etcd.Config{})
-	holster.SetDefault(&cfg.Username, os.Getenv("ETCD3_USER"))
-	holster.SetDefault(&cfg.Password, os.Getenv("ETCD3_PASSWORD"))
-	holster.SetDefault(&tlsCertFile, os.Getenv("ETCD3_TLS_CERT"))
-	holster.SetDefault(&tlsKeyFile, os.Getenv("ETCD3_TLS_KEY"))
-	holster.SetDefault(&tlsCAFile, os.Getenv("ETCD3_CA"))
+	setter.SetDefault(&cfg, &etcd.Config{})
+	setter.SetDefault(&cfg.Username, os.Getenv("ETCD3_USER"))
+	setter.SetDefault(&cfg.Password, os.Getenv("ETCD3_PASSWORD"))
+	setter.SetDefault(&tlsCertFile, os.Getenv("ETCD3_TLS_CERT"))
+	setter.SetDefault(&tlsKeyFile, os.Getenv("ETCD3_TLS_KEY"))
+	setter.SetDefault(&tlsCAFile, os.Getenv("ETCD3_CA"))
 
 	// Default to 5 second timeout, else connections hang indefinitely
-	holster.SetDefault(&cfg.DialTimeout, time.Second*5)
+	setter.SetDefault(&cfg.DialTimeout, time.Second*5)
 	// Or if the user provided a timeout
 	if timeout := os.Getenv("ETCD3_DIAL_TIMEOUT"); timeout != "" {
 		duration, err := time.ParseDuration(timeout)
@@ -73,7 +73,7 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 
 	// If the CA file was provided
 	if tlsCAFile != "" {
-		holster.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, &tls.Config{})
 
 		var certPool *x509.CertPool = nil
 		if pemBytes, err := ioutil.ReadFile(tlsCAFile); err == nil {
@@ -82,34 +82,34 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 		} else {
 			return nil, errors.Errorf("while loading cert CA file '%s': %s", tlsCAFile, err)
 		}
-		holster.SetDefault(&cfg.TLS.RootCAs, certPool)
+		setter.SetDefault(&cfg.TLS.RootCAs, certPool)
 		cfg.TLS.InsecureSkipVerify = false
 	}
 
 	// If the cert and key files are provided attempt to load them
 	if tlsCertFile != "" && tlsKeyFile != "" {
-		holster.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, &tls.Config{})
 		tlsCert, err := tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
 		if err != nil {
 			return nil, errors.Errorf("while loading cert '%s' and key file '%s': %s",
 				tlsCertFile, tlsKeyFile, err)
 		}
-		holster.SetDefault(&cfg.TLS.Certificates, []tls.Certificate{tlsCert})
+		setter.SetDefault(&cfg.TLS.Certificates, []tls.Certificate{tlsCert})
 	}
 
-	holster.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), localEtcdEndpoint)
-	holster.SetDefault(&cfg.Endpoints, strings.Split(envEndpoint, ","))
+	setter.SetDefault(&envEndpoint, os.Getenv("ETCD3_ENDPOINT"), localEtcdEndpoint)
+	setter.SetDefault(&cfg.Endpoints, strings.Split(envEndpoint, ","))
 
 	// If no other TLS config is provided this will force connecting with TLS,
 	// without cert verification
 	if os.Getenv("ETCD3_SKIP_VERIFY") != "" {
-		holster.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, &tls.Config{})
 		cfg.TLS.InsecureSkipVerify = true
 	}
 
 	// Enable TLS with no additional configuration
 	if os.Getenv("ETCD3_ENABLE_TLS") != "" {
-		holster.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, &tls.Config{})
 	}
 
 	return cfg, nil
