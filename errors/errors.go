@@ -95,10 +95,20 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mailgun/holster/stack"
+	"github.com/mailgun/holster/v3/stack"
 	pkg "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
+// New returns an error with the supplied message.
+// New also records the stack trace at the depth specified.
+func NewWithDepth(message string, depth int) error {
+	return &fundamental{
+		msg:   message,
+		Stack: stack.New(depth),
+	}
+}
+
 
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
@@ -181,6 +191,23 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 		io.WriteString(s, w.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", w.Error())
+	}
+}
+
+// WrapStack returns an error annotating err with a stack trace
+// at the depth indicated. A calling depth of 1 is the function that
+// called WrapStack. If err is nil, Wrap returns nil.
+func WrapWithDepth(err error, message string, depth int) error {
+	if err == nil {
+		return nil
+	}
+	err = &withMessage{
+		cause: err,
+		msg:   message,
+	}
+	return &withStack{
+		err,
+		stack.New(depth),
 	}
 }
 

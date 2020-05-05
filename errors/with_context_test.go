@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mailgun/holster/errors"
-	"github.com/mailgun/holster/stack"
-	. "gopkg.in/check.v1"
 	"github.com/ahmetb/go-linq"
+	"github.com/mailgun/holster/v3/errors"
+	"github.com/mailgun/holster/v3/stack"
+	. "gopkg.in/check.v1"
 )
 
 type TestError struct {
