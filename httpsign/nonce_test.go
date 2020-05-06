@@ -1,47 +1,46 @@
 package httpsign
 
 import (
-	"fmt"
 	"testing"
-	"time"
 
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/clock"
 )
 
-var _ = fmt.Printf // for testing
+func TestNonceInCache(t *testing.T) {
+	clock.Freeze(clock.Now())
+	defer clock.Unfreeze()
 
-func TestInCache(t *testing.T) {
 	// setup
-	nc := NewNonceCache(
+	nc, err := newNonceCache(
 		100,
 		1,
-		&holster.FrozenClock{CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC)},
 	)
+	if err != nil {
+		t.Error("Got unexpected error from newNonceCache:", err)
+	}
 
 	// nothing in cache, it should be valid
-	inCache := nc.InCache("0")
+	inCache := nc.inCache("0")
 	if inCache {
 		t.Error("Check should be valid, but failed.")
 	}
 
 	// second time around it shouldn't be
-	inCache = nc.InCache("0")
+	inCache = nc.inCache("0")
 	if !inCache {
 		t.Error("Check should be invalid, but passed.")
 	}
 
 	// check some other value
-	inCache = nc.InCache("1")
+	clock.Advance(999 * clock.Millisecond)
+	inCache = nc.inCache("1")
 	if inCache {
-		t.Error("Check should be valid, but failed.")
+		t.Error("Check should be valid, but failed.", err)
 	}
 
 	// age off first value, then it should be valid
-	ftime := nc.clock.(*holster.FrozenClock)
-	time4 := time.Date(2012, 3, 4, 5, 6, 10, 0, time.UTC)
-	ftime.CurrentTime = time4
-
-	inCache = nc.InCache("0")
+	clock.Advance(1 * clock.Millisecond)
+	inCache = nc.inCache("0")
 	if inCache {
 		t.Error("Check should be valid, but failed.")
 	}

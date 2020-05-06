@@ -16,6 +16,27 @@ func NewRFC822Time(t Time) RFC822Time {
 	return RFC822Time{Time: t.Truncate(Second)}
 }
 
+// ParseRFC822Time parses an RFC822 time string.
+func ParseRFC822Time(s string) (Time, error) {
+	t, err := Parse("Mon, 2 Jan 2006 15:04:05 MST", s)
+	if err == nil {
+		return t, nil
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700", s); err == nil {
+		return t, nil
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
+		return t, nil
+	}
+	return Time{}, err
+}
+
 // NewRFC822Time creates RFC822Time from a Unix timestamp (seconds from Epoch).
 func NewRFC822TimeFromUnix(timestamp int64) RFC822Time {
 	return RFC822Time{Time: Unix(timestamp, 0).UTC()}
@@ -30,15 +51,11 @@ func (t *RFC822Time) UnmarshalJSON(s []byte) error {
 	if err != nil {
 		return err
 	}
-	if t.Time, err = Parse(RFC1123, q); err == nil {
-		return nil
-	}
-	if err, ok := err.(*ParseError); !ok || err.LayoutElem != "MST" {
+	parsed, err := ParseRFC822Time(q)
+	if err != nil {
 		return err
 	}
-	if t.Time, err = Parse(RFC1123Z, q); err != nil {
-		return err
-	}
+	t.Time = parsed
 	return nil
 }
 

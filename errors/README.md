@@ -142,11 +142,12 @@ fields.
 package main
 
 import (
-    "github.com/mailgun/holster/errors"
-    "github.com/mailgun/logrus-hooks/kafkahook"
-    "github.com/sirupsen/logrus"
     "log"
     "io/ioutil"
+
+    "github.com/mailgun/holster/v3/errors"
+    "github.com/mailgun/logrus-hooks/kafkahook"
+    "github.com/sirupsen/logrus"
 )
 
 func OpenWithError(fileName string) error {

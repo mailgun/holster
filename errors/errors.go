@@ -95,7 +95,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mailgun/holster/v3/stack"
+	stack "github.com/mailgun/holster/v3/callstack"
 	pkg "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -105,7 +105,7 @@ import (
 func NewWithDepth(message string, depth int) error {
 	return &fundamental{
 		msg:   message,
-		Stack: stack.New(depth),
+		CallStack: stack.New(depth),
 	}
 }
 
@@ -115,7 +115,7 @@ func NewWithDepth(message string, depth int) error {
 func New(message string) error {
 	return &fundamental{
 		msg:   message,
-		Stack: stack.New(1),
+		CallStack: stack.New(1),
 	}
 }
 
@@ -125,14 +125,14 @@ func New(message string) error {
 func Errorf(format string, args ...interface{}) error {
 	return &fundamental{
 		msg:   fmt.Sprintf(format, args...),
-		Stack: stack.New(1),
+		CallStack: stack.New(1),
 	}
 }
 
 // fundamental is an error that has a message and a stack, but no caller.
 type fundamental struct {
+	*stack.CallStack
 	msg string
-	*stack.Stack
 }
 
 func (f *fundamental) Error() string { return f.msg }
@@ -142,7 +142,7 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			io.WriteString(s, f.msg)
-			f.Stack.Format(s, verb)
+			f.CallStack.Format(s, verb)
 			return
 		}
 		fallthrough
@@ -167,7 +167,7 @@ func WithStack(err error) error {
 
 type withStack struct {
 	error
-	*stack.Stack
+	*stack.CallStack
 }
 
 func (w *withStack) Cause() error { return w.error }
@@ -183,7 +183,7 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			fmt.Fprintf(s, "%+v", w.Cause())
-			w.Stack.Format(s, verb)
+			w.CallStack.Format(s, verb)
 			return
 		}
 		fallthrough
@@ -362,7 +362,7 @@ func ToLogrus(err error) logrus.Fields {
 }
 
 type CauseError struct {
-	stack *stack.Stack
+	stack *stack.CallStack
 	error error
 }
 
@@ -387,7 +387,7 @@ type CauseError struct {
 //	}
 //
 func NewCauseError(err error, depth ...int) *CauseError {
-	var stk *stack.Stack
+	var stk *stack.CallStack
 	if len(depth) > 0 {
 		stk = stack.New(1 + depth[0])
 	} else {

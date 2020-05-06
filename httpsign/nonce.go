@@ -3,28 +3,27 @@ package httpsign
 import (
 	"sync"
 
-	"github.com/mailgun/holster"
+	"github.com/mailgun/holster/v3/collections"
 )
 
-type NonceCache struct {
+type nonceCache struct {
 	sync.Mutex
-	cache    *holster.TTLMap
+
+	cache    *collections.TTLMap
 	cacheTTL int
-	clock    holster.Clock
 }
 
-// Return a new NonceCache. Allows you to control cache capacity and ttl
-func NewNonceCache(capacity int, cacheTTL int, clock holster.Clock) *NonceCache {
-	return &NonceCache{
-		cache:    holster.NewTTLMapWithClock(capacity, clock),
+// Return a new nonceCache. Allows you to control cache capacity, ttl, as well as the TimeProvider.
+func newNonceCache(capacity int, cacheTTL int) (*nonceCache, error) {
+	return &nonceCache{
+		cache:    collections.NewTTLMap(capacity),
 		cacheTTL: cacheTTL,
-		clock:    clock,
-	}
+	}, nil
 }
 
-// InCache checks if a nonce is in the cache. If not, it adds it to the
+// inCache checks if a nonce is in the cache. If not, it adds it to the
 // cache and returns false. Otherwise it returns true.
-func (n *NonceCache) InCache(nonce string) bool {
+func (n *nonceCache) inCache(nonce string) bool {
 	n.Lock()
 	defer n.Unlock()
 

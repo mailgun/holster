@@ -3,36 +3,28 @@ A place to holster mailgun's golang libraries and tools
 
 ## Clock
 A drop in (almost) replacement for the system `time` package to make scheduled
-events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/clock/README.md) for details
+events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/v3/clock/README.md) for details
 
 ## HttpSign
 HttpSign is a library for signing and authenticating HTTP requests between web services.
-See the [httpsign readme](https://github.com/mailgun/holster/blob/master/httpsign/README.md) for details
-
-## Random
-Random is an Interface for random number generators.
-See the [random readme](https://github.com/mailgun/holster/blob/master/random/README.md) for details
-
-## Secret
-Secret is a library for encrypting and decrypting authenticated messages.
-See the [secret readme](https://github.com/mailgun/holster/blob/master/secret/README.md) for details
+See the [httpsign readme](https://github.com/mailgun/holster/blob/master/v3/httpsign/README.md) for details
 
 ## Distributed Election
 A distributed election implementation using etcd to coordinate elections
-See the [etcd v2 readme](https://github.com/mailgun/holster/blob/master/election/README.md) for details
-See the [etcd v3 readme](https://github.com/mailgun/holster/blob/master/etcdutil/README.md) for details
+See the [etcd v3 readme](https://github.com/mailgun/holster/blob/master/v3/etcdutil/README.md) for details
 
 ## Errors
 Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
  functions for improving the relationship between structured logging and error handling in go
-See the [errors readme](https://github.com/mailgun/holster/blob/master/errors/README.md) for details
+See the [errors readme](https://github.com/mailgun/holster/blob/master/v3/errors/README.md) for details
 
 ## WaitGroup
 Waitgroup is a simplification of `sync.Waitgroup` with item and error collection included.
 
 Running many short term routines over a collection with `.Run()`
 ```go
-var wg WaitGroup
+import "github.com/mailgun/holster/v3/syncutils"
+var wg syncutils.WaitGroup
 for _, item := range items {
     wg.Run(func(item interface{}) error {
         // Do some long running thing with the item
@@ -48,8 +40,9 @@ if errs != nil {
 
 Clean up long running routines easily with `.Loop()`
 ```go
+import "github.com/mailgun/holster/v3/syncutils"
 pipe := make(chan int32, 0)
-var wg WaitGroup
+var wg syncutils.WaitGroup
 var count int32
 
 wg.Loop(func() bool {
@@ -76,7 +69,8 @@ wg.Wait()
 
 Loop `.Until()` `.Stop()` is called
 ```go
-var wg WaitGroup
+import "github.com/mailgun/holster/v3/syncutils"
+var wg syncutils.WaitGroup
 
 wg.Until(func(done chan struct{}) bool {
     select {
@@ -100,8 +94,9 @@ collects any errors from the routines once they have all completed. FanOut allow
 to control how many goroutines spawn at a time while WaitGroup will not.
 
 ```go
+import "github.com/mailgun/holster/v3/syncutils"
 // Insert records into the database 10 at a time
-fanOut := holster.NewFanOut(10)
+fanOut := syncutils.NewFanOut(10)
 for _, item := range items {
     fanOut.Run(func(cast interface{}) error {
         item := cast.(Item)
@@ -113,7 +108,7 @@ for _, item := range items {
 // Collect errors
 errs := fanOut.Wait()
 if errs != nil {
-	// do something with errs
+    // do something with errs
 }
 ```
 
@@ -132,7 +127,8 @@ TTL is evaluated during calls to `.Get()` if the entry is past the requested TTL
 removes the entry from the cache counts a miss and returns not `ok`
 
 ```go
-cache := NewLRUCache(5000)
+import "github.com/mailgun/holster/v3/collections"
+cache := collections.NewLRUCache(5000)
 go func() {
     for {
         select {
@@ -180,6 +176,7 @@ with `.Each()` regularly! Else the cache items will never expire and the cache
 will eventually eat all the memory on the system*
 
 ```go
+import "github.com/mailgun/holster/v3/collections"
 // How often the cache is processed
 syncInterval := time.Second * 10
 
@@ -188,7 +185,7 @@ syncInterval := time.Second * 10
 // between sync intervals should expire. This technique is useful if you
 // have a long syncInterval and are only interested in keeping items
 // that where accessed during the sync cycle
-cache := holster.NewExpireCache((syncInterval / 5) * 4)
+cache := collections.NewExpireCache((syncInterval / 5) * 4)
 
 go func() {
     for {
@@ -226,8 +223,9 @@ Provides a threadsafe time to live map useful for holding a bounded set of key'd
  that can expire before being accessed. The expiration of values is calculated
  when the value is accessed or the map capacity has been reached.
 ```go
-ttlMap := holster.NewTTLMap(10)
-ttlMap.Clock = &holster.FrozenClock{time.Now()}
+import "github.com/mailgun/holster/v3/collections"
+ttlMap := collections.NewTTLMap(10)
+clock.Freeze(time.Now())
 
 // Set a value that expires in 5 seconds
 ttlMap.Set("one", "one", 5)
@@ -236,7 +234,7 @@ ttlMap.Set("one", "one", 5)
 ttlMap.Set("two", "twp", 10)
 
 // Simulate sleeping for 6 seconds
-ttlMap.Clock.Sleep(time.Second * 6)
+clock.Sleep(time.Second * 6)
 
 // Retrieve the expired value and un-expired value
 _, ok1 := ttlMap.Get("one")
@@ -253,13 +251,14 @@ fmt.Printf("value two exists: %t\n", ok2)
 These functions assist in determining if values are the golang default
  and if so, set a value
 ```go
+import "github.com/mailgun/holster/v3/setter"
 var value string
 
 // Returns true if 'value' is zero (the default golang value)
-holster.IsZero(value)
+setter.IsZero(value)
 
 // Returns true if 'value' is zero (the default golang value)
-holster.IsZeroValue(reflect.ValueOf(value))
+setter.IsZeroValue(reflect.ValueOf(value))
 
 // If 'dest' is empty or of zero value, assign the default value.
 // This panics if the value is not a pointer or if value and
@@ -268,12 +267,12 @@ var config struct {
     Foo string
     Bar int
 }
-holster.SetDefault(&config.Foo, "default")
-holster.SetDefault(&config.Bar, 200)
+setter.SetDefault(&config.Foo, "default")
+setter.SetDefault(&config.Bar, 200)
 
 // Supply additional default values and SetDefault will
 // choose the first default that is not of zero value
-holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+setter.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
 
 // Use 'SetOverride() to assign the first value that is not empty or of zero
 // value.  The following will override the config file if 'foo' is provided via
@@ -282,14 +281,15 @@ holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
 loadFromFile(&config)
 argFoo = flag.String("foo", "", "foo via cli arg")
 
-holster.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
+setter.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
 ```
 
 ## GetEnv
+import "github.com/mailgun/holster/v3/config"
 Get a value from an environment variable or return the provided default
 ```go
 var conf = sandra.CassandraConfig{
-   Nodes:    []string{holster.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
+   Nodes:    []string{config.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
    Keyspace: "test",
 }
 ```
@@ -299,38 +299,25 @@ A set of functions to generate random domain names and strings useful for testin
 
 ```go
 // Return a random string 10 characters long made up of runes passed
-holster.RandomRunes("prefix-", 10, holster.AlphaRunes, hoslter.NumericRunes)
+util.RandomRunes("prefix-", 10, util.AlphaRunes, hoslter.NumericRunes)
 
 // Return a random string 10 characters long made up of Alpha Characters A-Z, a-z
-holster.RandomAlpha("prefix-", 10)
+util.RandomAlpha("prefix-", 10)
 
 // Return a random string 10 characters long made up of Alpha and Numeric Characters A-Z, a-z, 0-9
-holster.RandomString("prefix-", 10)
+util.RandomString("prefix-", 10)
 
 // Return a random item from the list given
-holster.RandomItem("foo", "bar", "fee", "bee")
+util.RandomItem("foo", "bar", "fee", "bee")
 
 // Return a random domain name in the form "random-numbers.[gov, net, com, ..]"
-holster.RandomDomainName()
-```
-
-## Logrus ToFields()
-Recursively convert a deeply nested struct or map to `logrus.Fields` such that the result is safe for JSON encoding.
-(IE: Ignore non marshallerable types like `func`)
-```go
-conf := struct {
-   Endpoints []string
-   CallBack  func([]byte) bool
-   LogLevel  int
-}
-// Outputs the contents of the config struct along with the info message
-logrus.WithFields(holster.ToFields(conf)).Info("Starting service")
+util.RandomDomainName()
 ```
 
 ## GoRoutine ID
 Get the go routine id (useful for logging)
 ```go
-import "github.com/mailgun/holster/stack"
+import "github.com/mailgun/holster/v3/callstack"
 logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
 ```
 
@@ -338,56 +325,31 @@ logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
 Checks if a given slice of strings contains the provided string.
 If a modifier func is provided, it is called with the slice item before the comparation.
 ```go
-import "github.com/mailgun/holster/slice"
+import "github.com/mailgun/holster/v3/slice"
 
 haystack := []string{"one", "Two", "Three"}
 slice.ContainsString("two", haystack, strings.ToLower) // true
 slice.ContainsString("two", haystack, nil) // false
 ```
 
-## Clock
-
-DEPRECATED: Use [clock](https://github.com/mailgun/holster/blob/master/clock) package instead.
-
-Provides an interface which allows users to inject a modified clock during testing.
-
-```go
-type MyApp struct {
-    Clock holster.Clock
-}
-
-// Defaults to the system clock
-app := MyApp{Clock: &holster.SystemClock{}}
-
-// Override the system clock for testing
-app.Clock = &holster.FrozenClock{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)}
-
-// Simulate sleeping for 10 seconds
-app.Clock.Sleep(time.Second * 10)
-
-fmt.Printf("Time is Now: %s", app.Clock.Now())
-
-// Output: Time is Now: 2009-11-10 23:00:10 +0000 UTC
-}
-```
-
 ## Priority Queue
 Provides a Priority Queue implementation as described [here](https://en.wikipedia.org/wiki/Priority_queue)
 
 ```go
-queue := holster.NewPriorityQueue()
+import "github.com/mailgun/holster/v3/collections"
+queue := collections.NewPriorityQueue()
 
-queue.Push(&holster.PQItem{
+queue.Push(&collections.PQItem{
     Value: "thing3",
     Priority: 3,
 })
 
-queue.Push(&holster.PQItem{
+queue.Push(&collections.PQItem{
     Value: "thing1",
     Priority: 1,
 })
 
-queue.Push(&holster.PQItem{
+queue.Push(&collections.PQItem{
     Value: "thing2",
     Priority: 2,
 })
@@ -400,13 +362,6 @@ fmt.Printf("Item: %s", item.Value.(string))
 // Output: Item: thing1
 ```
 
-## User Agent
-Provides user agent parsing into Mailgun [ClientInfo](https://github.com/mailgun/events/blob/master/objects.go#L42-L50) events.
-
-```
-clientInfo := useragent.Parse("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.70 Safari/537.17")
-```
-
 ## Broadcaster
 Allow the user to notify multiple goroutines of an event. This implementation guarantees every goroutine will wake
 for every broadcast sent. In the event the goroutine falls behind and more broadcasts() are sent than the goroutine
@@ -414,47 +369,48 @@ has handled the broadcasts are buffered up to 10,000 broadcasts. Once the broadc
  to broadcast() will block until goroutines consuming the broadcasts can catch up.
  
 ```go
-	broadcaster := holster.NewBroadcaster()
-	done := make(chan struct{})
-	var mutex sync.Mutex
-	var chat []string
+import "github.com/mailgun/holster/v3/syncutil"
+    broadcaster := syncutil.NewBroadcaster()
+    done := make(chan struct{})
+    var mutex sync.Mutex
+    var chat []string
 
-	// Start some simple chat clients that are responsible for
-	// sending the contents of the []chat slice to their clients
-	for i := 0; i < 2; i++ {
-		go func(idx int) {
-			var clientIndex int
-			for {
-				mutex.Lock()
-				if clientIndex != len(chat) {
-					// Pretend we are sending a message to our client via a socket
-					fmt.Printf("Client [%d] Chat: %s\n", idx, chat[clientIndex])
-					clientIndex++
-					mutex.Unlock()
-					continue
-				}
-				mutex.Unlock()
+    // Start some simple chat clients that are responsible for
+    // sending the contents of the []chat slice to their clients
+    for i := 0; i < 2; i++ {
+        go func(idx int) {
+            var clientIndex int
+            for {
+                mutex.Lock()
+                if clientIndex != len(chat) {
+                    // Pretend we are sending a message to our client via a socket
+                    fmt.Printf("Client [%d] Chat: %s\n", idx, chat[clientIndex])
+                    clientIndex++
+                    mutex.Unlock()
+                    continue
+                }
+                mutex.Unlock()
 
-				// Wait for more chats to be added to chat[]
-				select {
-				case <-broadcaster.WaitChan(string(idx)):
-				case <-done:
-					return
-				}
-			}
-		}(i)
-	}
+                // Wait for more chats to be added to chat[]
+                select {
+                case <-broadcaster.WaitChan(string(idx)):
+                case <-done:
+                    return
+                }
+            }
+        }(i)
+    }
 
-	// Add some chat lines to the []chat slice
-	for i := 0; i < 5; i++ {
-		mutex.Lock()
-		chat = append(chat, fmt.Sprintf("Message '%d'", i))
-		mutex.Unlock()
+    // Add some chat lines to the []chat slice
+    for i := 0; i < 5; i++ {
+        mutex.Lock()
+        chat = append(chat, fmt.Sprintf("Message '%d'", i))
+        mutex.Unlock()
 
-		// Notify any clients there are new chats to read
-		broadcaster.Broadcast()
-	}
+        // Notify any clients there are new chats to read
+        broadcaster.Broadcast()
+    }
 
-	// Tell the clients to quit
-	close(done)
+    // Tell the clients to quit
+    close(done)
 ```

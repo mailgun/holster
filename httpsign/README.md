@@ -1,8 +1,9 @@
-# httpsign
+httpsign
+=========
 
-library for signing and authenticating HTTP requests between web services.
+Mailgun tools for signing and authenticating HTTP requests between web services.
 
-### Overview
+**Overview**
 
 An keyed-hash message authentication code (HMAC) is used to provide integrity and
 authenticity of a message between web services. The following elements are input
@@ -37,129 +38,129 @@ Note: By default the service can securely handle authenticating 5,000 requests p
 second. If you need to authenticate more, increase the capacity of the nonce 
 cache when initializing the package.
 
-### Examples
+**Examples**
+
 
 _Signing a Request_
 
 ```go
 import (
-    "github.com/mailgun/holster/httpsign"
-    "github.com/mailgun/holster"
-    "github.com/mailgun/holster/httpsign"
-    "github.com/mailgun/holster/random"
-    "github.com/mailgun/holster/secret"
+    "net/http"
+    "strings"
+
+    "github.com/mailgun/lemma/httpsign"
 )
-// For consistency during tests, OMIT THIS LINE IN PRODUCTION
-secret.RandomProvider = &random.FakeRNG{}
 
-// Create a new randomly generated key
-key, err := secret.NewKey()
-// Store the key on disk for retrieval later
-fd, err := os.Create("/tmp/test-secret.key")
+auths := httpsign.New(&httpsign.Config{Keypath: "/path/to/file.key"})
+
+[...]
+
+// build new request
+requestBody := strings.NewReader(`{"hello":"world"}`)
+request, _ := http.NewRequest("POST", "", requestBody)
+
+// sign request
+err := auths.SignRequest(request)
 if err != nil {
-    panic(err)
+    return err
 }
-fd.Write([]byte(secret.KeyToEncodedString(key)))
-fd.Close()
 
-auths, err := httpsign.New(&httpsign.Config{
-    // Our pre-generated shared key
-    KeyPath: "/tmp/test-secret.key",
-    // Optionally include headers in the signed request
+// submit request
+client := &http.Client{}
+response, _ := client.Do(request)
+```
+
+_Signing a Request with Headers_
+
+```go
+import (
+    "net/http"
+    "strings"
+
+    "github.com/mailgun/lemma/httpsign"
+)
+
+auths := httpsign.New(&httpsign.Config{
+    Keypath: "/path/to/file.key",
     HeadersToSign: []string{"X-Mailgun-Header"},
-    // Optionally include the HTTP Verb and URI in the signed request
-    SignVerbAndURI: true,
-    // For consistency during tests, OMIT THESE 2 LINES IN PRODUCTION
-    Clock:  &holster.FrozenClock{CurrentTime: time.Unix(1330837567, 0)},
-    Random: &random.FakeRNG{},
 })
+
+[...]
+
+// build new request
+requestBody := strings.NewReader(`{"hello":"world"}`)
+request, _ := http.NewRequest("POST", "", requestBody)
+request.Header.Set("X-Mailgun-Header", "foobar")
+
+// sign request
+err := auths.SignRequest(request)
 if err != nil {
-    panic(err)
+    return err
 }
 
-// Build new request
-r, _ := http.NewRequest("POST", "", strings.NewReader(`{"hello":"world"}`))
-// Add our custom header that is included in the signature
-r.Header.Set("X-Mailgun-Header", "nyan-cat")
+// submit request
+client := &http.Client{}
+response, _ := client.Do(request)
+```
 
-// Sign the request
-err = auths.SignRequest(r)
+_Signing a Request with HTTP Verb and URI_
+
+```go
+import (
+    "net/http"
+    "strings"
+
+    "github.com/mailgun/lemma/httpsign"
+)
+
+auths := httpsign.New(&httpsign.Config{
+    Keypath: "/path/to/file.key",
+    SignVerbAndURI: true,
+})
+
+[...]
+
+// build new request
+requestBody := strings.NewReader(`{"hello":"world"}`)
+request, _ := http.NewRequest("POST", "", requestBody)
+
+// sign request
+err := auths.SignRequest(request)
 if err != nil {
-    panic(err)
+    return err
 }
 
-// Preform the request
-// client := &http.Client{}
-// response, _ := client.Do(r)
-
-fmt.Printf("%s: %s\n", httpsign.XMailgunNonce, r.Header.Get(httpsign.XMailgunNonce))
-fmt.Printf("%s: %s\n", httpsign.XMailgunTimestamp, r.Header.Get(httpsign.XMailgunTimestamp))
-fmt.Printf("%s: %s\n", httpsign.XMailgunSignature, r.Header.Get(httpsign.XMailgunSignature))
-fmt.Printf("%s: %s\n", httpsign.XMailgunSignatureVersion, r.Header.Get(httpsign.XMailgunSignatureVersion))
-
-// Output: X-Mailgun-Nonce: 000102030405060708090a0b0c0d0e0f
-// X-Mailgun-Timestamp: 1330837567
-// X-Mailgun-Signature: 33f589de065a81b671c9728e7c6b6fecfb94324cb10472f33dc1f78b2a9e4fee
-// X-Mailgun-Signature-Version: 2
+// submit request
+client := &http.Client{}
+response, _ := client.Do(request)
 ```
 
 _Authenticating a Request_
 
 ```go
 import (
-    "github.com/mailgun/holster"
-    "github.com/mailgun/holster/httpsign"
-    "github.com/mailgun/holster/random"
-    "github.com/mailgun/holster/secret"
+    "fmt"
+    "net/http"
+    "strings"
+
+    "github.com/mailgun/lemma/httpsign"
 )
 
-// For consistency during tests, OMIT THIS LINE IN PRODUCTION
-secret.RandomProvider = &random.FakeRNG{}
+auths := httpsign.New(&httpsign.Config{Keypath: "/path/to/file.key"})
 
-// Create a new randomly generated key
-key, err := secret.NewKey()
-// Store the key on disk for retrieval later
-fd, err := os.Create("/tmp/test-secret.key")
-if err != nil {
-    panic(err)
+[...]
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    // authenticate request
+    err := auths.AuthenticateRequest(r)
+   
+    // request is invalid
+    if err != nil {
+        fmt.Fprintf(w, "<p>Unable to Authenticate Request: %v</p>", err)
+        return
+    }
+  
+    // valid request
+    fmt.Fprintf(w, "<p>Request Authenticated, welcome!</p>")
 }
-fd.Write([]byte(secret.KeyToEncodedString(key)))
-fd.Close()
-
-// When authenticating a request, the config must match that of the signing code
-auths, err := httpsign.New(&httpsign.Config{
-    // Our pre-generated shared key
-    KeyPath: "/tmp/test-secret.key",
-    // Include headers in the signed request
-    HeadersToSign: []string{"X-Mailgun-Header"},
-    // Include the HTTP Verb and URI in the signed request
-    SignVerbAndURI: true,
-    // For consistency during tests, OMIT THESE 2 LINES IN PRODUCTION
-    Clock:  &holster.FrozenClock{CurrentTime: time.Unix(1330837567, 0)},
-    Random: &random.FakeRNG{},
-})
-if err != nil {
-    panic(err)
-}
-
-// Pretend we received a new signed request
-r, _ := http.NewRequest("POST", "", strings.NewReader(`{"hello":"world"}`))
-// Add our custom header that is included in the signature
-r.Header.Set("X-Mailgun-Header", "nyan-cat")
-
-// These are the fields set by the client signing the request
-r.Header.Set("X-Mailgun-Nonce", "000102030405060708090a0b0c0d0e0f")
-r.Header.Set("X-Mailgun-Timestamp", "1330837567")
-r.Header.Set("X-Mailgun-Signature", "33f589de065a81b671c9728e7c6b6fecfb94324cb10472f33dc1f78b2a9e4fee")
-r.Header.Set("X-Mailgun-Signature-Version", "2")
-
-// Verify the request
-err = auths.AuthenticateRequest(r)
-if err != nil {
-    panic(err)
-}
-
-fmt.Printf("Request Verified\n")
-
-// Output: Request Verified
 ```
