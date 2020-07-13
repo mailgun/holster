@@ -52,10 +52,10 @@ type LRUCache struct {
 // A Key may be any value that is comparable. See http://golang.org/ref/spec#Comparison_operators
 type Key interface{}
 
-type cacheRecord struct {
-	key      Key
-	value    interface{}
-	expireAt *clock.Time
+type CacheItem struct {
+	Key      Key
+	Value    interface{}
+	ExpireAt *clock.Time
 }
 
 // New creates a new Cache.
@@ -71,34 +71,34 @@ func NewLRUCache(maxEntries int) *LRUCache {
 
 // Add or Update a value in the cache, return true if the key already existed
 func (c *LRUCache) Add(key Key, value interface{}) bool {
-	return c.addRecord(&cacheRecord{key: key, value: value})
+	return c.addRecord(&CacheItem{Key: key, Value: value})
 }
 
 // Adds a value to the cache with a TTL
 func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL clock.Duration) bool {
 	expireAt := clock.Now().UTC().Add(TTL)
-	return c.addRecord(&cacheRecord{
-		key:      key,
-		value:    value,
-		expireAt: &expireAt,
+	return c.addRecord(&CacheItem{
+		Key:      key,
+		Value:    value,
+		ExpireAt: &expireAt,
 	})
 }
 
 // Adds a value to the cache.
-func (c *LRUCache) addRecord(record *cacheRecord) bool {
+func (c *LRUCache) addRecord(record *CacheItem) bool {
 	defer c.mutex.Unlock()
 	c.mutex.Lock()
 
 	// If the key already exist, set the new value
-	if ee, ok := c.cache[record.key]; ok {
+	if ee, ok := c.cache[record.Key]; ok {
 		c.ll.MoveToFront(ee)
-		temp := ee.Value.(*cacheRecord)
+		temp := ee.Value.(*CacheItem)
 		*temp = *record
 		return true
 	}
 
 	ele := c.ll.PushFront(record)
-	c.cache[record.key] = ele
+	c.cache[record.Key] = ele
 	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
 		c.removeOldest()
 	}
@@ -111,17 +111,17 @@ func (c *LRUCache) Get(key Key) (value interface{}, ok bool) {
 	c.mutex.Lock()
 
 	if ele, hit := c.cache[key]; hit {
-		entry := ele.Value.(*cacheRecord)
+		entry := ele.Value.(*CacheItem)
 
 		// If the entry has expired, remove it from the cache
-		if entry.expireAt != nil && entry.expireAt.Before(clock.Now().UTC()) {
+		if entry.ExpireAt != nil && entry.ExpireAt.Before(clock.Now().UTC()) {
 			c.removeElement(ele)
 			c.stats.Miss++
 			return
 		}
 		c.stats.Hit++
 		c.ll.MoveToFront(ele)
-		return entry.value, true
+		return entry.Value, true
 	}
 	c.stats.Miss++
 	return
@@ -147,10 +147,10 @@ func (c *LRUCache) removeOldest() {
 
 func (c *LRUCache) removeElement(e *list.Element) {
 	c.ll.Remove(e)
-	kv := e.Value.(*cacheRecord)
-	delete(c.cache, kv.key)
+	kv := e.Value.(*CacheItem)
+	delete(c.cache, kv.Key)
 	if c.OnEvicted != nil {
-		c.OnEvicted(kv.key, kv.value)
+		c.OnEvicted(kv.Key, kv.Value)
 	}
 }
 
@@ -189,8 +189,8 @@ func (c *LRUCache) Peek(key interface{}) (value interface{}, ok bool) {
 	c.mutex.Lock()
 
 	if ele, hit := c.cache[key]; hit {
-		entry := ele.Value.(*cacheRecord)
-		return entry.value, true
+		entry := ele.Value.(*CacheItem)
+		return entry.Value, true
 	}
 	return nil, false
 }
@@ -225,4 +225,18 @@ func (c LRUCache) Each(concurrent int, callBack func(key interface{}, value inte
 		return errs
 	}
 	return nil
+}
+
+// Map modifies the cache according to the mapping function, If mapping returns false the
+// item is removed from the cache and `OnEvicted` is called if defined. Map claims exclusive
+// access to the cache; as such concurrent access will block until Map returns.
+func (c *LRUCache) Map(mapping func(item *CacheItem) bool) {
+	defer c.mutex.Unlock()
+	c.mutex.Lock()
+
+	for _, v := range c.cache {
+		if !mapping(v.Value.(*CacheItem)) {
+			c.removeElement(v)
+		}
+	}
 }
