@@ -1,7 +1,7 @@
 ## LRUCache
 Implements a Least Recently Used Cache with optional TTL and stats collection
 
-This is a LRU cache based off [github.com/golang/groupcache/lru](http://github.com/golang/groupcache/lru) expanded
+This is a LRU cache based off [github.com/golang/groupcache/lru](https://github.com/golang/groupcache/tree/master/lru) expanded
 with the following
 
 * `Peek()` - Get the value without updating the expiration or last used or stats
