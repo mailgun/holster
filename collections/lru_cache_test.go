@@ -18,11 +18,13 @@ This work is derived from github.com/golang/groupcache/lru
 package collections_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/mailgun/holster/v3/collections"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLRUCache(t *testing.T) {
@@ -98,4 +100,34 @@ func TestLRUCacheEach(t *testing.T) {
 	assert.Equal(t, int64(0), stats.Hit)
 	assert.Equal(t, int64(0), stats.Miss)
 	assert.Equal(t, int64(5), stats.Size)
+}
+
+func TestLRUCacheMap(t *testing.T) {
+	cache := collections.NewLRUCache(5)
+
+	cache.Add("1", 1)
+	cache.Add("2", 2)
+	cache.Add("3", 3)
+	cache.Add("4", 4)
+	cache.Add("5", 5)
+
+	var count int
+	cache.Map(func(item *collections.CacheItem) bool {
+		count++
+		if v, ok := item.Value.(int); ok {
+			// Remove value 3
+			if v == 3 {
+				return false
+			}
+		}
+		return true
+	})
+	assert.Equal(t, 5, count)
+	assert.Equal(t, 4, cache.Size())
+
+	for _, item := range []int{1,2,4,5} {
+		v, ok := cache.Get(fmt.Sprintf("%d", item))
+		require.True(t, ok)
+		assert.Equal(t, item, v.(int))
+	}
 }
