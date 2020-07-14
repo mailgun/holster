@@ -9,7 +9,7 @@ with the following
 * `Stats()` - Returns stats about the current state of the cache
 * `AddWithTTL()` - Adds a value to the cache with a expiration time
 * `Each()` - Concurrent non blocking access to each item in the cache
-* `Map()` - Effecient blocking modification to each item in the cache
+* `Map()` - Efficient blocking modification to each item in the cache
 
 TTL is evaluated during calls to `.Get()` if the entry is past the requested TTL `.Get()`
 removes the entry from the cache counts a miss and returns not `ok`
