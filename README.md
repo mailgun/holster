@@ -286,6 +286,20 @@ argFoo = flag.String("foo", "", "foo via cli arg")
 setter.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
 ```
 
+## Check for Nil interface
+```go
+func NewImplementation() MyInterface {
+    // Type and Value are not nil
+    var p *MyImplementation = nil
+    return p
+}
+
+thing := NewImplementation()
+assert.False(t, thing == nil)
+assert.True(t, setter.IsNil(thing))
+assert.False(t, setter.IsNil(&MyImplementation{}))
+```
+
 ## GetEnv
 import "github.com/mailgun/holster/v3/config"
 Get a value from an environment variable or return the provided default
@@ -490,4 +504,63 @@ func TestUntilConnect(t *testing.T) {
     // Wait until we can connect, then continue with the test
     testutil.UntilConnect(t, 10, time.Millisecond*100, ln.Addr().String())
 }
+```
+
+### Retry Until
+Retries a function until the function returns error = nil or until the context is deadline is exceeded
+```go
+ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+defer cancel()
+err := retry.Until(ctx, retry.Interval(time.Millisecond*10), func(ctx context.Context, att int) error {
+    res, err := http.Get("http://example.com/get")
+    if err != nil {
+        return err
+    }
+    if res.StatusCode != http.StatusOK {
+        return errors.New("expected status 200")
+    }
+    // Do something with the body
+    return nil
+})
+if err != nil {
+    panic(err)
+}
+```
+
+Backoff functions provided
+
+* `retry.Attempts(10, time.Millisecond*10)` retries up to `10` attempts
+* `retry.Interval(time.Millisecond*10)` retries at an interval indefinitely or until context is cancelled
+* `retry.ExponentialBackoff{ Min: time.Millisecond, Max: time.Millisecond * 100, Factor: 2}` retries
+ at an exponential backoff interval. Can accept an optional `Attempts` which will limit the number of attempts
+
+
+### Retry Async
+Runs a function asynchronously and retries it until it succeeds, or the context is 
+cancelled or `Stop()` is called. This is useful in distributed programming where
+you know a remote thing will eventually succeed, but you need to keep trying until
+the remote thing succeeds, or we are told to shutdown.
+
+```go
+ctx := context.Background()
+async := retry.NewRetryAsync()
+
+backOff := &retry.ExponentialBackoff{
+    Min:      time.Millisecond,
+    Max:      time.Millisecond * 100,
+    Factor:   2,
+    Attempts: 10,
+}
+
+id := createNewEC2("my-new-server")
+
+async.Async(id, ctx, backOff, func(ctx context.Context, i int) error {
+    // Waits for a new EC2 instance to be created then updates the config and exits
+    if err := updateInstance(id, mySettings); err != nil {
+        return err
+    }
+    return nil
+})
+// Wait for all the asyncs to complete
+async.Wait()
 ```

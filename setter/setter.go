@@ -113,3 +113,16 @@ func IsZeroValue(value reflect.Value) bool {
 	}
 	return false
 }
+
+// Returns true if the interface value is nil or the pointed to value is nil,
+// for instance a map, array, channel or slice
+func IsNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
+}
