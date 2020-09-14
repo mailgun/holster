@@ -3,6 +3,7 @@ package retry_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -140,4 +141,26 @@ func TestAsync(t *testing.T) {
 
 	// Wait for all the async retries to exhaust their timeouts
 	async.Wait()
+}
+
+func TestBackoffRace(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+	defer cancel()
+	backOff := &retry.ExponentialBackoff{
+		Min:    time.Millisecond,
+		Max:    time.Millisecond * 100,
+		Factor: 2,
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
+				return fmt.Errorf("failed attempt '%d'", att)
+			})
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
