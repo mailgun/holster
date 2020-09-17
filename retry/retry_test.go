@@ -75,7 +75,7 @@ func TestUntilStopped(t *testing.T) {
 
 func TestUntilExponential(t *testing.T) {
 	ctx := context.Background()
-	backOff := &retry.ExponentialBackoff{
+	backOff := &retry.ExponentialBackOff{
 		Min:      time.Millisecond,
 		Max:      time.Millisecond * 100,
 		Factor:   2,
@@ -94,7 +94,7 @@ func TestUntilExponential(t *testing.T) {
 func TestUntilExponentialCancelled(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	backOff := &retry.ExponentialBackoff{
+	backOff := &retry.ExponentialBackOff{
 		Min:    time.Millisecond,
 		Max:    time.Millisecond * 100,
 		Factor: 2,
@@ -106,7 +106,7 @@ func TestUntilExponentialCancelled(t *testing.T) {
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, &retry.Err{}))
-	assert.Equal(t, "on attempt '7'; context cancelled: failed attempt '7'", err.Error())
+	assert.Equal(t, "on attempt '6'; context cancelled: failed attempt '6'", err.Error())
 }
 
 func TestAsync(t *testing.T) {
@@ -146,7 +146,7 @@ func TestAsync(t *testing.T) {
 func TestBackoffRace(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
-	backOff := &retry.ExponentialBackoff{
+	backOff := &retry.ExponentialBackOff{
 		Min:    time.Millisecond,
 		Max:    time.Millisecond * 100,
 		Factor: 2,
@@ -157,10 +157,21 @@ func TestBackoffRace(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
+				t.Logf("Attempts: %d", backOff.NumRetries())
 				return fmt.Errorf("failed attempt '%d'", att)
 			})
 			wg.Done()
 		}()
 	}
 	wg.Wait()
+}
+
+func TestBackOffNew(t *testing.T) {
+	backOff := &retry.ExponentialBackOff{
+		Min:    time.Millisecond,
+		Max:    time.Millisecond * 100,
+		Factor: 2,
+	}
+	bo := backOff.New()
+	assert.Equal(t, bo, backOff)
 }

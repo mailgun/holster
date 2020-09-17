@@ -57,7 +57,7 @@ func Stop(err error) error {
 // the context is cancelled. Optionally users may use `retry.Stop()` to force
 // the retry to terminate with an error. Returns a `retry.Err` with
 // the included Reason and Attempts
-func Until(ctx context.Context, backOff Backoff, f Func) error {
+func Until(ctx context.Context, backOff BackOff, f Func) error {
 	var attempt int
 	for {
 		attempt++
@@ -134,7 +134,7 @@ func (s *Async) Wait() {
 	s.wg.Wait()
 }
 
-func (s *Async) Async(key interface{}, ctx context.Context, backOff Backoff,
+func (s *Async) Async(key interface{}, ctx context.Context, bo BackOff,
 	f func(context.Context, int) error) *AsyncItem {
 
 	// does this key have an existing retry running?
@@ -189,7 +189,7 @@ func (s *Async) Async(key interface{}, ctx context.Context, backOff Backoff,
 			s.asyncs[key] = async
 			s.mutex.Unlock()
 
-			interval, retry := backOff.Next()
+			interval, retry := bo.Next()
 			if !retry {
 				async.Retrying = false
 				s.mutex.Lock()
