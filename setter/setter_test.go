@@ -106,3 +106,42 @@ func TestIfEmptyNonPtrPanic(t *testing.T) {
 	setter.SetDefault(thing, "thrawn")
 	assert.Fail(t, "Should have caught panic")
 }
+
+type MyInterface interface {
+	Thing() string
+}
+
+type MyImplementation struct{}
+
+func (s *MyImplementation) Thing() string {
+	return "thing"
+}
+
+func NewImplementation() MyInterface {
+	// Type and Value are not nil
+	var p *MyImplementation = nil
+	return p
+}
+
+type MyStruct struct {
+	T MyInterface
+}
+
+func NewMyStruct(t MyInterface) *MyStruct {
+	return &MyStruct{T: t}
+}
+
+func TestIsNil(t *testing.T) {
+	m := MyStruct{T: &MyImplementation{}}
+	assert.True(t, m.T != nil)
+	m.T = nil
+	assert.True(t, m.T == nil)
+
+	o := NewMyStruct(nil)
+	assert.True(t, o.T == nil)
+
+	thing := NewImplementation()
+	assert.False(t, thing == nil)
+	assert.True(t, setter.IsNil(thing))
+	assert.False(t, setter.IsNil(&MyImplementation{}))
+}
