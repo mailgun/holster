@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy"
-	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/mailgun/holster/v3/etcdutil"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	etcd "go.etcd.io/etcd/clientv3"
 )
 
 func TestElection(t *testing.T) {
