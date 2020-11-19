@@ -1,0 +1,19 @@
+version: '3'
+services:
+  consul-agent:
+    image: consul:latest
+    command: "agent -retry-join consul-server-bootstrap -client 0.0.0.0"
+    volumes:
+      - ${PWD}/config:/consul/config
+
+  consul-server-bootstrap:
+    image: consul:latest
+    ports:
+      - "8400:8400"
+      - "8500:8500"
+      - "8501:8501"
+      - "8600:8600"
+      - "8600:8600/udp"
+    command: "agent -server -bootstrap-expect 1 -ui -client 0.0.0.0"
+    volumes:
+      - ${PWD}/config:/consul/config
