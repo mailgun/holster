@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	etcd "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/mailgun/holster/v3/setter"
 	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/pkg/errors"
-	etcd "go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/mvcc/mvccpb"
 )
 
 type LeaderElector interface {
