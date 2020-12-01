@@ -583,9 +583,8 @@ func (e *node) handleResetElection(rpc RPCRequest) {
 // handleHeartBeat handles heartbeat requests from the elected leader
 func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	resp := HeartBeatResp{
-		From:    e.self,
-		Term:    e.currentTerm,
-		Success: false,
+		From: e.self,
+		Term: e.currentTerm,
 	}
 
 	defer func() {
@@ -616,7 +615,6 @@ func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	// Only the node with the most votes is the leader and should report heartbeats
 	e.setLeader(req.From)
 
-	resp.Success = true
 	e.lastContact = time.Now()
 }
 

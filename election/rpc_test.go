@@ -15,41 +15,122 @@ import (
 )
 
 func TestRPCRequest(t *testing.T) {
-	out := election.RPCRequest{
-		RPC: election.HeartBeatRPC,
-		Request: election.HeartBeatReq{
-			From: "node1",
-			Term: 1,
+	for _, tt := range []struct {
+		name string
+		in   election.RPCRequest
+		out  string
+	}{
+		{
+			name: "heartbeat",
+			in: election.RPCRequest{
+				RPC: election.HeartBeatRPC,
+				Request: election.HeartBeatReq{
+					From: "node1",
+					Term: 1,
+				},
+			},
+			out: `{"rpc":"heartbeat","request":{"from":"node1","term":1}}`,
 		},
+		{
+			name: "vote",
+			in: election.RPCRequest{
+				RPC: election.VoteRPC,
+				Request: election.VoteReq{
+					Candidate: "node1",
+					Term:      1,
+				},
+			},
+			out: `{"rpc":"vote","request":{"candidate":"node1","term":1}}`,
+		},
+		{
+			name: "reset",
+			in: election.RPCRequest{
+				RPC:     election.ResetElectionRPC,
+				Request: election.ResetElectionReq{},
+			},
+			out: `{"rpc":"reset-election","request":{}}`,
+		},
+		{
+			name: "resign",
+			in: election.RPCRequest{
+				RPC:     election.ResignRPC,
+				Request: election.ResignReq{},
+			},
+			out: `{"rpc":"resign","request":{}}`,
+		},
+	} {
+		b, err := json.Marshal(tt.in)
+		require.NoError(t, err)
+		assert.Equal(t, tt.out, string(b))
+
+		var in election.RPCRequest
+		err = json.Unmarshal(b, &in)
+		require.NoError(t, err)
+		assert.Equal(t, tt.in, in)
 	}
 
-	b, err := json.Marshal(out)
-	require.NoError(t, err)
-	assert.Equal(t, `{"rpc":"heartbeat","request":{"from":"node1","term":1}}`, string(b))
-
-	var in election.RPCRequest
-	err = json.Unmarshal(b, &in)
-	require.NoError(t, err)
-	assert.Equal(t, out, in)
 }
 
 func TestRPCResponse(t *testing.T) {
-	out := election.RPCResponse{
-		RPC: election.HeartBeatRPC,
-		Response: election.HeartBeatResp{
-			From:    "node1",
-			Success: true,
-			Term:    1,
+	for _, tt := range []struct {
+		name string
+		in   election.RPCResponse
+		out  string
+	}{
+		{
+			name: "heartbeat",
+			in: election.RPCResponse{
+				RPC: election.HeartBeatRPC,
+				Response: election.HeartBeatResp{
+					From: "node1",
+					Term: 1,
+				},
+			},
+			out: `{"rpc":"heartbeat","response":{"from":"node1","term":1}}`,
 		},
-	}
-	b, err := json.Marshal(out)
-	require.NoError(t, err)
-	assert.Equal(t, `{"rpc":"heartbeat","response":{"from":"node1","term":1,"success":true}}`, string(b))
+		{
+			name: "vote",
+			in: election.RPCResponse{
+				RPC: election.VoteRPC,
+				Response: election.VoteResp{
+					Candidate: "node1",
+					Term:      1,
+					Granted:   true,
+				},
+			},
+			out: `{"rpc":"vote","response":{"candidate":"node1","term":1,"granted":true}}`,
+		},
+		{
+			name: "reset",
+			in: election.RPCResponse{
+				RPC:      election.ResetElectionRPC,
+				Response: election.ResetElectionResp{},
+			},
+			out: `{"rpc":"reset-election","response":{}}`,
+		},
+		{
+			name: "resign",
+			in: election.RPCResponse{
+				RPC: election.ResignRPC,
+				Response: election.ResignResp{
+					Success: true,
+				},
+			},
+			out: `{"rpc":"resign","response":{"success":true}}`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := json.Marshal(tt.in)
+			require.NoError(t, err)
+			assert.Equal(t, tt.out, string(b))
 
-	var in election.RPCResponse
-	err = json.Unmarshal(b, &in)
-	require.NoError(t, err)
-	assert.Equal(t, out, in)
+			var in election.RPCResponse
+			err = json.Unmarshal(b, &in)
+			require.NoError(t, err)
+			assert.Equal(t, tt.in, in)
+
+		})
+	}
 }
 
 func TestHTTPServer(t *testing.T) {
@@ -66,9 +147,8 @@ func TestHTTPServer(t *testing.T) {
 			resp = election.RPCResponse{
 				RPC: election.HeartBeatRPC,
 				Response: election.HeartBeatResp{
-					From:    "node1",
-					Term:    10,
-					Success: true,
+					From: "node1",
+					Term: 10,
 				},
 			}
 		default:
@@ -108,7 +188,6 @@ func TestHTTPServer(t *testing.T) {
 	hb := rpcResp.Response.(election.HeartBeatResp)
 	assert.Equal(t, uint64(10), hb.Term)
 	assert.Equal(t, "node1", hb.From)
-	assert.Equal(t, true, hb.Success)
 
 	// Send an unknown rpc request to the server
 	req, err = http.NewRequest(http.MethodPost, ts.URL, bytes.NewBuffer([]byte(`{"rpc":"unknown"}`)))

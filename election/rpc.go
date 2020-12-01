@@ -4,46 +4,13 @@ import (
 	"encoding/json"
 )
 
-type VoteResp struct {
-	// The address of the candidate
-	Candidate string `json:"candidate"`
-	// Newer term if leader is out of date.
-	Term uint64 `json:"term"`
-	// Is the vote granted.
-	Granted bool `json:"granted"`
-}
-
-type VoteReq struct {
-	// The address of the candidate
-	Candidate string `json:"candidate-address"`
-	// Newer term if leader is out of date.
-	Term uint64 `json:"term"`
-}
-
-type ResetElectionReq struct{}
-type ResetElectionResp struct{}
-
-type ResignReq struct{}
-type ResignResp struct {
-	Success bool `json:"success"`
-}
-
-type HeartBeatReq struct {
-	From string `json:"from"`
-	Term uint64 `json:"term"`
-}
-type HeartBeatResp struct {
-	From    string `json:"from"`
-	Term    uint64 `json:"term"`
-	Success bool   `json:"success"`
-}
-
 type RPC string
 
 const (
 	HeartBeatRPC     = RPC("heartbeat")
 	VoteRPC          = RPC("vote")
 	ResetElectionRPC = RPC("reset-election")
+	ResignRPC        = RPC("resign")
 	UnknownRPC       = RPC("unknown")
 )
 
@@ -71,6 +38,24 @@ func (r *RPCResponse) UnmarshalJSON(s []byte) error {
 	switch in.RPC {
 	case HeartBeatRPC:
 		resp := HeartBeatResp{}
+		if err := json.Unmarshal(in.Response, &resp); err != nil {
+			return err
+		}
+		r.Response = resp
+	case VoteRPC:
+		resp := VoteResp{}
+		if err := json.Unmarshal(in.Response, &resp); err != nil {
+			return err
+		}
+		r.Response = resp
+	case ResetElectionRPC:
+		resp := ResetElectionResp{}
+		if err := json.Unmarshal(in.Response, &resp); err != nil {
+			return err
+		}
+		r.Response = resp
+	case ResignRPC:
+		resp := ResignResp{}
 		if err := json.Unmarshal(in.Response, &resp); err != nil {
 			return err
 		}
@@ -120,6 +105,24 @@ func (r *RPCRequest) UnmarshalJSON(s []byte) error {
 	switch in.RPC {
 	case HeartBeatRPC:
 		req := HeartBeatReq{}
+		if err := json.Unmarshal(in.Request, &req); err != nil {
+			return err
+		}
+		r.Request = req
+	case VoteRPC:
+		req := VoteReq{}
+		if err := json.Unmarshal(in.Request, &req); err != nil {
+			return err
+		}
+		r.Request = req
+	case ResetElectionRPC:
+		req := ResetElectionReq{}
+		if err := json.Unmarshal(in.Request, &req); err != nil {
+			return err
+		}
+		r.Request = req
+	case ResignRPC:
+		req := ResignReq{}
 		if err := json.Unmarshal(in.Request, &req); err != nil {
 			return err
 		}
