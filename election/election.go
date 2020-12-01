@@ -3,30 +3,24 @@ package election
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/mailgun/holster/v3/setter"
-
 	"github.com/mailgun/holster/v3/slice"
 	"github.com/mailgun/holster/v3/syncutil"
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	ErrInShutdown = errors.New("node is shutting down")
-)
-
-type state uint32
+type State uint32
 
 const (
 	// FollowerState means we are following the leader and expect
 	// to get heart beats regularly. This is the initial state, as
 	// we don't want to force an election when a new node joins
 	// the cluster.
-	FollowerState state = iota
+	FollowerState State = iota
 	// CandidateState means we are actively attempting to become leader
 	CandidateState
 	// LeaderState means we have received a quorum of votes while
@@ -36,7 +30,7 @@ const (
 	ShutdownState
 )
 
-func (s state) String() string {
+func (s State) String() string {
 	switch s {
 	case FollowerState:
 		return "Follower"
@@ -88,7 +82,7 @@ type Config struct {
 
 type Observer func(string)
 
-type Candidate interface {
+type Node interface {
 	// Set the list of peers to be considered for the election, this list MUST
 	// include ourself as defined by `Config.Self`.
 	SetPeers([]string) error
@@ -104,7 +98,7 @@ type Candidate interface {
 	Leader() string
 
 	// Returns the current state of this node
-	State() state
+	State() State
 
 	// Called
 	ReceiveRPC(RPCRequest, *RPCResponse)
@@ -114,9 +108,9 @@ type Candidate interface {
 	Close()
 }
 
-type candidate struct {
+type node struct {
 	conf  Config // The election configuration
-	state state  // Current state of our node
+	state State  // Current state of our node
 	vote  struct {
 		CurrentTerm   uint64
 		LastTerm      uint64
@@ -134,10 +128,11 @@ type candidate struct {
 	wg          syncutil.WaitGroup
 }
 
-func SpawnCandidate(conf Config) (Candidate, error) {
+// Spawns a new node that will participate in the election.
+func SpawnNode(conf Config) (Node, error) {
 
 	if conf.Self == "" {
-		return nil, errors.New("refusing to spawn a new election candidate with no Config.Self defined")
+		return nil, errors.New("refusing to spawn a new node with no Config.Self defined")
 	}
 
 	setter.SetDefault(&conf.Log, logrus.WithField("name", conf.Self))
@@ -146,7 +141,7 @@ func SpawnCandidate(conf Config) (Candidate, error) {
 	setter.SetDefault(&conf.ElectionTimeout, time.Second*10)
 	setter.SetDefault(&conf.NetworkTimeout, time.Second*2)
 
-	c := &candidate{
+	c := &node{
 		shutdownCh: make(chan struct{}),
 		rpcCh:      make(chan RPCRequest, 5_000),
 		self:       conf.Self,
@@ -157,7 +152,8 @@ func SpawnCandidate(conf Config) (Candidate, error) {
 	return c, c.SetPeers(conf.Peers)
 }
 
-func (e *candidate) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
+// Called by the implementer when an RPC is received from another node
+func (e *node) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
 	req.respChan = make(chan RPCResponse, 1)
 	e.rpcCh <- req
 
@@ -168,48 +164,51 @@ func (e *candidate) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
 	}
 }
 
-func (e *candidate) SetPeers(peers []string) error {
+// SetPeers is a thread safe way to dynamically add or remove peers in a running cluster.
+// These peers will be contacted when requesting votes during leader election.
+func (e *node) SetPeers(peers []string) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
-	if !slice.ContainsString(e.self, peers, nil) {
-		return fmt.Errorf("peer list does not include self '%s'; refusing peer list", e.self)
-	}
 	e.peers = peers
 	return nil
 }
 
-func (e *candidate) GetPeers() []string {
+// GetPeers returns the current peers this node knows about.
+func (e *node) GetPeers() []string {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 	return e.peers
 }
 
-func (e *candidate) State() state {
+// State returns the current state of this node
+func (e *node) State() State {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 	return e.state
 }
 
-func (e *candidate) setState(state state) {
+func (e *node) setState(state State) {
 	e.log.Debugf("State Change (%s)", state)
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 	e.state = state
 }
 
-func (e *candidate) IsLeader() bool {
+// IsLeader returns true if this node was elected leader
+func (e *node) IsLeader() bool {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 	return e.self == e.leader
 }
 
-func (e *candidate) Leader() string {
+// Leader returns the name of the node that is currently leader
+func (e *node) Leader() string {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 	return e.leader
 }
 
-func (e *candidate) setLeader(leader string) {
+func (e *node) setLeader(leader string) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	if e.leader != leader {
@@ -221,7 +220,9 @@ func (e *candidate) setLeader(leader string) {
 	}
 }
 
-func (e *candidate) Resign() bool {
+// Resign will cause this node to step down as leader, if this
+// node is NOT leader, this does nothing and returns 'false'
+func (e *node) Resign() bool {
 	respCh := make(chan RPCResponse, 1)
 	e.rpcCh <- RPCRequest{
 		Request:  ResignReq{},
@@ -243,12 +244,14 @@ func (e *candidate) Resign() bool {
 	}
 }
 
-func (e *candidate) Close() {
+// Close closes all internal go routines and if this node is currently
+// leader, resigns as leader.
+func (e *node) Close() {
 	close(e.shutdownCh)
 	e.wg.Wait()
 }
 
-func (e *candidate) run() {
+func (e *node) run() {
 	for {
 		e.log.Debug("main loop")
 		select {
@@ -270,8 +273,8 @@ func (e *candidate) run() {
 	}
 }
 
-func (e *candidate) runFollower() {
-	e.log.Infof("entering follower state, current leader is '%s'", e.Leader())
+func (e *node) runFollower() {
+	e.log.Debugf("entering follower state, current leader is '%s'", e.Leader())
 	heartbeatTimer := time.NewTicker(randomDuration(e.conf.HeartBeatTimeout))
 
 	for e.state == FollowerState {
@@ -286,7 +289,7 @@ func (e *candidate) runFollower() {
 			}
 
 			// Heartbeat failed! Transition to the candidate state
-			e.log.Warnf("heartbeat timeout, starting election; previous leader was '%s'", e.Leader())
+			e.log.Debugf("heartbeat timeout, starting election; previous leader was '%s'", e.Leader())
 			e.setLeader("")
 			e.setState(CandidateState)
 			return
@@ -297,8 +300,8 @@ func (e *candidate) runFollower() {
 	}
 }
 
-func (e *candidate) runCandidate() {
-	e.log.Infof("entering candidate state; current term '%d'", e.currentTerm+1)
+func (e *node) runCandidate() {
+	e.log.Debugf("entering candidate state; current term '%d'", e.currentTerm+1)
 	voteCh := make(<-chan VoteResp)
 
 	// Each node will choose a random time to send their vote. This makes it more
@@ -338,14 +341,14 @@ func (e *candidate) runCandidate() {
 
 			// Check if we've become the leader
 			if grantedVotes >= votesNeeded {
-				e.log.Infof("election won! tally is '%d'", grantedVotes)
+				e.log.Debugf("election won! tally is '%d'", grantedVotes)
 				e.state = LeaderState
 				e.setLeader(e.self)
 				return
 			}
 		case <-electionTimer.C:
 			// Election failed! Restart the election. We simply return, which will kick us back into runCandidate
-			e.log.Warn("Election timeout reached, restarting election")
+			e.log.Debug("Election timeout reached, restarting election")
 			electionTimer.Stop()
 			return
 		case <-e.shutdownCh:
@@ -358,7 +361,7 @@ func (e *candidate) runCandidate() {
 // ourself. This has the side affecting of incrementing the current term. The
 // response channel returned is used to wait for all the responses, including a
 // vote for ourself.
-func (e *candidate) electSelf() <-chan VoteResp {
+func (e *node) electSelf() <-chan VoteResp {
 	peers := e.GetPeers()
 	respCh := make(chan VoteResp, len(peers))
 
@@ -400,27 +403,28 @@ func (e *candidate) electSelf() <-chan VoteResp {
 		})
 	}
 
+	// Vote for ourselves first
+	e.vote.LastCandidate = e.self
+	e.vote.LastTerm = e.currentTerm
+
+	// Include our own vote
+	respCh <- VoteResp{
+		Candidate: e.self,
+		Term:      e.currentTerm,
+		Granted:   true,
+	}
+
 	// For each peer, request a vote
 	for _, peer := range peers {
 		if peer == e.self {
-			// Persist a vote for ourselves
-			e.vote.LastCandidate = e.self
-			e.vote.LastTerm = e.currentTerm
-
-			// Include our own vote
-			respCh <- VoteResp{
-				Candidate: e.self,
-				Term:      e.currentTerm,
-				Granted:   true,
-			}
-		} else {
-			askPeer(peer, e.currentTerm, e.self)
+			continue
 		}
+		askPeer(peer, e.currentTerm, e.self)
 	}
 	return respCh
 }
 
-func (e *candidate) runLeader() {
+func (e *node) runLeader() {
 	quorumTicker := time.NewTicker(e.conf.LeaderQuorumTimeout)
 	heartBeatTicker := time.NewTicker(randomDuration(e.conf.HeartBeatTimeout / 10))
 	heartBeatReplyCh := make(chan HeartBeatResp, 5_000)
@@ -459,7 +463,7 @@ func (e *candidate) runLeader() {
 				}
 				diff := now.Sub(lc)
 				if diff >= e.conf.HeartBeatTimeout {
-					e.log.Warnf("no heartbeat response from '%s' for '%s'", peer, diff)
+					e.log.Debugf("no heartbeat response from '%s' for '%s'", peer, diff)
 					continue
 				}
 				contacted++
@@ -468,7 +472,7 @@ func (e *candidate) runLeader() {
 			// Verify we can contact a quorum
 			quorum := e.quorumSize()
 			if contacted < quorum {
-				e.log.Warn("failed to receive heart beats from a quorum of peers; stepping down")
+				e.log.Debug("failed to receive heart beats from a quorum of peers; stepping down")
 				e.state = FollowerState
 				// TODO: Perhaps we send ResetElection to what peers we can?
 				//  This would avoid having to wait for the heartbeat timeout
@@ -493,7 +497,7 @@ func (e *candidate) runLeader() {
 	quorumTicker.Stop()
 }
 
-func (e *candidate) sendHeartBeat(peer string, heartBeatReplyCh chan HeartBeatResp) {
+func (e *node) sendHeartBeat(peer string, heartBeatReplyCh chan HeartBeatResp) {
 	// Don't heartbeat ourself
 	if peer == e.self {
 		return
@@ -524,7 +528,7 @@ func (e *candidate) sendHeartBeat(peer string, heartBeatReplyCh chan HeartBeatRe
 	})
 }
 
-func (e *candidate) sendElectionReset(peer string) {
+func (e *node) sendElectionReset(peer string) {
 	// Don't send election reset to ourself
 	if peer == e.self {
 		return
@@ -541,7 +545,7 @@ func (e *candidate) sendElectionReset(peer string) {
 	})
 }
 
-func (e *candidate) processRPC(rpc RPCRequest) {
+func (e *node) processRPC(rpc RPCRequest) {
 	// TODO: Should check for state = shutdown?
 	switch cmd := rpc.Request.(type) {
 	case VoteReq:
@@ -560,7 +564,7 @@ func (e *candidate) processRPC(rpc RPCRequest) {
 
 // handleResign Notifies all followers that we are stepping down as leader.
 // if we are leader returns Success = true
-func (e *candidate) handleResign(rpc RPCRequest) {
+func (e *node) handleResign(rpc RPCRequest) {
 	e.setLeader("")
 	e.state = FollowerState
 	for _, peer := range e.GetPeers() {
@@ -570,14 +574,14 @@ func (e *candidate) handleResign(rpc RPCRequest) {
 }
 
 // handleResetElection resets our state and starts a new election
-func (e *candidate) handleResetElection(rpc RPCRequest) {
+func (e *node) handleResetElection(rpc RPCRequest) {
 	e.setLeader("")
 	e.state = CandidateState
 	rpc.respond(rpc.RPC, ResetElectionResp{}, "")
 }
 
 // handleHeartBeat handles heartbeat requests from the elected leader
-func (e *candidate) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
+func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	resp := HeartBeatResp{
 		From:    e.self,
 		Term:    e.currentTerm,
@@ -598,6 +602,9 @@ func (e *candidate) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	// there the followers will timeout waiting for a heartbeat and the vote will
 	// occur again, hopefully this time without electing 2 leaders.
 	//
+	// It's also possible that one leader sends it's heartbeats before the other leader,
+	// in that case the first leader to send a heartbeat becomes leader.
+	//
 	// This can also occur if a follower loses connectivity to the rest of the cluster.
 	// In this case we become the follower of who ever sent us the heartbeat.
 	if e.state != FollowerState {
@@ -614,7 +621,7 @@ func (e *candidate) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 }
 
 // handleVote determines who we will vote for this term
-func (e *candidate) handleVote(rpc RPCRequest, req VoteReq) {
+func (e *node) handleVote(rpc RPCRequest, req VoteReq) {
 	resp := VoteResp{
 		Term:      e.currentTerm,
 		Candidate: e.self,
@@ -630,7 +637,7 @@ func (e *candidate) handleVote(rpc RPCRequest, req VoteReq) {
 	// with the ResetElection RPC call.
 	leader := e.Leader()
 	if leader != "" && leader != req.Candidate {
-		e.log.Warnf("rejecting vote request from '%s' since we have leader '%s'", req.Candidate, leader)
+		e.log.Debugf("rejecting vote request from '%s' since we have leader '%s'", req.Candidate, leader)
 		return
 	}
 
@@ -650,10 +657,10 @@ func (e *candidate) handleVote(rpc RPCRequest, req VoteReq) {
 
 	// Check if we've voted in this election before
 	if e.vote.LastTerm == req.Term && e.vote.LastCandidate != "" {
-		e.log.Infof("ignoring vote request from '%s'; already voted for '%s' in election '%d'",
+		e.log.Debugf("ignoring vote request from '%s'; already voted for '%s' in election '%d'",
 			req.Candidate, e.vote.LastCandidate, req.Term)
 		if e.vote.LastCandidate == req.Candidate {
-			e.log.Warnf("duplicate requestVote from candidate '%s'", req.Candidate)
+			e.log.Debugf("duplicate requestVote from candidate '%s'", req.Candidate)
 			resp.Granted = true
 		}
 		return
@@ -669,8 +676,12 @@ func (e *candidate) handleVote(rpc RPCRequest, req VoteReq) {
 	return
 }
 
-func (e *candidate) quorumSize() int {
-	return len(e.GetPeers())/2 + 1
+func (e *node) quorumSize() int {
+	size := len(e.GetPeers())
+	if size == 0 {
+		return 1
+	}
+	return size/2 + 1
 }
 
 // randomDuration returns a value that is between the minDur and 2x minDur.
