@@ -593,19 +593,17 @@ func (e *candidate) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 		return
 	}
 
-	// Increase the term if we see a newer one, and transition to a follower if we
-	// receive a heart beat from someone else who thinks they are leader, as only
-	// leaders are allowed to send heartbeats.
-	//
 	// This might occur if 2 or more nodes think they are elected leader. In this
-	// case all leaders will emit heartbeats and both fall back to follower, from
+	// case all leaders that emit heartbeats will both fall back to follower, from
 	// there the followers will timeout waiting for a heartbeat and the vote will
 	// occur again, hopefully this time without electing 2 leaders.
-	if req.Term > e.currentTerm || e.state != FollowerState {
+	//
+	// This can also occur if a follower loses connectivity to the rest of the cluster.
+	// In this case we become the follower of who ever sent us the heartbeat.
+	if e.state != FollowerState {
 		e.state = FollowerState
 		e.currentTerm = req.Term
 		resp.Term = req.Term
-		return
 	}
 
 	// Only the node with the most votes is the leader and should report heartbeats
