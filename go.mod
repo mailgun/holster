@@ -23,6 +23,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.10.0 // indirect
 	github.com/hashicorp/consul/api v1.7.0
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
+	github.com/hashicorp/memberlist v0.2.2
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.1.0 // indirect

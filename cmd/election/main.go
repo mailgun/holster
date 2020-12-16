@@ -1,4 +1,4 @@
-package election_test
+package main
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"testing"
+	"os"
 
 	"github.com/mailgun/holster/v3/election"
 	"github.com/pkg/errors"
@@ -61,10 +61,12 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// This example spawns 2 nodes, in a real application you would
-// only spawn a single node which would represent your application
-// in the election.
-func SimpleExample(t *testing.T) {
+func main() {
+	address := os.Args[0]
+	if address == "" {
+		log.Fatal("please provide an address IE: 'localhost:8080'")
+	}
+
 	logrus.SetLevel(logrus.DebugLevel)
 
 	node1, err := election.SpawnNode(election.Config{
@@ -84,23 +86,7 @@ func SimpleExample(t *testing.T) {
 	}
 	defer node1.Close()
 
-	node2, err := election.SpawnNode(election.Config{
-		Peers:   []string{"localhost:7080", "localhost:7081"},
-		Name:    "localhost:7081",
-		SendRPC: sendRPC,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer node2.Close()
-
-	go func() {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/rpc", newHandler(node1))
-		log.Fatal(http.ListenAndServe(":7080", mux))
-	}()
-
 	mux := http.NewServeMux()
-	mux.HandleFunc("/rpc", newHandler(node2))
-	log.Fatal(http.ListenAndServe(":7081", mux))
+	mux.HandleFunc("/rpc", newHandler(node1))
+	log.Fatal(http.ListenAndServe(":7080", mux))
 }

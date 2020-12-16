@@ -183,3 +183,58 @@ func TestSplitBrain(t *testing.T) {
 		t.Logf("Node: %s Leader: %t\n", k, v.Node.IsLeader())
 	}
 }
+
+func TestOmissionFaults(t *testing.T) {
+	c1 := NewTestCluster()
+	createCluster(t, c1)
+	defer c1.Close()
+
+	// Create an unstable cluster with n3 and n4 only able to contact n1 and n2 respectively.
+	// The end result should be an omission fault of less than quorum.
+	//
+	// Diagram: lines indicate connectivity between nodes
+	// (n0)-----(n1)----(n4)
+	//   \       /
+	//	  \     /
+	//     \   /
+	//      (n2)----(n3)
+	//
+
+	// n3 and n4 can't talk
+	c1.AddPeerToPeerError("n3", "n4", ErrConnRefused)
+	c1.AddPeerToPeerError("n4", "n3", ErrConnRefused)
+
+	// Leader can't talk to n4
+	c1.AddPeerToPeerError("n0", "n4", ErrConnRefused)
+	c1.AddPeerToPeerError("n4", "n0", ErrConnRefused)
+
+	// Leader can't talk to n3
+	c1.AddPeerToPeerError("n0", "n3", ErrConnRefused)
+	c1.AddPeerToPeerError("n3", "n0", ErrConnRefused)
+
+	// n2 and n4 can't talk
+	c1.AddPeerToPeerError("n2", "n4", ErrConnRefused)
+	c1.AddPeerToPeerError("n4", "n2", ErrConnRefused)
+
+	// n1 and n3 can't talk
+	c1.AddPeerToPeerError("n1", "n3", ErrConnRefused)
+	c1.AddPeerToPeerError("n3", "n1", ErrConnRefused)
+
+	// Cluster should retain n0 as leader in the face on unstable cluster
+	for i := 0; i < 12; i++ {
+		leader := c1.GetLeader()
+		require.NotNil(t, leader)
+		require.Equal(t, leader.Leader(), "n0")
+		time.Sleep(time.Millisecond * 400)
+	}
+
+	// Should retain leader once communication is restored
+	c1.ClearErrors()
+
+	for i := 0; i < 12; i++ {
+		leader := c1.GetLeader()
+		require.NotNil(t, leader)
+		require.Equal(t, leader.Leader(), "n0")
+		time.Sleep(time.Millisecond * 400)
+	}
+}

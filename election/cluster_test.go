@@ -43,7 +43,7 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 		SendRPC: c.sendRPC,
 	}
 
-	conf.Self = name
+	conf.Name = name
 	conf.SendRPC = func(ctx context.Context, peer string, req election.RPCRequest, resp *election.RPCResponse) error {
 		n.lock.RLock()
 		defer n.lock.RUnlock()
@@ -111,6 +111,23 @@ func (c *TestCluster) GetLeader() election.Node {
 	return nil
 }
 
+func (c *TestCluster) peerKey(from, to string) string {
+	return fmt.Sprintf("%s|%s", from, to)
+}
+
+func (c *TestCluster) ClearErrors() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.errors = make(map[string]error)
+}
+
+// Add a specific peer to peer error
+func (c *TestCluster) AddPeerToPeerError(from string, to string, err error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.errors[c.peerKey(from, to)] = err
+}
+
 func (c *TestCluster) AddNetworkError(peer string, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -132,6 +149,10 @@ func (c *TestCluster) sendRPC(from string, to string, req election.RPCRequest, r
 	}
 
 	if err, ok := c.errors[to]; ok {
+		return err
+	}
+
+	if err, ok := c.errors[c.peerKey(from, to)]; ok {
 		return err
 	}
 

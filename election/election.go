@@ -65,8 +65,8 @@ type Config struct {
 	// The Initial list of peers to be considered in the election, including ourself.
 	Peers []string
 
-	// The peer name of our self, as found in the Peers list
-	Self string
+	// The name this peer identifies itself as, as found in the Peers list
+	Name string
 
 	// Called when the leader changes
 	Observer Observer
@@ -84,7 +84,7 @@ type Observer func(string)
 
 type Node interface {
 	// Set the list of peers to be considered for the election, this list MUST
-	// include ourself as defined by `Config.Self`.
+	// include ourself as defined by `Config.Name`.
 	SetPeers([]string) error
 
 	// If leader, resigns as leader and starts a new election that we will not
@@ -131,11 +131,11 @@ type node struct {
 // Spawns a new node that will participate in the election.
 func SpawnNode(conf Config) (Node, error) {
 
-	if conf.Self == "" {
-		return nil, errors.New("refusing to spawn a new node with no Config.Self defined")
+	if conf.Name == "" {
+		return nil, errors.New("refusing to spawn a new node with no Config.Name defined")
 	}
 
-	setter.SetDefault(&conf.Log, logrus.WithField("name", conf.Self))
+	setter.SetDefault(&conf.Log, logrus.WithField("name", conf.Name))
 	setter.SetDefault(&conf.LeaderQuorumTimeout, time.Second*30)
 	setter.SetDefault(&conf.HeartBeatTimeout, time.Second*5)
 	setter.SetDefault(&conf.ElectionTimeout, time.Second*10)
@@ -144,7 +144,7 @@ func SpawnNode(conf Config) (Node, error) {
 	c := &node{
 		shutdownCh: make(chan struct{}),
 		rpcCh:      make(chan RPCRequest, 5_000),
-		self:       conf.Self,
+		self:       conf.Name,
 		conf:       conf,
 		log:        conf.Log,
 	}
