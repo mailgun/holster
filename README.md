@@ -34,7 +34,7 @@ for _, item := range items {
 }
 errs := wg.Wait()
 if errs != nil {
-    fmt.Printf("Errs: %+v\n", errrs)
+    fmt.Printf("Errs: %+v\n", errs)
 }
 ```
 
@@ -198,7 +198,7 @@ go func() {
             // Each() uses FanOut() to run several of these concurrently, in this
             // example we are capped at running 10 concurrently, Use 0 or 1 if you
             // don't need concurrent FanOut
-            cache.Each(10, func(key inteface{}, value interface{}) error {
+            cache.Each(10, func(key interface{}, value interface{}) error {
                 item := value.(Item)
                 return db.ExecuteQuery("insert into tbl (id, field) values (?, ?)",
                     item.Id, item.Field)
@@ -315,7 +315,7 @@ A set of functions to generate random domain names and strings useful for testin
 
 ```go
 // Return a random string 10 characters long made up of runes passed
-util.RandomRunes("prefix-", 10, util.AlphaRunes, hoslter.NumericRunes)
+util.RandomRunes("prefix-", 10, util.AlphaRunes, holster.NumericRunes)
 
 // Return a random string 10 characters long made up of Alpha Characters A-Z, a-z
 util.RandomAlpha("prefix-", 10)
