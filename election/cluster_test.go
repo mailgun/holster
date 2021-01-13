@@ -9,7 +9,7 @@ import (
 	"github.com/mailgun/holster/v3/setter"
 )
 
-type ObsPair struct {
+type ChangePair struct {
 	From   string
 	Leader string
 }
@@ -17,7 +17,7 @@ type ObsPair struct {
 // Useful in tests where you need to simulate an election cluster
 type TestCluster struct {
 	Nodes      map[string]*ClusterNode
-	ObserverCh chan ObsPair
+	OnChangeCh chan ChangePair
 	errors     map[string]error
 	lock       sync.Mutex
 }
@@ -32,7 +32,7 @@ func NewTestCluster() *TestCluster {
 	return &TestCluster{
 		Nodes:      make(map[string]*ClusterNode),
 		errors:     make(map[string]error),
-		ObserverCh: make(chan ObsPair, 500),
+		OnChangeCh: make(chan ChangePair, 500),
 	}
 }
 
@@ -43,14 +43,14 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 		SendRPC: c.sendRPC,
 	}
 
-	conf.Name = name
+	conf.UniqueID = name
 	conf.SendRPC = func(ctx context.Context, peer string, req election.RPCRequest, resp *election.RPCResponse) error {
 		n.lock.RLock()
 		defer n.lock.RUnlock()
 		return n.SendRPC(name, peer, req, resp)
 	}
-	conf.Observer = func(s string) {
-		c.ObserverCh <- ObsPair{
+	conf.OnUpdate = func(s string) {
+		c.OnChangeCh <- ChangePair{
 			From:   name,
 			Leader: s,
 		}

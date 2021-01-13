@@ -59,6 +59,33 @@ func createCluster(t *testing.T, c *TestCluster) {
 	})
 }
 
+func TestSingleNodeLeader(t *testing.T) {
+	c := NewTestCluster()
+	err := c.SpawnNode("n0", cfg)
+	require.NoError(t, err)
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		status := c.GetClusterStatus()
+		assert.Equal(t, ClusterStatus{
+			"n0": "n0",
+		}, status)
+	})
+
+	// Consume first leader election event
+	event := <-c.OnChangeCh
+	assert.Equal(t, "n0", event.Leader)
+	assert.Equal(t, "n0", event.From)
+
+	assert.True(t, c.Nodes["n0"].Node.IsLeader())
+
+	select {
+	// Should NOT receive a leadership change as we are the only node
+	case <-c.OnChangeCh:
+		t.Log("received un-expected leader change")
+		t.FailNow()
+	case <-time.After(cfg.HeartBeatTimeout * 3):
+	}
+}
+
 func TestSimpleElection(t *testing.T) {
 	c := NewTestCluster()
 	createCluster(t, c)

@@ -5,10 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/google/uuid"
+	"github.com/mailgun/holster/v3/discovery"
 	"github.com/mailgun/holster/v3/election"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -62,31 +66,66 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 }
 
 func main() {
-	address := os.Args[0]
-	if address == "" {
-		log.Fatal("please provide an address IE: 'localhost:8080'")
+	if len(os.Args) != 4 {
+		logrus.Fatal("usage: <election-address:8080> <memberlist-address:8180> <known-address:8180>")
 	}
 
-	logrus.SetLevel(logrus.DebugLevel)
+	electionAddr, memberListAddr, knownAddr := os.Args[1], os.Args[2], os.Args[3]
+	//logrus.SetLevel(logrus.DebugLevel)
 
-	node1, err := election.SpawnNode(election.Config{
-		// A list of known peers at startup
-		Peers: []string{"localhost:7080", "localhost:7081"},
+	node, err := election.SpawnNode(election.Config{
 		// A unique identifier used to identify us in a list of peers
-		Name: "localhost:7080",
+		UniqueID: electionAddr,
 		// Called whenever the library detects a change in leadership
-		Observer: func(leader string) {
-			log.Printf("Current Leader: %s\n", leader)
+		OnUpdate: func(leader string) {
+			logrus.Printf("Current Leader: %s\n", leader)
 		},
 		// Called when the library wants to contact other peers
 		SendRPC: sendRPC,
 	})
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
-	defer node1.Close()
+
+	// Create a member list catalog
+	ml, err := discovery.NewMemberList(context.Background(), discovery.MemberListConfig{
+		BindAddress: memberListAddr,
+		Peer: discovery.Peer{
+			ID:       uuid.New().String(),
+			Metadata: []byte(electionAddr),
+		},
+		KnownPeers: []string{knownAddr},
+		OnUpdate: func(peers []discovery.Peer) {
+			var result []string
+			for _, p := range peers {
+				result = append(result, string(p.Metadata))
+			}
+			logrus.Infof("Update Peers: %s", result)
+			if err := node.SetPeers(result); err != nil {
+				logrus.Fatal(err)
+			}
+		},
+	})
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/rpc", newHandler(node1))
-	log.Fatal(http.ListenAndServe(":7080", mux))
+	mux.HandleFunc("/rpc", newHandler(node))
+	go func() {
+		logrus.Fatal(http.ListenAndServe(electionAddr, mux))
+	}()
+
+	// Wait here for signals to clean up our mess
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	for range c {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		if err := ml.Close(ctx); err != nil {
+			logrus.WithError(err).Error("during member list catalog close")
+		}
+		cancel()
+		node.Close()
+		os.Exit(0)
+	}
 }
