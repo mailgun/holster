@@ -103,7 +103,7 @@ func NewMemberList(ctx context.Context, conf MemberListConfig) (Catalog, error) 
 	err = retry.Until(ctx, retry.Interval(clock.Millisecond*300), func(ctx context.Context, i int) error {
 		_, err = m.memberList.Join(m.conf.KnownPeers)
 		if err != nil {
-			return errors.Wrap(err, "while joining member-list")
+			return errors.Wrapf(err, "while joining member list known peers %#v", m.conf.KnownPeers)
 		}
 		return nil
 	})
