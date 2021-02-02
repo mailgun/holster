@@ -225,6 +225,12 @@ func (e *node) setLeader(leader string) {
 	}
 }
 
+func (e *node) getLeader() string {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	return e.leader
+}
+
 // Resign will cause this node to step down as leader, if this
 // node is NOT leader, this does nothing and returns 'false'
 func (e *node) Resign() bool {
@@ -280,6 +286,8 @@ func (e *node) runFollower() {
 	e.log.Debugf("entering follower state, current leader is '%s'", e.Leader())
 	heartbeatTimer := time.NewTicker(randomDuration(e.conf.HeartBeatTimeout))
 	defer heartbeatTimer.Stop()
+	noPeersTimer := time.NewTimer(e.conf.HeartBeatTimeout / 5)
+	defer noPeersTimer.Stop()
 
 	for e.state == FollowerState {
 		select {
@@ -296,6 +304,20 @@ func (e *node) runFollower() {
 			e.setLeader("")
 			e.setState(CandidateState)
 			return
+		case <-noPeersTimer.C:
+			peers := e.GetPeers()
+
+			// If we already have leader, ignore peer list
+			if e.getLeader() != "" {
+				return
+			}
+
+			// If we have no peers, or if we are the only peer, no need to wait
+			// for the heartbeat timeout. Change state to candidate and start the election.
+			if len(peers) == 0 || len(peers) == 1 && peers[0] == e.self {
+				e.setState(CandidateState)
+				return
+			}
 		case <-e.shutdownCh:
 			return
 		}

@@ -138,7 +138,7 @@ func TestFollowerDisconnect(t *testing.T) {
 	defer c.DelNetworkError("n4")
 
 	// Wait until n4 loses leader
-	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
 		status := c.GetClusterStatus()
 		assert.NotEqual(t, "n0", status["n4"])
 	})
@@ -146,7 +146,7 @@ func TestFollowerDisconnect(t *testing.T) {
 	c.DelNetworkError("n4")
 
 	// Follower should resume being a follower without forcing a new election.
-	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
+	testutil.UntilPass(t, 60, time.Second, func(t testutil.TestingT) {
 		status := c.GetClusterStatus()
 		assert.Equal(t, "n0", status["n4"])
 	})

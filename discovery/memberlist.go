@@ -19,22 +19,22 @@ import (
 )
 
 type Peer struct {
-	// An ID the uniquely identifies this peer in the catalog
+	// An ID the uniquely identifies this peer
 	ID string
 	// The metadata associated with this peer
 	Metadata []byte
-	// Is true if this Peer refers to our instance in the catalog
+	// Is true if this Peer refers to our instance
 	IsSelf bool
 }
 
 type OnUpdateFunc func([]Peer)
 
-type Catalog interface {
-	// Returns the peers currently registered in the catalog
+type Members interface {
+	// Returns the peers currently registered
 	GetPeers(context.Context) ([]Peer, error)
-	// Removes our peer from the catalog and closes all connections
+	// Removes our peer from the member list and closes all connections
 	Close(context.Context) error
-	// TODO: Updates the Peer metadata shared with peers in the catalog
+	// TODO: Updates the Peer metadata shared with peers
 	//UpdatePeer(context.Context, Peer) error
 }
 
@@ -52,7 +52,7 @@ type MemberListConfig struct {
 	// This is the address:port the member list protocol will advertise to other peers. (Defaults to BindAddress)
 	AdvertiseAddress string
 
-	// Metadata about this peer which should be shared with all other peers in the same catalog.
+	// Metadata about this peer which should be shared with other peers
 	Peer Peer
 
 	// A list of peers this member list instance can contact to find other peers.
@@ -65,7 +65,7 @@ type MemberListConfig struct {
 	Logger logrus.FieldLogger
 }
 
-func NewMemberList(ctx context.Context, conf MemberListConfig) (Catalog, error) {
+func NewMemberList(ctx context.Context, conf MemberListConfig) (Members, error) {
 	setter.SetDefault(&conf.Logger, logrus.WithField("category", "member-list"))
 	setter.SetDefault(&conf.AdvertiseAddress, conf.BindAddress)
 	if conf.Peer.ID == "" {
