@@ -54,6 +54,15 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
 		}
+
+		// Example of how a peer might exclude RPC
+		// commands it doesn't want made.
+		if req.RPC == election.SetPeersRPC {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("RPC request '%s' not allowed", req.RPC)))
+			return
+		}
+
 		var resp election.RPCResponse
 		node.ReceiveRPC(req, &resp)
 

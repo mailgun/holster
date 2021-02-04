@@ -46,7 +46,7 @@ type consulStore struct {
 	ctx    cancel.Context
 }
 
-func NewConsul(conf *ConsulConfig) (Catalog, error) {
+func NewConsul(conf *ConsulConfig) (Members, error) {
 	setter.SetDefault(&conf.Logger, logrus.WithField("category", "consul-catalog"))
 	setter.SetDefault(&conf.ClientConfig, api.DefaultConfig())
 	var err error

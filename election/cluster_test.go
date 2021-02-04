@@ -65,7 +65,10 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 }
 
 func (c *TestCluster) Add(name string, node *ClusterNode) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.Nodes[name] = node
+
 	node.lock.Lock()
 	defer node.lock.Unlock()
 	node.SendRPC = c.sendRPC
@@ -97,7 +100,7 @@ type ClusterStatus map[string]string
 func (c *TestCluster) GetClusterStatus() ClusterStatus {
 	status := make(ClusterStatus)
 	for k, v := range c.Nodes {
-		status[k] = v.Node.Leader()
+		status[k] = v.Node.GetLeader()
 	}
 	return status
 }

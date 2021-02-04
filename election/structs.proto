@@ -46,3 +46,20 @@ message VoteReq {
    uint64 term = 2;
 }
 
+// Set the peers this node will consider during the election.
+// This is typically set by calling Node.SetPeers() but the
+// implementor could choose to allow a remote entity to set the
+// peer list via Node.ReceiveRPC(). This can be blocked by refusing
+// to accept election.SetPeersRPC calls.
+message SetPeersReq {
+  repeated string peers = 1;
+}
+message SetPeersResp { }
+
+// Get the current state of the node
+message GetStateReq {}
+message GetStateResp {
+  string leader = 1;
+  string state = 2;
+  repeated string peers = 3;
+}

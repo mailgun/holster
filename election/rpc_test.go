@@ -58,15 +58,33 @@ func TestRPCRequest(t *testing.T) {
 			},
 			out: `{"rpc":"resign","request":{}}`,
 		},
+		{
+			name: "set-peers",
+			in: election.RPCRequest{
+				RPC:     election.SetPeersRPC,
+				Request: election.SetPeersReq{Peers: []string{"n0", "n1"}},
+			},
+			out: `{"rpc":"set-peers","request":{"peers":["n0","n1"]}}`,
+		},
+		{
+			name: "get-state",
+			in: election.RPCRequest{
+				RPC:     election.GetStateRPC,
+				Request: election.GetStateReq{},
+			},
+			out: `{"rpc":"get-state","request":{}}`,
+		},
 	} {
-		b, err := json.Marshal(tt.in)
-		require.NoError(t, err)
-		assert.Equal(t, tt.out, string(b))
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := json.Marshal(tt.in)
+			require.NoError(t, err)
+			assert.Equal(t, tt.out, string(b))
 
-		var in election.RPCRequest
-		err = json.Unmarshal(b, &in)
-		require.NoError(t, err)
-		assert.Equal(t, tt.in, in)
+			var in election.RPCRequest
+			err = json.Unmarshal(b, &in)
+			require.NoError(t, err)
+			assert.Equal(t, tt.in, in)
+		})
 	}
 
 }
@@ -117,6 +135,26 @@ func TestRPCResponse(t *testing.T) {
 				},
 			},
 			out: `{"rpc":"resign","response":{"success":true}}`,
+		},
+		{
+			name: "set-peers",
+			in: election.RPCResponse{
+				RPC:      election.SetPeersRPC,
+				Response: election.SetPeersResp{},
+			},
+			out: `{"rpc":"set-peers","response":{}}`,
+		},
+		{
+			name: "get-state",
+			in: election.RPCResponse{
+				RPC: election.GetStateRPC,
+				Response: election.GetStateResp{
+					Leader: "n0",
+					Peers:  []string{"n0", "n1"},
+					State:  "follower",
+				},
+			},
+			out: `{"rpc":"get-state","response":{"leader":"n0","state":"follower","peers":["n0","n1"]}}`,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

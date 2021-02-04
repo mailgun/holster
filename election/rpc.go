@@ -11,6 +11,8 @@ const (
 	VoteRPC          = RPC("vote")
 	ResetElectionRPC = RPC("reset-election")
 	ResignRPC        = RPC("resign")
+	SetPeersRPC      = RPC("set-peers")
+	GetStateRPC      = RPC("get-state")
 	UnknownRPC       = RPC("unknown")
 )
 
@@ -56,6 +58,18 @@ func (r *RPCResponse) UnmarshalJSON(s []byte) error {
 		r.Response = resp
 	case ResignRPC:
 		resp := ResignResp{}
+		if err := json.Unmarshal(in.Response, &resp); err != nil {
+			return err
+		}
+		r.Response = resp
+	case SetPeersRPC:
+		resp := SetPeersResp{}
+		if err := json.Unmarshal(in.Response, &resp); err != nil {
+			return err
+		}
+		r.Response = resp
+	case GetStateRPC:
+		resp := GetStateResp{}
 		if err := json.Unmarshal(in.Response, &resp); err != nil {
 			return err
 		}
@@ -123,6 +137,18 @@ func (r *RPCRequest) UnmarshalJSON(s []byte) error {
 		r.Request = req
 	case ResignRPC:
 		req := ResignReq{}
+		if err := json.Unmarshal(in.Request, &req); err != nil {
+			return err
+		}
+		r.Request = req
+	case SetPeersRPC:
+		req := SetPeersReq{}
+		if err := json.Unmarshal(in.Request, &req); err != nil {
+			return err
+		}
+		r.Request = req
+	case GetStateRPC:
+		req := GetStateReq{}
 		if err := json.Unmarshal(in.Request, &req); err != nil {
 			return err
 		}

@@ -99,7 +99,7 @@ func TestSimpleElection(t *testing.T) {
 		if !assert.NotNil(t, candidate) {
 			return
 		}
-		assert.NotEqual(t, "n0", candidate.Leader())
+		assert.NotEqual(t, "n0", candidate.GetLeader())
 	})
 
 	for k, v := range c.Nodes {
@@ -121,7 +121,7 @@ func TestLeaderDisconnect(t *testing.T) {
 		if !assert.NotNil(t, node.Node) {
 			return
 		}
-		assert.NotEqual(t, "n0", node.Node.Leader())
+		assert.NotEqual(t, "n0", node.Node.GetLeader())
 	})
 
 	for k, v := range c.Nodes {
@@ -138,7 +138,7 @@ func TestFollowerDisconnect(t *testing.T) {
 	defer c.DelNetworkError("n4")
 
 	// Wait until n4 loses leader
-	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
+	testutil.UntilPass(t, 5, time.Second, func(t testutil.TestingT) {
 		status := c.GetClusterStatus()
 		assert.NotEqual(t, "n0", status["n4"])
 	})
@@ -251,7 +251,7 @@ func TestOmissionFaults(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		leader := c1.GetLeader()
 		require.NotNil(t, leader)
-		require.Equal(t, leader.Leader(), "n0")
+		require.Equal(t, leader.GetLeader(), "n0")
 		time.Sleep(time.Millisecond * 400)
 	}
 
@@ -261,7 +261,7 @@ func TestOmissionFaults(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		leader := c1.GetLeader()
 		require.NotNil(t, leader)
-		require.Equal(t, leader.Leader(), "n0")
+		require.Equal(t, leader.GetLeader(), "n0")
 		time.Sleep(time.Millisecond * 400)
 	}
 }
