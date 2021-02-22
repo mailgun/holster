@@ -126,6 +126,8 @@ func (m *memberList) newMLConfig(conf MemberListConfig) (*ml.Config, error) {
 		return nil, errors.Wrap(err, "LivelinessAddress=`%s` is invalid;")
 	}
 
+	m.conf.Logger.Infof("BindAddr: %s Port: %d", config.BindAddr, config.BindPort)
+	m.conf.Logger.Infof("AdvAddr: %s Port: %d", config.AdvertiseAddr, config.AdvertisePort)
 	config.Delegate = &delegate{meta: conf.Peer.Metadata}
 	config.Events = m.events
 	return config, nil

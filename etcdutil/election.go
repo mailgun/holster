@@ -96,7 +96,7 @@ type ElectionConfig struct {
 //
 //  // Concede the election if leader and cancel our candidacy
 //  // for the election.
-//  election.Close()
+//  election.Stop()
 //
 func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) (*Election, error) {
 	var initialElectionErr error
@@ -145,7 +145,7 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 //  })
 //
 //  // Cancels the election and concedes the election if we are leader.
-//  election.Close()
+//  election.Stop()
 //
 func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
 	setter.SetDefault(&conf.Election, "null")

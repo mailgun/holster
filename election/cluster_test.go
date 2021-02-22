@@ -56,11 +56,13 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 		}
 	}
 	var err error
-	n.Node, err = election.SpawnNode(*conf)
+	n.Node, err = election.NewNode(*conf)
 	if err != nil {
 		return err
 	}
+	// Add the node to our list of nodes
 	c.Add(name, n)
+	n.Node.Start()
 	return nil
 }
 
@@ -170,6 +172,6 @@ func (c *TestCluster) sendRPC(from string, to string, req election.RPCRequest, r
 
 func (c *TestCluster) Close() {
 	for _, v := range c.Nodes {
-		v.Node.Close()
+		v.Node.Stop()
 	}
 }

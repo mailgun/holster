@@ -82,7 +82,7 @@ func main() {
 	electionAddr, memberListAddr, knownAddr := os.Args[1], os.Args[2], os.Args[3]
 	//logrus.SetLevel(logrus.DebugLevel)
 
-	node, err := election.SpawnNode(election.Config{
+	node, err := election.NewNode(election.Config{
 		// A unique identifier used to identify us in a list of peers
 		UniqueID: electionAddr,
 		// Called whenever the library detects a change in leadership
@@ -110,9 +110,7 @@ func main() {
 				result = append(result, string(p.Metadata))
 			}
 			logrus.Infof("Update Peers: %s", result)
-			if err := node.SetPeers(result); err != nil {
-				logrus.Fatal(err)
-			}
+			node.SetPeers(result)
 		},
 	})
 	if err != nil {
@@ -125,6 +123,15 @@ func main() {
 		logrus.Fatal(http.ListenAndServe(electionAddr, mux))
 	}()
 
+	// Wait until the http server is up and can receive RPC requests
+	if err := election.WaitForConnect(electionAddr, 10, time.Millisecond*100); err != nil {
+		logrus.Fatal(err)
+	}
+
+	// Now that our http handler is listening for requests we
+	// can safely start the election.
+	node.Start()
+
 	// Wait here for signals to clean up our mess
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -134,7 +141,7 @@ func main() {
 			logrus.WithError(err).Error("during member list catalog close")
 		}
 		cancel()
-		node.Close()
+		node.Stop()
 		os.Exit(0)
 	}
 }

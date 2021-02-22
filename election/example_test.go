@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v3/election"
 	"github.com/pkg/errors"
@@ -67,7 +71,7 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 func SimpleExample(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
-	node1, err := election.SpawnNode(election.Config{
+	node1, err := election.NewNode(election.Config{
 		// A list of known peers at startup
 		Peers: []string{"localhost:7080", "localhost:7081"},
 		// A unique identifier used to identify us in a list of peers
@@ -82,9 +86,9 @@ func SimpleExample(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node1.Close()
+	defer node1.Stop()
 
-	node2, err := election.SpawnNode(election.Config{
+	node2, err := election.NewNode(election.Config{
 		Peers:    []string{"localhost:7080", "localhost:7081"},
 		UniqueID: "localhost:7081",
 		SendRPC:  sendRPC,
@@ -92,7 +96,7 @@ func SimpleExample(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node2.Close()
+	defer node2.Stop()
 
 	go func() {
 		mux := http.NewServeMux()
@@ -100,7 +104,32 @@ func SimpleExample(t *testing.T) {
 		log.Fatal(http.ListenAndServe(":7080", mux))
 	}()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/rpc", newHandler(node2))
-	log.Fatal(http.ListenAndServe(":7081", mux))
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/rpc", newHandler(node2))
+		log.Fatal(http.ListenAndServe(":7081", mux))
+	}()
+
+	// Wait for each of the http listeners to start fielding requests
+	if err := election.WaitForConnect("localhost:7080", 3, time.Second); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := election.WaitForConnect("localhost:7081", 3, time.Second); err != nil {
+		log.Fatal(err)
+	}
+
+	// Now that both http handlers are listening for requests we
+	// can safely start the election.
+	node1.Start()
+	node2.Start()
+
+	// Wait here for signals to clean up our mess
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	for range c {
+		node1.Stop()
+		node2.Stop()
+		os.Exit(0)
+	}
 }

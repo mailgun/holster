@@ -3,7 +3,10 @@ package election
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
+	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/mailgun/holster/v3/setter"
@@ -84,9 +87,15 @@ type Config struct {
 type OnUpdate func(string)
 
 type Node interface {
-	// Set the list of peers to be considered for the election, this list MUST
-	// include ourself as defined by `Config.UniqueID`.
-	SetPeers([]string) error
+	// Starts the main election loop.
+	Start()
+
+	// Cancels the election, resigns if we are leader and waits for all go
+	// routines to complete before returning.
+	Stop()
+
+	// Set the list of peers to be considered for the election
+	SetPeers([]string)
 
 	// If leader, resigns as leader and starts a new election that we will not
 	// participate in.
@@ -103,10 +112,6 @@ type Node interface {
 
 	// Called when this peer receives a RPC request from a peer
 	ReceiveRPC(RPCRequest, *RPCResponse)
-
-	// Cancels the election, resigns if we are leader and waits for all go
-	// routines to complete before returning.
-	Close()
 }
 
 type node struct {
@@ -126,10 +131,11 @@ type node struct {
 	shutdownCh  chan struct{} // Signals we are in shutdown
 	log         logrus.FieldLogger
 	wg          syncutil.WaitGroup
+	running     int64
 }
 
-// Spawns a new node that will participate in the election.
-func SpawnNode(conf Config) (Node, error) {
+// Creates a new node. You must call Start() to be participate in the election.
+func NewNode(conf Config) (Node, error) {
 	if conf.UniqueID == "" {
 		return nil, errors.New("refusing to spawn a new node with no Config.UniqueID defined")
 	}
@@ -141,14 +147,13 @@ func SpawnNode(conf Config) (Node, error) {
 	setter.SetDefault(&conf.NetworkTimeout, time.Second*3)
 
 	c := &node{
-		shutdownCh: make(chan struct{}),
-		rpcCh:      make(chan RPCRequest, 5_000),
-		self:       conf.UniqueID,
-		conf:       conf,
-		log:        conf.Log,
+		rpcCh: make(chan RPCRequest, 5_000),
+		self:  conf.UniqueID,
+		peers: conf.Peers,
+		conf:  conf,
+		log:   conf.Log,
 	}
-	c.wg.Go(c.run)
-	return c, c.SetPeers(conf.Peers)
+	return c, nil
 }
 
 // Called by the implementer when an RPC is received from another node
@@ -165,9 +170,15 @@ func (e *node) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
 
 // SetPeers is a thread safe way to dynamically add or remove peers in a running cluster.
 // These peers will be contacted when requesting votes during leader election.
-func (e *node) SetPeers(peers []string) error {
-	_ = <-e.send(SetPeersReq{Peers: peers})
-	return nil
+func (e *node) SetPeers(peers []string) {
+
+	// If the main loop is not running, there is no risk of race
+	if atomic.LoadInt64(&e.running) != 1 {
+		e.peers = peers
+		return
+	}
+
+	e.send(SetPeersReq{Peers: peers})
 }
 
 // GetPeers returns the current peers this node knows about.
@@ -177,6 +188,16 @@ func (e *node) GetPeers() []string {
 
 // GetState returns the current state of this node
 func (e *node) GetState() NodeState {
+
+	// If the main loop is not running, there is no risk of race
+	if atomic.LoadInt64(&e.running) != 1 {
+		return NodeState{
+			Peers:  e.peers,
+			State:  e.state.String(),
+			Leader: e.leader,
+		}
+	}
+
 	select {
 	case resp := <-e.send(GetStateReq{}):
 		if s, ok := resp.Response.(GetStateResp); ok {
@@ -217,6 +238,12 @@ func (e *node) getLeader() string {
 // Resign will cause this node to step down as leader, if this
 // node is NOT leader, this does nothing and returns 'false'
 func (e *node) Resign() bool {
+
+	// Avoid blocking if main loop is not running
+	if atomic.LoadInt64(&e.running) != 1 {
+		return false
+	}
+
 	select {
 	case rpcResp := <-e.send(ResignReq{}):
 		resp, ok := rpcResp.Response.(ResignResp)
@@ -232,9 +259,24 @@ func (e *node) Resign() bool {
 	}
 }
 
-// Close closes all internal go routines and if this node is currently
+// Start the main event loop which allows the election to proceed.
+// Call this method when the node is ready to be considered in the election.
+func (e *node) Start() {
+	if atomic.LoadInt64(&e.running) == 1 {
+		return
+	}
+	atomic.StoreInt64(&e.running, 1)
+	e.shutdownCh = make(chan struct{})
+	e.wg.Go(e.run)
+}
+
+// Stop stops all internal go routines and if this node is currently
 // leader, resigns as leader.
-func (e *node) Close() {
+func (e *node) Stop() {
+	if atomic.LoadInt64(&e.running) != 1 {
+		return
+	}
+	atomic.StoreInt64(&e.running, 0)
 	close(e.shutdownCh)
 	e.wg.Wait()
 }
@@ -731,4 +773,21 @@ func (e *node) send(req interface{}) chan RPCResponse {
 // randomDuration returns a value that is between the minDur and 2x minDur.
 func randomDuration(minDur time.Duration) time.Duration {
 	return minDur + time.Duration(rand.Int63())%minDur
+}
+
+// WaitForConnect waits for the specified address to accept connections then returns nil.
+// Returns an error if all attempts have been exhausted.
+func WaitForConnect(address string, attempts int, interval time.Duration) error {
+	var err error
+	var conn net.Conn
+	for i := 0; i < attempts; i++ {
+		conn, err = net.Dial("tcp", address)
+		if err != nil {
+			continue
+		}
+		conn.Close()
+		time.Sleep(interval)
+		return nil
+	}
+	return fmt.Errorf("while connecting to '%s' - '%s' after %d attempts", address, err, attempts)
 }
