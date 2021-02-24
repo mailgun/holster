@@ -62,7 +62,7 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 	}
 	// Add the node to our list of nodes
 	c.Add(name, n)
-	n.Node.Start()
+	n.Node.Start(context.Background())
 	return nil
 }
 
@@ -93,7 +93,7 @@ func (c *TestCluster) updatePeers() {
 
 	// Update our list of known peers
 	for _, v := range c.Nodes {
-		v.Node.SetPeers(peers)
+		v.Node.SetPeers(context.Background(), peers)
 	}
 }
 
@@ -172,6 +172,6 @@ func (c *TestCluster) sendRPC(from string, to string, req election.RPCRequest, r
 
 func (c *TestCluster) Close() {
 	for _, v := range c.Nodes {
-		v.Node.Stop()
+		v.Node.Stop(context.Background())
 	}
 }

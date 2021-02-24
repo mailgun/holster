@@ -1,6 +1,7 @@
 package election_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -91,7 +92,7 @@ func TestSimpleElection(t *testing.T) {
 	createCluster(t, c)
 	defer c.Close()
 
-	c.Nodes["n0"].Node.Resign()
+	c.Nodes["n0"].Node.Resign(context.Background())
 
 	// Wait until n0 is no longer leader
 	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {

@@ -33,6 +33,8 @@ const (
 	ShutdownState
 )
 
+var ErrNotLeader = errors.New("not the leader")
+
 func (s state) String() string {
 	switch s {
 	case FollowerState:
@@ -88,27 +90,29 @@ type OnUpdate func(string)
 
 type Node interface {
 	// Starts the main election loop.
-	Start()
+	Start(ctx context.Context) error
 
 	// Cancels the election, resigns if we are leader and waits for all go
 	// routines to complete before returning.
-	Stop()
+	Stop(ctx context.Context) error
 
 	// Set the list of peers to be considered for the election
-	SetPeers([]string)
+	SetPeers(ctx context.Context, peers []string) error
 
 	// If leader, resigns as leader and starts a new election that we will not
-	// participate in.
-	Resign() bool
+	// participate in. returns ErrNotLeader if not currently the leader
+	Resign(ctx context.Context) error
 
-	// Returns true if we are currently leader
+	// IsLeader is a convenience function that calls GetState() and returns true
+	// if this node was elected leader. May block if main loop is occupied.
 	IsLeader() bool
 
-	// Returns the current leader
+	// GetLeader is a convenience function that calls GetState() returns the
+	// unique id of the node that is currently leader. May block if main loop is occupied.
 	GetLeader() string
 
 	// Returns the current state of this node
-	GetState() NodeState
+	GetState(ctx context.Context) (NodeState, error)
 
 	// Called when this peer receives a RPC request from a peer
 	ReceiveRPC(RPCRequest, *RPCResponse)
@@ -158,6 +162,13 @@ func NewNode(conf Config) (Node, error) {
 
 // Called by the implementer when an RPC is received from another node
 func (e *node) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
+	// Ignore requests received when we are not running. If
+	// we don't we can create a race when initializing e.shutdownCh
+	// and we could fill up the rpcCh with requests that are never handled
+	if atomic.LoadInt64(&e.running) != 1 {
+		return
+	}
+
 	req.respChan = make(chan RPCResponse, 1)
 	e.rpcCh <- req
 
@@ -170,24 +181,24 @@ func (e *node) ReceiveRPC(req RPCRequest, resp *RPCResponse) {
 
 // SetPeers is a thread safe way to dynamically add or remove peers in a running cluster.
 // These peers will be contacted when requesting votes during leader election.
-func (e *node) SetPeers(peers []string) {
+func (e *node) SetPeers(ctx context.Context, peers []string) error {
 
 	// If the main loop is not running, there is no risk of race
 	if atomic.LoadInt64(&e.running) != 1 {
 		e.peers = peers
-		return
+		return nil
 	}
 
-	e.send(SetPeersReq{Peers: peers})
-}
-
-// GetPeers returns the current peers this node knows about.
-func (e *node) GetPeers() []string {
-	return e.GetState().Peers
+	select {
+	case <-e.send(SetPeersReq{Peers: peers}):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // GetState returns the current state of this node
-func (e *node) GetState() NodeState {
+func (e *node) GetState(ctx context.Context) (NodeState, error) {
 
 	// If the main loop is not running, there is no risk of race
 	if atomic.LoadInt64(&e.running) != 1 {
@@ -195,26 +206,32 @@ func (e *node) GetState() NodeState {
 			Peers:  e.peers,
 			State:  e.state.String(),
 			Leader: e.leader,
-		}
+		}, nil
 	}
 
 	select {
 	case resp := <-e.send(GetStateReq{}):
 		if s, ok := resp.Response.(GetStateResp); ok {
-			return NodeState(s)
+			return NodeState(s), nil
 		}
+	case <-ctx.Done():
+		return NodeState{}, ctx.Err()
 	}
-	return NodeState{}
+	return NodeState{}, nil
 }
 
-// IsLeader returns true if this node was elected leader
+// IsLeader is a convenience function that calls GetState() and returns true
+// if this node was elected leader. May block if main loop is occupied.
 func (e *node) IsLeader() bool {
-	return e.self == e.GetState().Leader
+	s, _ := e.GetState(context.Background())
+	return e.self == s.Leader
 }
 
-// Leader returns the name of the node that is currently leader
+// GetLeader is a convenience function that calls GetState() returns the
+// unique id of the node that is currently leader. May block if main loop is occupied.
 func (e *node) GetLeader() string {
-	return e.GetState().Leader
+	s, _ := e.GetState(context.Background())
+	return s.Leader
 }
 
 func (e *node) isLeader() bool {
@@ -236,49 +253,63 @@ func (e *node) getLeader() string {
 }
 
 // Resign will cause this node to step down as leader, if this
-// node is NOT leader, this does nothing and returns 'false'
-func (e *node) Resign() bool {
+// node is NOT leader, this does nothing and returns ErrNotLeader
+func (e *node) Resign(ctx context.Context) error {
 
 	// Avoid blocking if main loop is not running
 	if atomic.LoadInt64(&e.running) != 1 {
-		return false
+		return ErrNotLeader
 	}
 
 	select {
 	case rpcResp := <-e.send(ResignReq{}):
 		resp, ok := rpcResp.Response.(ResignResp)
 		if !ok {
-			return false
+			return errors.New("resign response channel closed")
 		}
 		if rpcResp.Error != "" {
-			return false
+			return errors.New(rpcResp.Error)
 		}
-		return resp.Success
+		if resp.Success {
+			return nil
+		}
+		return ErrNotLeader
 	case <-e.shutdownCh:
-		return false
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
 // Start the main event loop which allows the election to proceed.
 // Call this method when the node is ready to be considered in the election.
-func (e *node) Start() {
+func (e *node) Start(ctx context.Context) error {
 	if atomic.LoadInt64(&e.running) == 1 {
-		return
+		return nil
 	}
-	atomic.StoreInt64(&e.running, 1)
 	e.shutdownCh = make(chan struct{})
+	atomic.StoreInt64(&e.running, 1)
 	e.wg.Go(e.run)
+	return nil
 }
 
 // Stop stops all internal go routines and if this node is currently
 // leader, resigns as leader.
-func (e *node) Stop() {
+func (e *node) Stop(ctx context.Context) error {
 	if atomic.LoadInt64(&e.running) != 1 {
-		return
+		return nil
 	}
 	atomic.StoreInt64(&e.running, 0)
 	close(e.shutdownCh)
-	e.wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		e.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return ctx.Err()
+	}
 }
 
 // Main thread loop

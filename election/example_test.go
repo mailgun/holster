@@ -86,7 +86,7 @@ func SimpleExample(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node1.Stop()
+	defer node1.Stop(context.Background())
 
 	node2, err := election.NewNode(election.Config{
 		Peers:    []string{"localhost:7080", "localhost:7081"},
@@ -96,7 +96,6 @@ func SimpleExample(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node2.Stop()
 
 	go func() {
 		mux := http.NewServeMux()
@@ -121,15 +120,15 @@ func SimpleExample(t *testing.T) {
 
 	// Now that both http handlers are listening for requests we
 	// can safely start the election.
-	node1.Start()
-	node2.Start()
+	node1.Start(context.Background())
+	node2.Start(context.Background())
 
 	// Wait here for signals to clean up our mess
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	for range c {
-		node1.Stop()
-		node2.Stop()
+		node1.Stop(context.Background())
+		node2.Stop(context.Background())
 		os.Exit(0)
 	}
 }

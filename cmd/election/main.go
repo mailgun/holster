@@ -110,7 +110,7 @@ func main() {
 				result = append(result, string(p.Metadata))
 			}
 			logrus.Infof("Update Peers: %s", result)
-			node.SetPeers(result)
+			node.SetPeers(context.Background(), result)
 		},
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func main() {
 
 	// Now that our http handler is listening for requests we
 	// can safely start the election.
-	node.Start()
+	node.Start(context.Background())
 
 	// Wait here for signals to clean up our mess
 	c := make(chan os.Signal, 1)
@@ -141,7 +141,7 @@ func main() {
 			logrus.WithError(err).Error("during member list catalog close")
 		}
 		cancel()
-		node.Stop()
+		node.Stop(context.Background())
 		os.Exit(0)
 	}
 }
