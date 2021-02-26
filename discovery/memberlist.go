@@ -126,8 +126,8 @@ func (m *memberList) newMLConfig(conf MemberListConfig) (*ml.Config, error) {
 		return nil, errors.Wrap(err, "LivelinessAddress=`%s` is invalid;")
 	}
 
-	m.conf.Logger.Infof("BindAddr: %s Port: %d", config.BindAddr, config.BindPort)
-	m.conf.Logger.Infof("AdvAddr: %s Port: %d", config.AdvertiseAddr, config.AdvertisePort)
+	m.conf.Logger.Debugf("BindAddr: %s Port: %d", config.BindAddr, config.BindPort)
+	m.conf.Logger.Debugf("AdvAddr: %s Port: %d", config.AdvertiseAddr, config.AdvertisePort)
 	config.Delegate = &delegate{meta: conf.Peer.Metadata}
 	config.Events = m.events
 	return config, nil
@@ -149,6 +149,7 @@ func (m *memberList) Close(ctx context.Context) error {
 	case err := <-errCh:
 		return err
 	}
+	return nil
 }
 
 func (m *memberList) GetPeers(_ context.Context) ([]Peer, error) {
