@@ -301,9 +301,10 @@ assert.False(t, setter.IsNil(&MyImplementation{}))
 ```
 
 ## GetEnv
-import "github.com/mailgun/holster/config"
 Get a value from an environment variable or return the provided default
 ```go
+import "github.com/mailgun/holster/config"
+
 var conf = sandra.CassandraConfig{
    Nodes:    []string{config.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
    Keyspace: "test",
