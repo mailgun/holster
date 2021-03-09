@@ -23,7 +23,7 @@ Waitgroup is a simplification of `sync.Waitgroup` with item and error collection
 
 Running many short term routines over a collection with `.Run()`
 ```go
-import "github.com/mailgun/holster/syncutils"
+import "github.com/mailgun/holster/v3/syncutils"
 var wg syncutils.WaitGroup
 for _, item := range items {
     wg.Run(func(item interface{}) error {
@@ -40,7 +40,7 @@ if errs != nil {
 
 Clean up long running routines easily with `.Loop()`
 ```go
-import "github.com/mailgun/holster/syncutils"
+import "github.com/mailgun/holster/v3/syncutils"
 pipe := make(chan int32, 0)
 var wg syncutils.WaitGroup
 var count int32
@@ -69,7 +69,7 @@ wg.Wait()
 
 Loop `.Until()` `.Stop()` is called
 ```go
-import "github.com/mailgun/holster/syncutils"
+import "github.com/mailgun/holster/v3/syncutils"
 var wg syncutils.WaitGroup
 
 wg.Until(func(done chan struct{}) bool {
@@ -94,7 +94,7 @@ collects any errors from the routines once they have all completed. FanOut allow
 to control how many goroutines spawn at a time while WaitGroup will not.
 
 ```go
-import "github.com/mailgun/holster/syncutils"
+import "github.com/mailgun/holster/v3/syncutils"
 // Insert records into the database 10 at a time
 fanOut := syncutils.NewFanOut(10)
 for _, item := range items {
@@ -129,7 +129,7 @@ TTL is evaluated during calls to `.Get()` if the entry is past the requested TTL
 removes the entry from the cache counts a miss and returns not `ok`
 
 ```go
-import "github.com/mailgun/holster/collections"
+import "github.com/mailgun/holster/v3/collections"
 cache := collections.NewLRUCache(5000)
 go func() {
     for {
@@ -178,7 +178,7 @@ with `.Each()` regularly! Else the cache items will never expire and the cache
 will eventually eat all the memory on the system*
 
 ```go
-import "github.com/mailgun/holster/collections"
+import "github.com/mailgun/holster/v3/collections"
 // How often the cache is processed
 syncInterval := time.Second * 10
 
@@ -225,7 +225,7 @@ Provides a threadsafe time to live map useful for holding a bounded set of key'd
  that can expire before being accessed. The expiration of values is calculated
  when the value is accessed or the map capacity has been reached.
 ```go
-import "github.com/mailgun/holster/collections"
+import "github.com/mailgun/holster/v3/collections"
 ttlMap := collections.NewTTLMap(10)
 clock.Freeze(time.Now())
 
@@ -253,7 +253,7 @@ fmt.Printf("value two exists: %t\n", ok2)
 These functions assist in determining if values are the golang default
  and if so, set a value
 ```go
-import "github.com/mailgun/holster/setter"
+import "github.com/mailgun/holster/v3/setter"
 var value string
 
 // Returns true if 'value' is zero (the default golang value)
@@ -303,7 +303,7 @@ assert.False(t, setter.IsNil(&MyImplementation{}))
 ## GetEnv
 Get a value from an environment variable or return the provided default
 ```go
-import "github.com/mailgun/holster/config"
+import "github.com/mailgun/holster/v3/config"
 
 var conf = sandra.CassandraConfig{
    Nodes:    []string{config.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
@@ -334,7 +334,7 @@ util.RandomDomainName()
 ## GoRoutine ID
 Get the go routine id (useful for logging)
 ```go
-import "github.com/mailgun/holster/callstack"
+import "github.com/mailgun/holster/v3/callstack"
 logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
 ```
 
@@ -342,7 +342,7 @@ logrus.Infof("[%d] Info about this go routine", stack.GoRoutineID())
 Checks if a given slice of strings contains the provided string.
 If a modifier func is provided, it is called with the slice item before the comparation.
 ```go
-import "github.com/mailgun/holster/slice"
+import "github.com/mailgun/holster/v3/slice"
 
 haystack := []string{"one", "Two", "Three"}
 slice.ContainsString("two", haystack, strings.ToLower) // true
@@ -353,7 +353,7 @@ slice.ContainsString("two", haystack, nil) // false
 Provides a Priority Queue implementation as described [here](https://en.wikipedia.org/wiki/Priority_queue)
 
 ```go
-import "github.com/mailgun/holster/collections"
+import "github.com/mailgun/holster/v3/collections"
 queue := collections.NewPriorityQueue()
 
 queue.Push(&collections.PQItem{
@@ -386,7 +386,7 @@ has handled the broadcasts are buffered up to 10,000 broadcasts. Once the broadc
  to broadcast() will block until goroutines consuming the broadcasts can catch up.
  
 ```go
-import "github.com/mailgun/holster/syncutil"
+import "github.com/mailgun/holster/v3/syncutil"
     broadcaster := syncutil.NewBroadcaster()
     done := make(chan struct{})
     var mutex sync.Mutex
@@ -438,7 +438,7 @@ passes, or all attempts have been exhausted.
 
 ```go
 import (
-    "github.com/mailgun/holster/testutil"
+    "github.com/mailgun/holster/v3/testutil"
     "github.com/stretchr/testify/require"
     "github.com/stretchr/testify/assert"
 )
@@ -488,7 +488,7 @@ func TestUntilPass(t *testing.T) {
 Waits until the test can connect to the TCP/HTTP server before continuing the test
 ```go
 import (
-    "github.com/mailgun/holster/testutil"
+    "github.com/mailgun/holster/v3/testutil"
     "golang.org/x/net/nettest"
     "github.com/stretchr/testify/require"
 )
