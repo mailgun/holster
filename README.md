@@ -1,6 +1,13 @@
 # Holster
 A place to holster mailgun's golang libraries and tools
 
+## Installation
+
+To use, run the following command: 
+```bash
+go get github.com/mailgun/holster/v3
+```
+
 ## Clock
 A drop in (almost) replacement for the system `time` package to make scheduled
 events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/clock/README.md) for details
