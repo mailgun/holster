@@ -1,22 +1,29 @@
 # Holster
 A place to holster mailgun's golang libraries and tools
 
+## Installation
+
+To use, run the following command: 
+```bash
+go get github.com/mailgun/holster/v3
+```
+
 ## Clock
 A drop in (almost) replacement for the system `time` package to make scheduled
-events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/v3/clock/README.md) for details
+events deterministic in tests. See the [clock readme](https://github.com/mailgun/holster/blob/master/clock/README.md) for details
 
 ## HttpSign
 HttpSign is a library for signing and authenticating HTTP requests between web services.
-See the [httpsign readme](https://github.com/mailgun/holster/blob/master/v3/httpsign/README.md) for details
+See the [httpsign readme](https://github.com/mailgun/holster/blob/master/httpsign/README.md) for details
 
 ## Distributed Election
 A distributed election implementation using etcd to coordinate elections
-See the [etcd v3 readme](https://github.com/mailgun/holster/blob/master/v3/etcdutil/README.md) for details
+See the [etcd v3 readme](https://github.com/mailgun/holster/blob/master/etcdutil/README.md) for details
 
 ## Errors
 Errors is a fork of [https://github.com/pkg/errors](https://github.com/pkg/errors) with additional
  functions for improving the relationship between structured logging and error handling in go
-See the [errors readme](https://github.com/mailgun/holster/blob/master/v3/errors/README.md) for details
+See the [errors readme](https://github.com/mailgun/holster/blob/master/errors/README.md) for details
 
 ## WaitGroup
 Waitgroup is a simplification of `sync.Waitgroup` with item and error collection included.
@@ -301,9 +308,10 @@ assert.False(t, setter.IsNil(&MyImplementation{}))
 ```
 
 ## GetEnv
-import "github.com/mailgun/holster/v3/config"
 Get a value from an environment variable or return the provided default
 ```go
+import "github.com/mailgun/holster/v3/config"
+
 var conf = sandra.CassandraConfig{
    Nodes:    []string{config.GetEnv("CASSANDRA_ENDPOINT", "127.0.0.1:9042")},
    Keyspace: "test",
