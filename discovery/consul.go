@@ -37,7 +37,7 @@ type ConsulConfig struct {
 	Logger logrus.FieldLogger
 }
 
-type consulStore struct {
+type Consul struct {
 	wg     syncutil.WaitGroup
 	log    logrus.FieldLogger
 	client *api.Client
@@ -59,7 +59,7 @@ func NewConsul(conf *ConsulConfig) (Members, error) {
 		return nil, errors.New("CatalogName cannot be empty")
 	}
 
-	cs := consulStore{
+	cs := Consul{
 		ctx:  cancel.New(context.Background()),
 		log:  conf.Logger,
 		conf: conf,
@@ -121,7 +121,7 @@ func NewConsul(conf *ConsulConfig) (Members, error) {
 	return &cs, nil
 }
 
-func (cs *consulStore) watch() error {
+func (cs *Consul) watch() error {
 	changeCh := make(chan []*api.ServiceEntry, 100)
 	var previousPeers map[string]Peer
 	var err error
@@ -200,7 +200,7 @@ func (cs *consulStore) watch() error {
 	return nil
 }
 
-func (cs *consulStore) GetPeers(ctx context.Context) ([]Peer, error) {
+func (cs *Consul) GetPeers(ctx context.Context) ([]Peer, error) {
 	opts := &api.QueryOptions{LocalOnly: true}
 	services, _, err := cs.client.Health().Service(cs.conf.CatalogName, "", true, opts.WithContext(ctx))
 	if err != nil {
@@ -223,7 +223,7 @@ func (cs *consulStore) GetPeers(ctx context.Context) ([]Peer, error) {
 	return peers, nil
 }
 
-func (cs *consulStore) Close(ctx context.Context) error {
+func (cs *Consul) Close(ctx context.Context) error {
 	errCh := make(chan error)
 	go func() {
 		cs.plan.Stop()

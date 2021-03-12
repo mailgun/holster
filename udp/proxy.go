@@ -15,6 +15,8 @@ type Proxy struct {
 	listen   *Server
 	upstream *Client
 	mutex    sync.Mutex // ensure the handler isn't still executing when start()/stop() are called
+	// A list of addresses that we deny udp proxy for
+	blocked []string
 }
 
 type ProxyConfig struct {
@@ -63,7 +65,15 @@ func (p *Proxy) Start() error {
 func (p *Proxy) handler(conn net.PacketConn, buf []byte, addr net.Addr) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
+	for _, block := range p.blocked {
+		if block == addr.String() {
+			logrus.Debugf("Blocked proxy of %d bytes from '%s' ", len(buf), addr.String())
+			return
+		}
+	}
 	logrus.Debugf("proxy %d bytes %s -> %s", len(buf), addr.String(), p.upstream.addr.String())
+
 	// Forward the request to upstream
 	if _, err := p.upstream.Send(buf); err != nil {
 		logrus.WithError(err).Errorf("failed to forward '%d' bytes from '%s' to upstream '%s'", len(buf), addr.String(), p.upstream.addr.String())
@@ -85,6 +95,31 @@ func (p *Proxy) handler(conn net.PacketConn, buf []byte, addr net.Addr) {
 		return
 	}
 	logrus.Debugf("proxy %d bytes %s <- %s", n, p.upstream.addr.String(), addr.String())
+}
+
+func (p *Proxy) Block(addr string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.blocked = append(p.blocked, addr)
+}
+
+func (p *Proxy) UnBlock(addr string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Short cut
+	if len(p.blocked) == 1 {
+		p.blocked = nil
+	}
+
+	var blocked []string
+	for _, b := range p.blocked {
+		if b == addr {
+			continue
+		}
+		blocked = append(blocked, addr)
+	}
+	p.blocked = blocked
 }
 
 func (p *Proxy) Stop() {

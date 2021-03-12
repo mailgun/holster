@@ -19,36 +19,38 @@ type NodeState GetStateResp
 type state uint32
 
 const (
-	// FollowerState means we are following the leader and expect
+	// followerState means we are following the leader and expect
 	// to get heart beats regularly. This is the initial state, as
 	// we don't want to force an election when a new node joins
 	// the cluster.
-	FollowerState state = iota
-	// CandidateState means we are actively attempting to become leader
-	CandidateState
-	// LeaderState means we have received a quorum of votes while
-	// in CandidateState and have assumed leadership.
-	LeaderState
-	// ShutdownState means we are in the process of shutting down
-	ShutdownState
+	followerState state = iota
+	// candidateState means we are actively attempting to become leader
+	candidateState
+	// leaderState means we have received a quorum of votes while
+	// in candidateState and have assumed leadership.
+	leaderState
+	// shutdownState means we are in the process of shutting down
+	shutdownState
 )
 
 var ErrNotLeader = errors.New("not the leader")
 
 func (s state) String() string {
 	switch s {
-	case FollowerState:
+	case followerState:
 		return "Follower"
-	case CandidateState:
+	case candidateState:
 		return "Candidate"
-	case LeaderState:
+	case leaderState:
 		return "Leader"
-	case ShutdownState:
+	case shutdownState:
 		return "Shutdown"
 	default:
 		return "Unknown"
 	}
 }
+
+type SendRPCFunc func(context.Context, string, RPCRequest, *RPCResponse) error
 
 type Config struct {
 	// How long we should wait for a single network operation to complete.
@@ -83,7 +85,7 @@ type Config struct {
 	// Sends an RPC request to a peer, This function must be provided and can
 	// utilize any network communication the implementer wishes. If context cancelled
 	// should return an error.
-	SendRPC func(context.Context, string, RPCRequest, *RPCResponse) error
+	SendRPC SendRPCFunc
 }
 
 type OnUpdate func(string)
@@ -142,6 +144,10 @@ type node struct {
 func NewNode(conf Config) (Node, error) {
 	if conf.UniqueID == "" {
 		return nil, errors.New("refusing to spawn a new node with no Config.UniqueID defined")
+	}
+
+	if conf.SendRPC == nil {
+		return nil, errors.New("refusing to spawn a new node with no Config.SendRPC defined")
 	}
 
 	setter.SetDefault(&conf.Log, logrus.WithField("id", conf.UniqueID))
@@ -240,7 +246,7 @@ func (e *node) isLeader() bool {
 
 func (e *node) setLeader(leader string) {
 	if e.leader != leader {
-		e.log.Debugf("Set Leader (%s)", leader)
+		e.log.Debugf("Set Leader '%s'", leader)
 		e.leader = leader
 		if e.conf.OnUpdate != nil {
 			e.conf.OnUpdate(leader)
@@ -317,17 +323,17 @@ func (e *node) run() {
 	for {
 		select {
 		case <-e.shutdownCh:
-			e.state = ShutdownState
+			e.state = shutdownState
 			return
 		default:
 		}
 
 		switch e.state {
-		case FollowerState:
+		case followerState:
 			e.runFollower()
-		case CandidateState:
+		case candidateState:
 			e.runCandidate()
-		case LeaderState:
+		case leaderState:
 			e.runLeader()
 		}
 	}
@@ -340,7 +346,7 @@ func (e *node) runFollower() {
 	noPeersTimer := time.NewTimer(e.conf.HeartBeatTimeout / 5)
 	defer noPeersTimer.Stop()
 
-	for e.state == FollowerState {
+	for e.state == followerState {
 		select {
 		case rpc := <-e.rpcCh:
 			e.processRPC(rpc)
@@ -353,7 +359,7 @@ func (e *node) runFollower() {
 			// Heartbeat failed! Transition to the candidate state
 			e.log.Debugf("heartbeat timeout, starting election; previous leader was '%s'", e.leader)
 			e.setLeader("")
-			e.state = CandidateState
+			e.state = candidateState
 			return
 		case <-noPeersTimer.C:
 			// If we already have leader, don't check for no peers
@@ -364,7 +370,7 @@ func (e *node) runFollower() {
 			// If we have no peers, or if we are the only peer, no need to wait
 			// for the heartbeat timeout. Change state to candidate and start the election.
 			if len(e.peers) == 0 || len(e.peers) == 1 && e.peers[0] == e.self {
-				e.state = CandidateState
+				e.state = candidateState
 				return
 			}
 		case <-e.shutdownCh:
@@ -392,7 +398,7 @@ func (e *node) runCandidate() {
 	votesNeeded := e.quorumSize()
 	e.log.Debugf("votes needed: %d", votesNeeded)
 
-	for e.state == CandidateState {
+	for e.state == candidateState {
 		select {
 		case <-voteTimer.C:
 			voteCh = e.electSelf()
@@ -402,7 +408,7 @@ func (e *node) runCandidate() {
 			// Check if the term is greater than ours, bail
 			if vote.Term > e.currentTerm {
 				e.log.Debug("newer term discovered, fallback to follower")
-				e.state = FollowerState
+				e.state = followerState
 				e.currentTerm = vote.Term
 				return
 			}
@@ -416,7 +422,7 @@ func (e *node) runCandidate() {
 			// Check if we've become the leader
 			if grantedVotes >= votesNeeded {
 				e.log.Debugf("election won! tally is '%d'", grantedVotes)
-				e.state = LeaderState
+				e.state = leaderState
 				e.setLeader(e.self)
 				return
 			}
@@ -504,7 +510,7 @@ func (e *node) runLeader() {
 	peersLastContact := make(map[string]time.Time, len(e.peers))
 	heartBeatReplyCh := make(chan HeartBeatResp, 5_000)
 
-	for e.state == LeaderState {
+	for e.state == leaderState {
 		select {
 		case rpc := <-e.rpcCh:
 			e.processRPC(rpc)
@@ -533,15 +539,16 @@ func (e *node) runLeader() {
 			now := time.Now()
 			for _, peer := range e.peers {
 				if peer == e.self {
-					contacted++
 					continue
 				}
 
 				lc, ok := peersLastContact[peer]
 				if !ok {
+					e.log.Debugf("quorum check - peer '%s' not found", peer)
 					continue
 				}
 				diff := now.Sub(lc)
+				e.log.Debugf("quorum check - peer '%s' diff '%f", peer, diff.Seconds())
 				if diff >= e.conf.HeartBeatTimeout {
 					e.log.Debugf("no heartbeat response from '%s' for '%s'", peer, diff)
 					continue
@@ -551,9 +558,10 @@ func (e *node) runLeader() {
 
 			// Verify we can contact a quorum (Minus ourself)
 			quorum := e.quorumSize()
+			e.log.Debugf("quorum check - quorum='%d' contacted='%d'", quorum-1, contacted)
 			if contacted < (quorum - 1) {
 				e.log.Debug("failed to receive heart beats from a quorum of peers; stepping down")
-				e.state = FollowerState
+				e.state = followerState
 
 				// Inform the other peers we are stepping down
 				for _, peer := range e.peers {
@@ -561,7 +569,8 @@ func (e *node) runLeader() {
 				}
 			}
 		case <-e.shutdownCh:
-			e.state = ShutdownState
+			e.state = shutdownState
+			e.log.Debug("leader shutdown")
 			if e.isLeader() {
 				// Notify all followers we are no longer leader
 				for _, peer := range e.peers {
@@ -651,7 +660,7 @@ func (e *node) processRPC(rpc RPCRequest) {
 func (e *node) handleResign(rpc RPCRequest) {
 	e.log.Debug("RPC: election.ResignReq{}")
 	e.setLeader("")
-	e.state = FollowerState
+	e.state = followerState
 	for _, peer := range e.peers {
 		e.sendElectionReset(peer)
 	}
@@ -662,7 +671,7 @@ func (e *node) handleResign(rpc RPCRequest) {
 func (e *node) handleResetElection(rpc RPCRequest) {
 	e.log.Debug("RPC: election.ResetElectionReq{}")
 	e.setLeader("")
-	e.state = CandidateState
+	e.state = candidateState
 	rpc.respond(rpc.RPC, ResetElectionResp{}, "")
 }
 
@@ -693,8 +702,8 @@ func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	//
 	// This can also occur if a leader loses connectivity to the rest of the cluster.
 	// In this case we become the follower of who ever sent us a heartbeat.
-	if e.state != FollowerState {
-		e.state = FollowerState
+	if e.state != followerState {
+		e.state = followerState
 		e.currentTerm = req.Term
 		resp.Term = req.Term
 	}
@@ -735,7 +744,7 @@ func (e *node) handleVote(rpc RPCRequest, req VoteReq) {
 	if req.Term > e.currentTerm {
 		// Ensure transition to follower
 		e.log.Debugf("received a vote request with a newer term '%d'", req.Term)
-		e.state = FollowerState
+		e.state = followerState
 		e.currentTerm = req.Term
 		resp.Term = req.Term
 	}

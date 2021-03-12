@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	ml "github.com/hashicorp/memberlist"
 	"github.com/mailgun/holster/v3/clock"
@@ -38,29 +39,27 @@ type Members interface {
 	//UpdatePeer(context.Context, Peer) error
 }
 
-type memberList struct {
+type MemberList struct {
 	log        logrus.FieldLogger
 	memberList *ml.Memberlist
 	conf       MemberListConfig
 	events     *eventDelegate
+	mutex      sync.Mutex
 }
 
 type MemberListConfig struct {
 	// This is the address:port the member list protocol listen for other peers on.
 	BindAddress string
-
 	// This is the address:port the member list protocol will advertise to other peers. (Defaults to BindAddress)
 	AdvertiseAddress string
-
 	// Metadata about this peer which should be shared with other peers
 	Peer Peer
-
 	// A list of peers this member list instance can contact to find other peers.
 	KnownPeers []string
-
 	// A callback function which is called when the member list changes.
 	OnUpdate OnUpdateFunc
-
+	// If not nil, use this config instead of ml.DefaultLANConfig()
+	MemberListConfig *ml.Config
 	// An interface through which logging will occur; usually *logrus.Entry
 	Logger logrus.FieldLogger
 }
@@ -74,10 +73,9 @@ func NewMemberList(ctx context.Context, conf MemberListConfig) (Members, error) 
 	if conf.BindAddress == "" {
 		return nil, errors.New("BindAddress cannot be empty")
 	}
-
 	conf.Peer.IsSelf = false
 
-	m := &memberList{
+	m := &MemberList{
 		log:  conf.Logger,
 		conf: conf,
 		events: &eventDelegate{
@@ -110,10 +108,12 @@ func NewMemberList(ctx context.Context, conf MemberListConfig) (Members, error) 
 	return m, errors.Wrap(err, "timed out attempting to join member list")
 }
 
-func (m *memberList) newMLConfig(conf MemberListConfig) (*ml.Config, error) {
-	config := ml.DefaultWANConfig()
+func (m *MemberList) newMLConfig(conf MemberListConfig) (*ml.Config, error) {
+	config := conf.MemberListConfig
+	setter.SetDefault(&config, ml.DefaultLANConfig())
 	config.Name = conf.Peer.ID
-	config.LogOutput = newLogWriter(conf.Logger)
+	config.LogOutput = NewLogWriter(conf.Logger)
+	config.PushPullInterval = time.Second * 5
 
 	var err error
 	config.BindAddr, config.BindPort, err = splitAddress(conf.BindAddress)
@@ -133,7 +133,7 @@ func (m *memberList) newMLConfig(conf MemberListConfig) (*ml.Config, error) {
 	return config, nil
 }
 
-func (m *memberList) Close(ctx context.Context) error {
+func (m *MemberList) Close(ctx context.Context) error {
 	errCh := make(chan error)
 	go func() {
 		if err := m.memberList.Leave(clock.Second * 30); err != nil {
@@ -152,7 +152,7 @@ func (m *memberList) Close(ctx context.Context) error {
 	return nil
 }
 
-func (m *memberList) GetPeers(_ context.Context) ([]Peer, error) {
+func (m *MemberList) GetPeers(_ context.Context) ([]Peer, error) {
 	return m.events.GetPeers()
 }
 
@@ -226,7 +226,7 @@ func (m *delegate) GetBroadcasts(int, int) [][]byte { return nil }
 func (m *delegate) LocalState(bool) []byte          { return nil }
 func (m *delegate) MergeRemoteState([]byte, bool)   {}
 
-func newLogWriter(log logrus.FieldLogger) *io.PipeWriter {
+func NewLogWriter(log logrus.FieldLogger) *io.PipeWriter {
 	reader, writer := io.Pipe()
 
 	go func() {

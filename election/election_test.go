@@ -229,24 +229,24 @@ func TestOmissionFaults(t *testing.T) {
 	//
 
 	// n3 and n4 can't talk
-	c1.AddPeerToPeerError("n3", "n4", ErrConnRefused)
-	c1.AddPeerToPeerError("n4", "n3", ErrConnRefused)
+	c1.Disconnect("n3", "n4", ErrConnRefused)
+	c1.Disconnect("n4", "n3", ErrConnRefused)
 
 	// Leader can't talk to n4
-	c1.AddPeerToPeerError("n0", "n4", ErrConnRefused)
-	c1.AddPeerToPeerError("n4", "n0", ErrConnRefused)
+	c1.Disconnect("n0", "n4", ErrConnRefused)
+	c1.Disconnect("n4", "n0", ErrConnRefused)
 
 	// Leader can't talk to n3
-	c1.AddPeerToPeerError("n0", "n3", ErrConnRefused)
-	c1.AddPeerToPeerError("n3", "n0", ErrConnRefused)
+	c1.Disconnect("n0", "n3", ErrConnRefused)
+	c1.Disconnect("n3", "n0", ErrConnRefused)
 
 	// n2 and n4 can't talk
-	c1.AddPeerToPeerError("n2", "n4", ErrConnRefused)
-	c1.AddPeerToPeerError("n4", "n2", ErrConnRefused)
+	c1.Disconnect("n2", "n4", ErrConnRefused)
+	c1.Disconnect("n4", "n2", ErrConnRefused)
 
 	// n1 and n3 can't talk
-	c1.AddPeerToPeerError("n1", "n3", ErrConnRefused)
-	c1.AddPeerToPeerError("n3", "n1", ErrConnRefused)
+	c1.Disconnect("n1", "n3", ErrConnRefused)
+	c1.Disconnect("n3", "n1", ErrConnRefused)
 
 	// Cluster should retain n0 as leader in the face on unstable cluster
 	for i := 0; i < 12; i++ {
@@ -265,4 +265,79 @@ func TestOmissionFaults(t *testing.T) {
 		require.Equal(t, leader.GetLeader(), "n0")
 		time.Sleep(time.Millisecond * 400)
 	}
+}
+
+func TestIsolatedLeader(t *testing.T) {
+	c1 := NewTestCluster()
+	createCluster(t, c1)
+	defer c1.Close()
+
+	// Create a cluster where the leader become isolated from the rest
+	// of the cluster.
+	//
+	// Diagram: lines indicate connectivity
+	// between nodes and n0 is leader
+	//
+	// (n0)----(n1)----(n4)
+	//          / \     /
+	//	       /   \   /
+	//        /     \ /
+	//      (n2)----(n3)
+	//
+	require.Equal(t, c1.GetLeader().GetLeader(), "n0")
+
+	// Leader can't talk to n2
+	c1.Disconnect("n0", "n2", ErrConnRefused)
+	c1.Disconnect("n2", "n0", ErrConnRefused)
+
+	// Leader can't talk to n3
+	c1.Disconnect("n0", "n3", ErrConnRefused)
+	c1.Disconnect("n3", "n0", ErrConnRefused)
+
+	// Leader can't talk to n4
+	c1.Disconnect("n0", "n4", ErrConnRefused)
+	c1.Disconnect("n4", "n0", ErrConnRefused)
+
+	// Leader should realize it doesn't have a quorum of
+	// heartbeats and step down and remaining cluster should
+	// elect a new leader
+	for i := 0; i < 20; i++ {
+		leader := c1.GetLeader()
+		if leader == nil {
+			goto sleep
+		}
+
+		// Leader should no longer be n0
+		if leader.GetLeader() != "n0" {
+			// A node in the new cluster must agree and have elected a new leader
+			l := c1.Nodes["n4"].Node.GetLeader()
+			if l != "" && l == "n0" {
+				break
+			}
+		}
+	sleep:
+		time.Sleep(time.Millisecond * 500)
+	}
+	require.NotNil(t, c1.GetLeader())
+	require.NotEqual(t, c1.GetLeader().GetLeader(), "n0")
+	require.Equal(t, c1.GetLeader().GetLeader(), "n0")
+	// Note: In the case where n1 is elected the new leader,
+	// n0 will know that n1 is the new leader sooner than later
+	// since connectivity from n0 to n1 was never interrupted.
+	//fmt.Printf("Cluster: %#v\n", c1.GetClusterStatus())
+
+	// Should persist new leader once communication is restored
+	c1.ClearErrors()
+
+	for i := 0; i < 20; i++ {
+		if c1.Nodes["n0"].Node.GetLeader() == "" {
+			time.Sleep(time.Millisecond * 500)
+			continue
+		}
+		break
+	}
+
+	s, err := c1.Nodes["n0"].Node.GetState(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "Follower", s.State)
 }

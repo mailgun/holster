@@ -96,4 +96,5 @@ func TestProxy(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "Hello, World", string(b[:n]))
+
 }
