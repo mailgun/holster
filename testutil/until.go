@@ -70,4 +70,3 @@ func UntilConnect(t TestingT, a int, d time.Duration, addr string) {
 	t.Errorf("never connected to TCP server at '%s' after %d attempts", addr, a)
 	t.FailNow()
 }
-

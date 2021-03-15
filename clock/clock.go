@@ -12,12 +12,16 @@
 // not a channel, but a function that returns <-chan time.Time.
 package clock
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 var (
 	frozenAt time.Time
 	realtime       = &systemTime{}
 	provider Clock = realtime
+	mu             = sync.Mutex{}
 )
 
 // Freeze after this function is called all time related functions start
@@ -25,6 +29,8 @@ var (
 // supposed to be used in tests only. Returns an Unfreezer so it can be a
 // one-liner in tests: defer clock.Freeze(clock.Now()).Unfreeze()
 func Freeze(now time.Time) Unfreezer {
+	mu.Lock()
+	defer mu.Unlock()
 	frozenAt = now.UTC()
 	provider = &frozenTime{now: now}
 	return Unfreezer{}
@@ -38,6 +44,8 @@ func (u Unfreezer) Unfreeze() {
 
 // Unfreeze reverses effect of Freeze.
 func Unfreeze() {
+	mu.Lock()
+	defer mu.Unlock()
 	provider = realtime
 }
 
