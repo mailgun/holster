@@ -3,6 +3,7 @@ package election_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -320,7 +321,6 @@ func TestIsolatedLeader(t *testing.T) {
 	}
 	require.NotNil(t, c1.GetLeader())
 	require.NotEqual(t, c1.GetLeader().GetLeader(), "n0")
-	require.Equal(t, c1.GetLeader().GetLeader(), "n0")
 	// Note: In the case where n1 is elected the new leader,
 	// n0 will know that n1 is the new leader sooner than later
 	// since connectivity from n0 to n1 was never interrupted.
@@ -329,15 +329,69 @@ func TestIsolatedLeader(t *testing.T) {
 	// Should persist new leader once communication is restored
 	c1.ClearErrors()
 
-	for i := 0; i < 20; i++ {
-		if c1.Nodes["n0"].Node.GetLeader() == "" {
-			time.Sleep(time.Millisecond * 500)
-			continue
-		}
-		break
-	}
+	//for i := 0; i < 20; i++ {
+	//	if c1.Nodes["n0"].Node.GetLeader() == "" {
+	//		time.Sleep(time.Millisecond * 500)
+	//		continue
+	//	}
+	//	break
+	//}
+
+	// Should pick up the leadership from the rest of the cluster
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		leader := c1.Nodes["n0"].Node.GetLeader()
+		assert.NotEqual(t, leader, "")
+	})
 
 	s, err := c1.Nodes["n0"].Node.GetState(context.Background())
+	fmt.Printf("State: %#v\n", s)
 	require.NoError(t, err)
 	assert.Equal(t, "Follower", s.State)
+}
+
+func TestMinimumQuorum(t *testing.T) {
+	c := NewTestCluster()
+
+	cfg := &election.Config{
+		NetworkTimeout:      time.Second,
+		HeartBeatTimeout:    time.Second,
+		LeaderQuorumTimeout: time.Second * 2,
+		ElectionTimeout:     time.Second * 2,
+		MinimumQuorum:       2,
+	}
+
+	err := c.SpawnNode("n0", cfg)
+	require.NoError(t, err)
+
+	time.Sleep(time.Second * 5)
+
+	// Ensure n0 is not leader
+	status := c.GetClusterStatus()
+	require.NotEqual(t, "n0", status["n0"])
+
+	c.SpawnNode("n1", cfg)
+
+	// Should elect a leader
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		status := c.GetClusterStatus()
+		assert.NotEqual(t, status["n0"], "")
+	})
+
+	status = c.GetClusterStatus()
+	var leader string
+
+	// Shutdown the follower
+	if status["n0"] == "n0" {
+		c.Remove("n1").Node.Stop(context.Background())
+		leader = "n0"
+	} else {
+		c.Remove("n0").Node.Stop(context.Background())
+		leader = "n1"
+	}
+
+	// The leader should detect it no longer has MinimumQuorum and step down
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		status := c.GetClusterStatus()
+		assert.Equal(t, status[leader], "")
+	})
 }

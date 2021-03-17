@@ -78,6 +78,9 @@ func (c *TestCluster) Add(name string, node *ClusterNode) {
 }
 
 func (c *TestCluster) Remove(name string) *ClusterNode {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	n := c.Nodes[name]
 	delete(c.Nodes, name)
 	c.updatePeers()

@@ -69,6 +69,16 @@ type Config struct {
 	// new election.
 	LeaderQuorumTimeout time.Duration
 
+	// The minimum number of peers that are required to form a cluster and elect a leader.
+	// This is to prevent a small number of nodes (or a single node) that gets disconnected
+	// from the cluster to elect a leader (assuming the peer list is updated to exclude the
+	// disconnected peers). Instead nodes will wait until connectivity is restored
+	// to the quorum of the cluster. The default is zero, which means if a single node is
+	// disconnected from the cluster, and it's peer list only includes it's self, it will elect
+	// itself leader. If we set MinimumQuorum = 2 then no leader will be elected until the peer
+	// list includes at least 2 peers and a successful vote has completed.
+	MinimumQuorum int
+
 	// The Initial list of peers to be considered in the election, including ourself.
 	Peers []string
 
@@ -151,9 +161,9 @@ func NewNode(conf Config) (Node, error) {
 	}
 
 	setter.SetDefault(&conf.Log, logrus.WithField("id", conf.UniqueID))
-	setter.SetDefault(&conf.LeaderQuorumTimeout, time.Second*60)
-	setter.SetDefault(&conf.HeartBeatTimeout, time.Second*20)
-	setter.SetDefault(&conf.ElectionTimeout, time.Second*15)
+	setter.SetDefault(&conf.LeaderQuorumTimeout, time.Second*12)
+	setter.SetDefault(&conf.HeartBeatTimeout, time.Second*6)
+	setter.SetDefault(&conf.ElectionTimeout, time.Second*6)
 	setter.SetDefault(&conf.NetworkTimeout, time.Second*3)
 
 	c := &node{
@@ -341,9 +351,10 @@ func (e *node) run() {
 
 func (e *node) runFollower() {
 	e.log.Debugf("entering follower state, current leader is '%s'", e.leader)
-	heartbeatTimer := time.NewTicker(randomDuration(e.conf.HeartBeatTimeout))
+	timeout := randomDuration(e.conf.HeartBeatTimeout)
+	heartbeatTimer := time.NewTicker(timeout)
 	defer heartbeatTimer.Stop()
-	noPeersTimer := time.NewTimer(e.conf.HeartBeatTimeout / 5)
+	noPeersTimer := time.NewTimer(timeout / 5)
 	defer noPeersTimer.Stop()
 
 	for e.state == followerState {
@@ -401,6 +412,12 @@ func (e *node) runCandidate() {
 	for e.state == candidateState {
 		select {
 		case <-voteTimer.C:
+			// Do not start a vote if we are below our minimum quorum
+			if len(e.peers) < e.conf.MinimumQuorum {
+				e.log.Warnf("peer count '%d' below minimum quorum of '%d'; sleeping...",
+					len(e.peers), e.conf.MinimumQuorum)
+				continue
+			}
 			voteCh = e.electSelf()
 		case rpc := <-e.rpcCh:
 			e.processRPC(rpc)
@@ -533,6 +550,19 @@ func (e *node) runLeader() {
 				e.sendHeartBeat(peer, heartBeatReplyCh)
 			}
 		case <-quorumTicker.C:
+			// If the number of peers falls below our MinimumQuorum then we step down.
+			if len(e.peers) < e.conf.MinimumQuorum {
+				e.log.Warnf("peer count '%d' below minimum quorum of '%d'; stepping down",
+					len(e.peers), e.conf.MinimumQuorum)
+				e.state = followerState
+				e.setLeader("")
+				// Inform the other peers we are stepping down
+				for _, peer := range e.peers {
+					e.sendElectionReset(peer)
+				}
+				return
+			}
+
 			// Check if we have received contact from a quorum of nodes within the leader quorum timeout interval.
 			// If not, we step down as we may have lost connectivity.
 			contacted := 0
@@ -562,11 +592,12 @@ func (e *node) runLeader() {
 			if contacted < (quorum - 1) {
 				e.log.Debug("failed to receive heart beats from a quorum of peers; stepping down")
 				e.state = followerState
-
+				e.setLeader("")
 				// Inform the other peers we are stepping down
 				for _, peer := range e.peers {
 					e.sendElectionReset(peer)
 				}
+				return
 			}
 		case <-e.shutdownCh:
 			e.state = shutdownState
@@ -577,6 +608,7 @@ func (e *node) runLeader() {
 					e.sendElectionReset(peer)
 				}
 			}
+			return
 		}
 	}
 	e.lastContact = time.Now()
@@ -687,11 +719,6 @@ func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 		rpc.respond(rpc.RPC, resp, "")
 	}()
 
-	// Ignore an older term
-	if req.Term < e.currentTerm {
-		return
-	}
-
 	// This might occur if 2 or more nodes think they are elected leader. In this
 	// case all leaders that emit heartbeats will both fall back to follower, from
 	// there the followers will timeout waiting for a heartbeat and the vote will
@@ -701,7 +728,8 @@ func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	// in that case the first leader to send a heartbeat becomes leader.
 	//
 	// This can also occur if a leader loses connectivity to the rest of the cluster.
-	// In this case we become the follower of who ever sent us a heartbeat.
+	// In this case we become the follower of who ever sent us a heartbeat, regardless
+	// of our current term compared the one who sent us the heartbeat.
 	if e.state != followerState {
 		e.state = followerState
 		e.currentTerm = req.Term
