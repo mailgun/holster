@@ -329,14 +329,6 @@ func TestIsolatedLeader(t *testing.T) {
 	// Should persist new leader once communication is restored
 	c1.ClearErrors()
 
-	//for i := 0; i < 20; i++ {
-	//	if c1.Nodes["n0"].Node.GetLeader() == "" {
-	//		time.Sleep(time.Millisecond * 500)
-	//		continue
-	//	}
-	//	break
-	//}
-
 	// Should pick up the leadership from the rest of the cluster
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
 		leader := c1.Nodes["n0"].Node.GetLeader()
@@ -393,5 +385,56 @@ func TestMinimumQuorum(t *testing.T) {
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
 		status := c.GetClusterStatus()
 		assert.Equal(t, status[leader], "")
+	})
+}
+
+func TestResign(t *testing.T) {
+	c1 := NewTestCluster()
+	createCluster(t, c1)
+	defer c1.Close()
+
+	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
+		assert.NotNil(t, c1.GetLeader())
+	})
+
+	leader := c1.GetLeader()
+
+	// Calling resign on a follower should have no effect
+	c1.Nodes["n1"].Node.Resign(context.Background())
+
+	for i := 0; i < 10; i++ {
+		if c1.GetLeader() != leader {
+			require.FailNow(t, "leader should not have changed")
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+	// Calling resign on the leader should give up leader
+	c1.Nodes["n0"].Node.Resign(context.Background())
+
+	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
+		assert.NotEqual(t, leader, c1.GetLeader())
+	})
+}
+
+func TestResignSingleNode(t *testing.T) {
+	c := NewTestCluster()
+	c.SpawnNode("n0", cfg)
+	defer c.Close()
+
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		status := c.GetClusterStatus()
+		assert.Equal(t, ClusterStatus{
+			"n0": "n0",
+		}, status)
+	})
+
+	c.Nodes["n0"].Node.Resign(context.Background())
+
+	// n0 will eventually become leader again
+	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
+		status := c.GetClusterStatus()
+		assert.Equal(t, ClusterStatus{
+			"n0": "n0",
+		}, status)
 	})
 }

@@ -691,12 +691,18 @@ func (e *node) processRPC(rpc RPCRequest) {
 // if we are leader returns Success = true
 func (e *node) handleResign(rpc RPCRequest) {
 	e.log.Debug("RPC: election.ResignReq{}")
+	// If not leader, do nothing
+	if !e.isLeader() {
+		rpc.respond(rpc.RPC, ResignResp{}, "")
+		return
+	}
+
 	e.setLeader("")
 	e.state = followerState
 	for _, peer := range e.peers {
 		e.sendElectionReset(peer)
 	}
-	rpc.respond(rpc.RPC, ResignReq{}, "")
+	rpc.respond(rpc.RPC, ResignResp{Success: true}, "")
 }
 
 // handleResetElection resets our state and starts a new election
