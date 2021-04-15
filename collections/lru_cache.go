@@ -198,7 +198,7 @@ func (c *LRUCache) Peek(key interface{}) (value interface{}, ok bool) {
 // Processes each item in the cache in a thread safe way, such that the cache can be in use
 // while processing items in the cache. Processing the cache with `Each()` does not update
 // the expiration or last used.
-func (c LRUCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
+func (c *LRUCache) Each(concurrent int, callBack func(key interface{}, value interface{}) error) []error {
 	fanOut := syncutil.NewFanOut(concurrent)
 	keys := c.Keys()
 

@@ -40,7 +40,7 @@ func TestBroadcast(t *testing.T) {
 
 				// Wait for more chats to be added to chat[]
 				select {
-				case <-broadcaster.WaitChan(string(idx)):
+				case <-broadcaster.WaitChan(fmt.Sprint(idx)):
 				case <-done:
 					return
 				}

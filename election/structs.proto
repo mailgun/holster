@@ -1,0 +1,65 @@
+syntax = "proto3";
+option go_package = "election";
+
+// Resets the current state of a node to 'candidate'
+message ResetElectionReq {}
+message ResetElectionResp {}
+
+// Asks the node to resign as leader
+message ResignReq {}
+message ResignResp {
+  // True if the receiver is leader and stepped down
+  bool success = 1;
+}
+
+// Sent by the leader of the election to all followers
+message HeartBeatReq  {
+  // The leader this heart beat is from
+  string from = 1;
+  // The current term of the leader
+  uint64 term = 2;
+}
+
+// Response to a heart beat request
+message HeartBeatResp {
+  // The follower who is responding
+  string from = 1;
+  // The term the heart beat is for
+  uint64 term = 2;
+}
+
+message VoteResp {
+   // The candidate who responded
+   string candidate = 1;
+   // The term this vote response is for
+   uint64 term = 2;
+   // If the Vote was granted by this node
+   bool granted = 3;
+}
+
+// A vote request sent to all peers at
+// the start of an election.
+message VoteReq {
+   // The candidate who is requesting the targets vote
+   string candidate = 1;
+   // The term this vote is for.
+   uint64 term = 2;
+}
+
+// Set the peers this node will consider during the election.
+// This is typically set by calling Node.SetPeers() but the
+// implementor could choose to allow a remote entity to set the
+// peer list via Node.ReceiveRPC(). This can be blocked by refusing
+// to accept election.SetPeersRPC calls.
+message SetPeersReq {
+  repeated string peers = 1;
+}
+message SetPeersResp { }
+
+// Get the current state of the node
+message GetStateReq {}
+message GetStateResp {
+  string leader = 1;
+  string state = 2;
+  repeated string peers = 3;
+}

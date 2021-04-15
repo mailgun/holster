@@ -89,7 +89,7 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, 1, toInt(mh.Peek().Value))
 }
 
-func Example_Priority_Queue_Usage() {
+func ExampleNewPriorityQueue() {
 	queue := collections.NewPriorityQueue()
 
 	queue.Push(&collections.PQItem{

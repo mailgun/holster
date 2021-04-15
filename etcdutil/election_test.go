@@ -225,7 +225,7 @@ func (s *ElectionsSuite) TestLostLeaderStop() {
 	s.assertElectionClosed(ch0, 3*clock.Second)
 }
 
-// FIXME: This test gets stuck on e0.Close().
+// FIXME: This test gets stuck on e0.Stop().
 //// If Etcd is down on start the candidate keeps trying to connect.
 //func (s *ElectionsSuite) TestEtcdDownOnStart() {
 //	s.toxiProxies[0].Stop()
@@ -237,7 +237,7 @@ func (s *ElectionsSuite) TestLostLeaderStop() {
 //
 //	// Then
 //	s.assertElectionWinner(ch0, 3*clock.Second)
-//	e0.Close()
+//	e0.Stop()
 //}
 
 // If provided etcd endpoint candidate keeps trying to connect until it is
