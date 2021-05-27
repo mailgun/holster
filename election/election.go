@@ -544,6 +544,16 @@ func (e *node) runLeader() {
 					Debug("leader received heartbeat reply from peer not in our peer list; ignoring")
 				break
 			}
+
+			// Got a follower that says it's in a different term election. Update to the latest term
+			// which will propagate to all our followers when we send our next heartbeat. This ensures
+			// all nodes are on the latest term.
+			if reply.Term > e.currentTerm {
+				e.log.Warnf("got follower heartbeat term '%d' newer than our own '%d'; updating term",
+					reply.Term, e.currentTerm)
+				e.currentTerm = reply.Term
+			}
+
 			peersLastContact[reply.From] = time.Now()
 		case <-heartBeatTicker.C:
 			for _, peer := range e.peers {
@@ -590,7 +600,7 @@ func (e *node) runLeader() {
 			quorum := e.quorumSize()
 			e.log.Debugf("quorum check - quorum='%d' contacted='%d'", quorum-1, contacted)
 			if contacted < (quorum - 1) {
-				e.log.Debug("failed to receive heart beats from a quorum of peers; stepping down")
+				e.log.Warn("failed to receive heart beats from a quorum of peers; stepping down")
 				e.state = followerState
 				e.setLeader("")
 				// Inform the other peers we are stepping down
@@ -738,8 +748,13 @@ func (e *node) handleHeartBeat(rpc RPCRequest, req HeartBeatReq) {
 	// of our current term compared the one who sent us the heartbeat.
 	if e.state != followerState {
 		e.state = followerState
-		e.currentTerm = req.Term
 		resp.Term = req.Term
+	}
+
+	// Always update to the most current term. This way if a leader resigns, the new election
+	// will not elect the same leader again.
+	if req.Term > e.currentTerm {
+		e.currentTerm = req.Term
 	}
 
 	// Only the node with the most votes is the leader and should report heartbeats
