@@ -134,13 +134,33 @@ func TestRFC822UnmarshalingError(t *testing.T) {
 		outError:  `parsing time "Thu, 29 Aug 2019 11:20:07" as "Mon, 2 Jan 2006 15:04:05 -0700": cannot parse "" as "-0700"`,
 	}, {
 		inEncoded: `{"ts": "foo"}`,
-		outError:  `parsing time "foo" as "Mon, 2 Jan 2006 15:04:05 MST": cannot parse "foo" as "Mon"`,
+		outError:  `parsing time "foo" as "2 Jan 2006 15:04:05 MST": cannot parse "foo" as "2"`,
 	}, {
 		inEncoded: `{"ts": 42}`,
 		outError:  "invalid syntax",
 	}} {
-		var ts testStruct
-		err := json.Unmarshal([]byte(tc.inEncoded), &ts)
-		assert.EqualError(t, err, tc.outError)
+		t.Run(tc.inEncoded, func(t *testing.T) {
+			var ts testStruct
+			err := json.Unmarshal([]byte(tc.inEncoded), &ts)
+			assert.EqualError(t, err, tc.outError)
+		})
+	}
+}
+
+func TestParseRFC822Time(t *testing.T) {
+	for _, tt := range []struct {
+		rfc822Time string
+	}{
+		{"Thu, 3 Jun 2021 12:01:05 MST"},
+		{"Thu, 3 Jun 2021 12:01:05 -0700"},
+		{"Thu, 3 Jun 2021 12:01:05 -0700 (MST)"},
+		{"2 Jun 2021 17:06:41 GMT"},
+		{"2 Jun 2021 17:06:41 -0700"},
+		{"2 Jun 2021 17:06:41 -0700 (MST)"},
+	} {
+		t.Run(tt.rfc822Time, func(t *testing.T) {
+			_, err := ParseRFC822Time(tt.rfc822Time)
+			assert.NoError(t, err)
+		})
 	}
 }

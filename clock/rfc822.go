@@ -22,17 +22,35 @@ func ParseRFC822Time(s string) (Time, error) {
 	if err == nil {
 		return t, nil
 	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
+	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
 		return Time{}, parseErr
 	}
 	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700", s); err == nil {
 		return t, nil
 	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
+	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
 		return Time{}, parseErr
 	}
 	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
-		return t, nil
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
+		return Time{}, err
+	}
+	if t, err = Parse("2 Jan 2006 15:04:05 MST", s); err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("2 Jan 2006 15:04:05 -0700", s); err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
+		return t, err
 	}
 	return Time{}, err
 }

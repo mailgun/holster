@@ -104,17 +104,16 @@ import (
 // New also records the stack trace at the depth specified.
 func NewWithDepth(message string, depth int) error {
 	return &fundamental{
-		msg:   message,
+		msg:       message,
 		CallStack: stack.New(depth),
 	}
 }
-
 
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
 	return &fundamental{
-		msg:   message,
+		msg:       message,
 		CallStack: stack.New(1),
 	}
 }
@@ -124,7 +123,7 @@ func New(message string) error {
 // Errorf also records the stack trace at the point it was called.
 func Errorf(format string, args ...interface{}) error {
 	return &fundamental{
-		msg:   fmt.Sprintf(format, args...),
+		msg:       fmt.Sprintf(format, args...),
 		CallStack: stack.New(1),
 	}
 }
