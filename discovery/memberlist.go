@@ -149,7 +149,6 @@ func (m *MemberList) Close(ctx context.Context) error {
 	case err := <-errCh:
 		return err
 	}
-	return nil
 }
 
 func (m *MemberList) GetPeers(_ context.Context) ([]Peer, error) {
