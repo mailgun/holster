@@ -37,10 +37,10 @@ func (s *DurationSuite) TestNewError() {
 		errMsg string
 	}{{
 		v:      "foo",
-		errMsg: "while parsing string: time: invalid duration foo",
+		errMsg: "while parsing string: time: invalid duration \"foo\"",
 	}, {
 		v:      []byte("foo"),
-		errMsg: "while parsing []byte: time: invalid duration foo",
+		errMsg: "while parsing []byte: time: invalid duration \"foo\"",
 	}, {
 		v:      true,
 		errMsg: "bad type bool",

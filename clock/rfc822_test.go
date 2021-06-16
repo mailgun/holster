@@ -13,7 +13,6 @@ type testStruct struct {
 }
 
 func TestRFC822New(t *testing.T) {
-	t.Skip()
 	stdTime, err := Parse(RFC3339, "2019-08-29T11:20:07.123456+03:00")
 	assert.NoError(t, err)
 
@@ -52,7 +51,6 @@ func TestRFC822Marshaling(t *testing.T) {
 }
 
 func TestRFC822Unmarshaling(t *testing.T) {
-	t.Skip("")
 	for i, tc := range []struct {
 		inRFC822   string
 		outRFC3339 string
