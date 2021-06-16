@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v4/setter"
 	"github.com/pkg/errors"
 	etcd "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc/grpclog"

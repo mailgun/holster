@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy"
-	"github.com/mailgun/holster/v3/etcdutil"
+	"github.com/mailgun/holster/v4/etcdutil"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

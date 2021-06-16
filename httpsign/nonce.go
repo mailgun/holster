@@ -3,7 +3,7 @@ package httpsign
 import (
 	"sync"
 
-	"github.com/mailgun/holster/v3/collections"
+	"github.com/mailgun/holster/v4/collections"
 )
 
 type nonceCache struct {

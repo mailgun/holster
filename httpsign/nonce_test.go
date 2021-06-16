@@ -3,7 +3,7 @@ package httpsign
 import (
 	"testing"
 
-	"github.com/mailgun/holster/v3/clock"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 func TestNonceInCache(t *testing.T) {

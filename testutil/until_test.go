@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v3/testutil"
+	"github.com/mailgun/holster/v4/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -37,7 +37,7 @@ func TestUntilPass(t *testing.T) {
 		if r.Method == http.MethodPost {
 			// Sleep some rand amount to time to simulate some
 			// async process happening on the server
-			time.Sleep(time.Duration(rand.Intn(10))*time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 			// Set the value
 			value = r.FormValue("value")
 		} else {

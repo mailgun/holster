@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mailgun/holster/v3/clock"
-	"github.com/mailgun/holster/v3/collections"
+	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v4/collections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,7 +125,7 @@ func TestLRUCacheMap(t *testing.T) {
 	assert.Equal(t, 5, count)
 	assert.Equal(t, 4, cache.Size())
 
-	for _, item := range []int{1,2,4,5} {
+	for _, item := range []int{1, 2, 4, 5} {
 		v, ok := cache.Get(fmt.Sprintf("%d", item))
 		require.True(t, ok)
 		assert.Equal(t, item, v.(int))

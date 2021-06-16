@@ -18,7 +18,7 @@ package setter_test
 import (
 	"testing"
 
-	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v4/setter"
 	"github.com/stretchr/testify/assert"
 )
 

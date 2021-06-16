@@ -145,7 +145,7 @@ import (
     "log"
     "io/ioutil"
 
-    "github.com/mailgun/holster/v3/errors"
+    "github.com/mailgun/holster/v4/errors"
     "github.com/mailgun/logrus-hooks/kafkahook"
     "github.com/sirupsen/logrus"
 )

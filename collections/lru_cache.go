@@ -21,8 +21,8 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/mailgun/holster/v3/clock"
-	"github.com/mailgun/holster/v3/syncutil"
+	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v4/syncutil"
 )
 
 // Holds stats collected about the cache

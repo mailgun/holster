@@ -9,7 +9,7 @@ the service currently has it and will withdraw the candidate from the election.
 ```go
 
 import (
-    "github.com/mailgun/holster/v3/etcdutil"
+    "github.com/mailgun/holster/v4/etcdutil"
 )
 
 func main() {
@@ -80,7 +80,7 @@ import (
     "os"
     "fmt"
 
-    "github.com/mailgun/holster/v3/etcdutil"
+    "github.com/mailgun/holster/v4/etcdutil"
 )
 
 func main() {
@@ -117,7 +117,7 @@ import (
     "os"
     "fmt"
 
-    "github.com/mailgun/holster/v3/etcdutil"
+    "github.com/mailgun/holster/v4/etcdutil"
 )
 
 func main() {

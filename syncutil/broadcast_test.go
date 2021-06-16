@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mailgun/holster/v3/syncutil"
+	"github.com/mailgun/holster/v4/syncutil"
 )
 
 func TestBroadcast(t *testing.T) {

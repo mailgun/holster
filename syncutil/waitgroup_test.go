@@ -21,7 +21,7 @@ import (
 	"time"
 
 	linq "github.com/ahmetb/go-linq"
-	"github.com/mailgun/holster/v3/syncutil"
+	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )

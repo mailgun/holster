@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v4/setter"
 	"github.com/pkg/errors"
 )
 
