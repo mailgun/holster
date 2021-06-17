@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v3/election"
+	"github.com/mailgun/holster/v4/election"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )

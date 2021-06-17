@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mailgun/holster/v3/clock"
-	"github.com/mailgun/holster/v3/collections"
+	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v4/collections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

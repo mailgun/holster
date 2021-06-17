@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	linq "github.com/ahmetb/go-linq"
-	"github.com/mailgun/holster/v3/callstack"
-	"github.com/mailgun/holster/v3/errors"
+	"github.com/mailgun/holster/v4/callstack"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/stretchr/testify/assert"
 )
 

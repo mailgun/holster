@@ -9,8 +9,8 @@ import (
 
 	"github.com/Shopify/toxiproxy"
 	"github.com/hashicorp/consul/api"
-	"github.com/mailgun/holster/v3/consul"
-	"github.com/mailgun/holster/v3/testutil"
+	"github.com/mailgun/holster/v4/consul"
+	"github.com/mailgun/holster/v4/testutil"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

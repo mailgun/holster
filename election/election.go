@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mailgun/holster/v3/setter"
-	"github.com/mailgun/holster/v3/slice"
-	"github.com/mailgun/holster/v3/syncutil"
+	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v4/slice"
+	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/sirupsen/logrus"
 )
 

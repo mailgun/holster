@@ -5,10 +5,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	etcd "github.com/coreos/etcd/clientv3"
-	"github.com/mailgun/holster/v3/setter"
-	"github.com/mailgun/holster/v3/syncutil"
+	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/pkg/errors"
+	etcd "go.etcd.io/etcd/client/v3"
 )
 
 const NoLease = etcd.LeaseID(-1)

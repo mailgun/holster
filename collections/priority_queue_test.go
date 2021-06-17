@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mailgun/holster/v3/collections"
+	"github.com/mailgun/holster/v4/collections"
 	"github.com/stretchr/testify/assert"
 )
 

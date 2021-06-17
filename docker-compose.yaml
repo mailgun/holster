@@ -1,0 +1,35 @@
+version: "3"
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.2
+    command: >
+      /usr/local/bin/etcd
+      -name etcd0
+      -advertise-client-urls http://localhost:2379
+      -listen-client-urls http://0.0.0.0:22379
+      -initial-advertise-peer-urls http://0.0.0.0:2381
+      -listen-peer-urls http://0.0.0.0:2381
+      -initial-cluster-token etcd-cluster-1
+      -initial-cluster etcd0=http://0.0.0.0:2381
+      -initial-cluster-state new
+      -enable-v2=false
+    ports:
+      - 22379:22379
+
+  consul-agent:
+    image: consul:latest
+    command: "agent -retry-join consul-server-bootstrap -client 0.0.0.0"
+    volumes:
+      - ${PWD}/consul/config:/consul/config
+
+  consul-server-bootstrap:
+    image: consul:latest
+    ports:
+      - "8400:8400"
+      - "8500:8500"
+      - "8501:8501"
+      - "8600:8600"
+      - "8600:8600/udp"
+    command: "agent -server -bootstrap-expect 1 -ui -client 0.0.0.0"
+    volumes:
+      - ${PWD}/consul/config:/consul/config

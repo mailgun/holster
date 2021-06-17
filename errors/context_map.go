@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mailgun/holster/v3/callstack"
+	"github.com/mailgun/holster/v4/callstack"
 	pkg "github.com/pkg/errors"
 )
 

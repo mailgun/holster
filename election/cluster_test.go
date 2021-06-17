@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/mailgun/holster/v3/election"
-	"github.com/mailgun/holster/v3/setter"
+	"github.com/mailgun/holster/v4/election"
+	"github.com/mailgun/holster/v4/setter"
 )
 
 type ChangePair struct {

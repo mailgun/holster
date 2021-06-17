@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v3/clock"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 var (
