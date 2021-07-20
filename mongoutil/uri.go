@@ -2,42 +2,69 @@ package mongoutil
 
 import (
 	"bytes"
-	"sort"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
 type Config struct {
-	URI     string                 `json:"uri"`
-	Options map[string]interface{} `json:"options"`
+	Servers  []string                 `json:"servers"`
+	Database string                   `json:"database"`
+	URI      string                   `json:"uri"`
+	Options  []map[string]interface{} `json:"options"`
+}
+
+func MongoURI() string {
+	mongoURI := os.Getenv("MONGO_URI")
+	if mongoURI == "" {
+		return "mongodb://127.0.0.1:27017/mg_test"
+	}
+	return mongoURI
 }
 
 func (c Config) URIWithOptions() string {
-	adjustedURI := c.URI
-	options := make(map[string]string)
+	URI := c.URI
+
+	// Create an URI using the Servers list and Database if provided
+	if len(c.Servers) != 0 && c.Database != "" {
+		URI = fmt.Sprintf("mongodb://%s/%s", strings.Join(c.Servers, ","), c.Database)
+	}
+
+	type opt struct {
+		key   string
+		value string
+	}
+	adjustedURI := URI
+	var options []opt
 
 	// Parse options from the URI.
-	qmIdx := strings.Index(c.URI, "?")
+	qmIdx := strings.Index(URI, "?")
 	if qmIdx > 0 {
-		adjustedURI = c.URI[:qmIdx]
-		for _, optNameEqVal := range strings.Split(c.URI[qmIdx+1:], "&") {
-			eqIdx := strings.Index(optNameEqVal, "=")
+		adjustedURI = URI[:qmIdx]
+		for _, pair := range strings.Split(URI[qmIdx+1:], "&") {
+			eqIdx := strings.Index(pair, "=")
 			if eqIdx > 0 {
-				options[optNameEqVal[:eqIdx]] = optNameEqVal[eqIdx+1:]
+				options = append(options, opt{key: pair[:eqIdx], value: pair[eqIdx+1:]})
 			}
 		}
 	}
 
+	// NOTE: The options are an ordered list because mongo cares
+	// about the order of some options like replica tag order.
+
 	// Override URI options with config options.
-	for optName, optVal := range c.Options {
-		switch optVal := optVal.(type) {
-		case int:
-			options[toCamelCase(optName)] = strconv.Itoa(optVal)
-		case float64:
-			options[toCamelCase(optName)] = strconv.Itoa(int(optVal))
-		case string:
-			options[toCamelCase(optName)] = optVal
+	for _, o := range c.Options {
+		for optName, optVal := range o {
+			switch optVal := optVal.(type) {
+			case int:
+				options = append(options, opt{key: toCamelCase(optName), value: strconv.Itoa(optVal)})
+			case float64:
+				options = append(options, opt{key: toCamelCase(optName), value: strconv.Itoa(int(optVal))})
+			case string:
+				options = append(options, opt{key: toCamelCase(optName), value: optVal})
+			}
 		}
 	}
 
@@ -46,23 +73,17 @@ func (c Config) URIWithOptions() string {
 	var buf bytes.Buffer
 	buf.WriteString(adjustedURI)
 
-	optNames := make([]string, 0, len(options))
-	for optName := range options {
-		optNames = append(optNames, optName)
-	}
-	sort.Strings(optNames)
-
-	for _, optName := range optNames {
-		optVal := options[optName]
+	for i := range options {
+		o := options[i]
 		if firstOpt {
 			buf.WriteRune('?')
 			firstOpt = false
 		} else {
 			buf.WriteRune('&')
 		}
-		buf.WriteString(optName)
+		buf.WriteString(o.key)
 		buf.WriteRune('=')
-		buf.WriteString(optVal)
+		buf.WriteString(o.value)
 	}
 	return buf.String()
 }

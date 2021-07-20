@@ -21,4 +21,5 @@ require (
 	google.golang.org/grpc v1.38.0
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	sigs.k8s.io/yaml v1.2.0 // indirect
 )
