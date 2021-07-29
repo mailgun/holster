@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -161,4 +162,10 @@ func TestParseRFC822Time(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestStringWithOffset(t *testing.T) {
+	now := time.Now().UTC()
+	r := NewRFC822Time(now)
+	assert.Equal(t, now.Format(time.RFC1123Z), r.StringWithOffset())
 }
