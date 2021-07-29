@@ -80,3 +80,7 @@ func (t *RFC822Time) UnmarshalJSON(s []byte) error {
 func (t RFC822Time) String() string {
 	return t.Format(RFC1123)
 }
+
+func (t RFC822Time) StringWithOffset() string {
+	return t.Format(RFC1123Z)
+}
