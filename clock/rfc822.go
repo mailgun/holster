@@ -18,6 +18,19 @@ func NewRFC822Time(t Time) RFC822Time {
 
 // ParseRFC822Time parses an RFC822 time string.
 func ParseRFC822Time(s string) (Time, error) {
+	t, err := parseRFC822TimeAbreviated(s)
+	if err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok {
+		return Time{}, parseErr
+	}
+
+	return parseRFC822Time(s)
+}
+
+// parseRFC822TimeAbbreviated attempts to parse a an RFC822 time with the month abbreviated.
+func parseRFC822TimeAbreviated(s string) (Time, error) {
 	t, err := Parse("Mon, 2 Jan 2006 15:04:05 MST", s)
 	if err == nil {
 		return t, nil
@@ -50,6 +63,45 @@ func ParseRFC822Time(s string) (Time, error) {
 		return Time{}, parseErr
 	}
 	if t, err = Parse("2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
+		return t, err
+	}
+	return Time{}, err
+}
+
+// parseRFC822Time attempts to parse an RFC822 time with the full month name.
+func parseRFC822Time(s string) (Time, error) {
+	t, err := Parse("Mon, 2 January 2006 15:04:05 MST", s)
+	if err == nil {
+		return t, nil
+	}
+	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("Mon, 2 January 2006 15:04:05 -0700", s); err == nil {
+		return t, nil
+	}
+	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("Mon, 2 January 2006 15:04:05 -0700 (MST)", s); err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
+		return Time{}, err
+	}
+	if t, err = Parse("2 January 2006 15:04:05 MST", s); err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("2 January 2006 15:04:05 -0700", s); err == nil {
+		return t, err
+	}
+	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
+		return Time{}, parseErr
+	}
+	if t, err = Parse("2 January 2006 15:04:05 -0700 (MST)", s); err == nil {
 		return t, err
 	}
 	return Time{}, err

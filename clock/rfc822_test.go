@@ -22,7 +22,9 @@ func TestRFC822New(t *testing.T) {
 	assert.True(t, rfc822TimeFromTime.Equal(rfc822TimeFromUnix.Time),
 		"want=%s, got=%s", rfc822TimeFromTime.Time, rfc822TimeFromUnix.Time)
 
-	assert.Equal(t, "Thu, 29 Aug 2019 11:20:07 MSK", rfc822TimeFromTime.String())
+	// Parsing from numerical offset to abbreviated offset is not always reliable. In this
+	// context Go will fallback to the known numerical offset.
+	assert.Equal(t, "Thu, 29 Aug 2019 11:20:07 +0300", rfc822TimeFromTime.String())
 	assert.Equal(t, "Thu, 29 Aug 2019 08:20:07 UTC", rfc822TimeFromUnix.String())
 }
 
@@ -61,8 +63,11 @@ func TestRFC822Unmarshaling(t *testing.T) {
 		outRFC3339: "2019-08-29T11:20:07Z",
 		outRFC822:  "Thu, 29 Aug 2019 11:20:07 GMT",
 	}, {
-		inRFC822:   "Thu, 29 Aug 2019 11:20:07 MSK",
-		outRFC3339: "2019-08-29T11:20:07+03:00",
+		inRFC822: "Thu, 29 Aug 2019 11:20:07 MSK",
+		// Extrapolating the numerical offset from an abbreviated offset is unreliable. In
+		// this test case the RFC3339 will have the incorrect result due to limitation in
+		// Go's time parser.
+		outRFC3339: "2019-08-29T11:20:07Z",
 		outRFC822:  "Thu, 29 Aug 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 -0000",
@@ -75,7 +80,7 @@ func TestRFC822Unmarshaling(t *testing.T) {
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 +0300",
 		outRFC3339: "2019-08-29T11:20:07+03:00",
-		outRFC822:  "Thu, 29 Aug 2019 11:20:07 MSK",
+		outRFC822:  "Thu, 29 Aug 2019 11:20:07 +0300",
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 +0330",
 		outRFC3339: "2019-08-29T11:20:07+03:30",
@@ -83,15 +88,15 @@ func TestRFC822Unmarshaling(t *testing.T) {
 	}, {
 		inRFC822:   "Sun, 01 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
 	}, {
 		inRFC822:   "Sun,  1 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
 	}, {
 		inRFC822:   "Sun, 1 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
 	}, {
 		inRFC822:   "Sun, 1 Sep 2019 11:20:07 UTC",
 		outRFC3339: "2019-09-01T11:20:07Z",
@@ -109,18 +114,20 @@ func TestRFC822Unmarshaling(t *testing.T) {
 		outRFC3339: "1997-11-21T09:55:06-06:00",
 		outRFC822:  "Fri, 21 Nov 1997 09:55:06 MDT",
 	}} {
-		tcDesc := fmt.Sprintf("Test case #%d: %v", i, tc)
-		var ts testStruct
+		t.Run(tc.inRFC822, func(t *testing.T) {
+			tcDesc := fmt.Sprintf("Test case #%d: %v", i, tc)
+			var ts testStruct
 
-		inEncoded := []byte(fmt.Sprintf(`{"ts":"%s"}`, tc.inRFC822))
-		err := json.Unmarshal(inEncoded, &ts)
-		assert.NoError(t, err, tcDesc)
-		assert.Equal(t, tc.outRFC3339, ts.Time.Format(RFC3339), tcDesc)
+			inEncoded := []byte(fmt.Sprintf(`{"ts":"%s"}`, tc.inRFC822))
+			err := json.Unmarshal(inEncoded, &ts)
+			assert.NoError(t, err, tcDesc)
+			assert.Equal(t, tc.outRFC3339, ts.Time.Format(RFC3339), tcDesc)
 
-		actualEncoded, err := json.Marshal(&ts)
-		assert.NoError(t, err, tcDesc)
-		outEncoded := fmt.Sprintf(`{"ts":"%s"}`, tc.outRFC822)
-		assert.Equal(t, outEncoded, string(actualEncoded), tcDesc)
+			actualEncoded, err := json.Marshal(&ts)
+			assert.NoError(t, err, tcDesc)
+			outEncoded := fmt.Sprintf(`{"ts":"%s"}`, tc.outRFC822)
+			assert.Equal(t, outEncoded, string(actualEncoded), tcDesc)
+		})
 	}
 }
 
@@ -130,10 +137,10 @@ func TestRFC822UnmarshalingError(t *testing.T) {
 		outError  string
 	}{{
 		inEncoded: `{"ts": "Thu, 29 Aug 2019 11:20:07"}`,
-		outError:  `parsing time "Thu, 29 Aug 2019 11:20:07" as "Mon, 2 Jan 2006 15:04:05 -0700": cannot parse "" as "-0700"`,
+		outError:  `parsing time "Thu, 29 Aug 2019 11:20:07" as "Mon, 2 January 2006 15:04:05 MST": cannot parse "Aug 2019 11:20:07" as "January"`,
 	}, {
 		inEncoded: `{"ts": "foo"}`,
-		outError:  `parsing time "foo" as "2 Jan 2006 15:04:05 MST": cannot parse "foo" as "2"`,
+		outError:  `parsing time "foo" as "2 January 2006 15:04:05 MST": cannot parse "foo" as "2"`,
 	}, {
 		inEncoded: `{"ts": 42}`,
 		outError:  "invalid syntax",
@@ -156,6 +163,13 @@ func TestParseRFC822Time(t *testing.T) {
 		{"2 Jun 2021 17:06:41 GMT"},
 		{"2 Jun 2021 17:06:41 -0700"},
 		{"2 Jun 2021 17:06:41 -0700 (MST)"},
+		{"Mon, 30 August 2021 11:05:00 -0400"},
+		{"Thu, 3 June 2021 12:01:05 MST"},
+		{"Thu, 3 June 2021 12:01:05 -0700"},
+		{"Thu, 3 June 2021 12:01:05 -0700 (MST)"},
+		{"2 June 2021 17:06:41 GMT"},
+		{"2 June 2021 17:06:41 -0700"},
+		{"2 June 2021 17:06:41 -0700 (MST)"},
 	} {
 		t.Run(tt.rfc822Time, func(t *testing.T) {
 			_, err := ParseRFC822Time(tt.rfc822Time)
