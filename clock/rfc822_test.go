@@ -24,7 +24,7 @@ func TestRFC822New(t *testing.T) {
 
 	// Parsing from numerical offset to abbreviated offset is not always reliable. In this
 	// context Go will fallback to the known numerical offset.
-	assert.Equal(t, "Thu, 29 Aug 2019 11:20:07 +0300", rfc822TimeFromTime.String())
+	assert.Equal(t, "Thu, 29 Aug 2019 11:20:07 MSK", rfc822TimeFromTime.String())
 	assert.Equal(t, "Thu, 29 Aug 2019 08:20:07 UTC", rfc822TimeFromUnix.String())
 }
 
@@ -67,7 +67,7 @@ func TestRFC822Unmarshaling(t *testing.T) {
 		// Extrapolating the numerical offset from an abbreviated offset is unreliable. In
 		// this test case the RFC3339 will have the incorrect result due to limitation in
 		// Go's time parser.
-		outRFC3339: "2019-08-29T11:20:07Z",
+		outRFC3339: "2019-08-29T11:20:07+03:00",
 		outRFC822:  "Thu, 29 Aug 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 -0000",
@@ -80,7 +80,7 @@ func TestRFC822Unmarshaling(t *testing.T) {
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 +0300",
 		outRFC3339: "2019-08-29T11:20:07+03:00",
-		outRFC822:  "Thu, 29 Aug 2019 11:20:07 +0300",
+		outRFC822:  "Thu, 29 Aug 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Thu, 29 Aug 2019 11:20:07 +0330",
 		outRFC3339: "2019-08-29T11:20:07+03:30",
@@ -88,15 +88,15 @@ func TestRFC822Unmarshaling(t *testing.T) {
 	}, {
 		inRFC822:   "Sun, 01 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Sun,  1 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Sun, 1 Sep 2019 11:20:07 +0300",
 		outRFC3339: "2019-09-01T11:20:07+03:00",
-		outRFC822:  "Sun, 01 Sep 2019 11:20:07 +0300",
+		outRFC822:  "Sun, 01 Sep 2019 11:20:07 MSK",
 	}, {
 		inRFC822:   "Sun, 1 Sep 2019 11:20:07 UTC",
 		outRFC3339: "2019-09-01T11:20:07Z",
