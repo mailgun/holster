@@ -30,19 +30,21 @@ func (c Config) URIWithOptions() string {
 	// Create an URI using the Servers list and Database if provided
 	if len(c.Servers) != 0 && c.Database != "" {
 		URI = fmt.Sprintf("mongodb://%s/%s", strings.Join(c.Servers, ","), c.Database)
+	} else if len(c.Servers) != 0 {
+		URI = fmt.Sprintf("mongodb://%s/", strings.Join(c.Servers, ","))
 	}
 
 	type opt struct {
 		key   string
 		value string
 	}
-	adjustedURI := URI
+	baseURI := URI
 	var options []opt
 
 	// Parse options from the URI.
 	qmIdx := strings.Index(URI, "?")
 	if qmIdx > 0 {
-		adjustedURI = URI[:qmIdx]
+		baseURI = URI[:qmIdx]
 		for _, pair := range strings.Split(URI[qmIdx+1:], "&") {
 			eqIdx := strings.Index(pair, "=")
 			if eqIdx > 0 {
@@ -71,7 +73,23 @@ func (c Config) URIWithOptions() string {
 	// Construct a URI as recognized by mgo.Dial
 	firstOpt := true
 	var buf bytes.Buffer
-	buf.WriteString(adjustedURI)
+
+	// If base URI was provided but no database specified
+	if len(baseURI) != 0 {
+		// if baseURI doesn't already end with a `/`
+		if !strings.HasSuffix(baseURI, "/") {
+			// Inspect the last character
+			last := baseURI[len(baseURI)-1]
+			// If the last character is an integer then we assume that we are looking at the port number,
+			// thus no database was provided.
+			if _, err := strconv.Atoi(string(last)); err == nil {
+				// We must append a `/` to the end of the string
+				baseURI += "/"
+			}
+		}
+	}
+
+	buf.WriteString(baseURI)
 
 	for i := range options {
 		o := options[i]
