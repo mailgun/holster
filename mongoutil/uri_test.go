@@ -53,7 +53,42 @@ func TestMongoConfig_URIWithOptions(t *testing.T) {
 			},
 		},
 		uri: "mongodb://mongodb-n01:27017,mongodb-n02:28017/foo?readPreference=secondaryPreferred",
-	}} {
+	}, {
+		name: "Servers and Database provided",
+		cfg: mongoutil.Config{
+			Servers: []string{
+				"mongodb-n01:27017",
+				"mongodb-n02:28017",
+			},
+			Options: []map[string]interface{}{
+				{"read_preference": "secondaryPreferred"},
+			},
+		},
+		uri: "mongodb://mongodb-n01:27017,mongodb-n02:28017/?readPreference=secondaryPreferred",
+	}, {
+		name: "URI provided with no database specified",
+		cfg: mongoutil.Config{
+			URI: "mongodb://127.0.0.1:27017",
+			Options: []map[string]interface{}{
+				{"read_preference": "secondaryPreferred"},
+			},
+		},
+		uri: "mongodb://127.0.0.1:27017/?readPreference=secondaryPreferred",
+	}, {
+		name: "Servers override provided URI",
+		cfg: mongoutil.Config{
+			URI: "mongodb://127.0.0.1:27017",
+			Servers: []string{
+				"mongodb-n01:27017",
+				"mongodb-n02:28017",
+			},
+			Options: []map[string]interface{}{
+				{"read_preference": "secondaryPreferred"},
+			},
+		},
+		uri: "mongodb://mongodb-n01:27017,mongodb-n02:28017/?readPreference=secondaryPreferred",
+	},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
 			uri := tt.cfg.URIWithOptions()
 			assert.Equal(t, tt.uri, uri)
