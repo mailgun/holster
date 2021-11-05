@@ -2,7 +2,66 @@ package clock
 
 import (
 	"strconv"
+	"time"
 )
+
+var datetimeLayouts = [48]string{
+	// Day first month 2nd abbreviated.
+	"Mon, 2 Jan 2006 15:04:05 MST",
+	"Mon, 2 Jan 2006 15:04:05 -0700",
+	"Mon, 2 Jan 2006 15:04:05 -0700 (MST)",
+	"2 Jan 2006 15:04:05 MST",
+	"2 Jan 2006 15:04:05 -0700",
+	"2 Jan 2006 15:04:05 -0700 (MST)",
+	"Mon, 2 Jan 2006 15:04 MST",
+	"Mon, 2 Jan 2006 15:04 -0700",
+	"Mon, 2 Jan 2006 15:04 -0700 (MST)",
+	"2 Jan 2006 15:04 MST",
+	"2 Jan 2006 15:04 -0700",
+	"2 Jan 2006 15:04 -0700 (MST)",
+
+	// Month first day 2nd abbreviated.
+	"Mon, Jan 2 2006 15:04:05 MST",
+	"Mon, Jan 2 2006 15:04:05 -0700",
+	"Mon, Jan 2 2006 15:04:05 -0700 (MST)",
+	"Jan 2 2006 15:04:05 MST",
+	"Jan 2 2006 15:04:05 -0700",
+	"Jan 2 2006 15:04:05 -0700 (MST)",
+	"Mon, Jan 2 2006 15:04 MST",
+	"Mon, Jan 2 2006 15:04 -0700",
+	"Mon, Jan 2 2006 15:04 -0700 (MST)",
+	"Jan 2 2006 15:04 MST",
+	"Jan 2 2006 15:04 -0700",
+	"Jan 2 2006 15:04 -0700 (MST)",
+
+	// Day first month 2nd not abbreviated.
+	"Mon, 2 January 2006 15:04:05 MST",
+	"Mon, 2 January 2006 15:04:05 -0700",
+	"Mon, 2 January 2006 15:04:05 -0700 (MST)",
+	"2 January 2006 15:04:05 MST",
+	"2 January 2006 15:04:05 -0700",
+	"2 January 2006 15:04:05 -0700 (MST)",
+	"Mon, 2 January 2006 15:04 MST",
+	"Mon, 2 January 2006 15:04 -0700",
+	"Mon, 2 January 2006 15:04 -0700 (MST)",
+	"2 January 2006 15:04 MST",
+	"2 January 2006 15:04 -0700",
+	"2 January 2006 15:04 -0700 (MST)",
+
+	// Month first day 2nd not abbreviated.
+	"Mon, January 2 2006 15:04:05 MST",
+	"Mon, January 2 2006 15:04:05 -0700",
+	"Mon, January 2 2006 15:04:05 -0700 (MST)",
+	"January 2 2006 15:04:05 MST",
+	"January 2 2006 15:04:05 -0700",
+	"January 2 2006 15:04:05 -0700 (MST)",
+	"Mon, January 2 2006 15:04 MST",
+	"Mon, January 2 2006 15:04 -0700",
+	"Mon, January 2 2006 15:04 -0700 (MST)",
+	"January 2 2006 15:04 MST",
+	"January 2 2006 15:04 -0700",
+	"January 2 2006 15:04 -0700 (MST)",
+}
 
 // Allows seamless JSON encoding/decoding of rfc822 formatted timestamps.
 // https://www.ietf.org/rfc/rfc822.txt section 5.
@@ -18,180 +77,15 @@ func NewRFC822Time(t Time) RFC822Time {
 
 // ParseRFC822Time parses an RFC822 time string.
 func ParseRFC822Time(s string) (Time, error) {
-	t, err := parseRFC822TimeAbreviated(s)
-	if err == nil {
-		return t, err
+	var t time.Time
+	var err error
+	for _, layout := range datetimeLayouts {
+		t, err = Parse(layout, s)
+		if err == nil {
+			return t, err
+		}
 	}
-	if _, ok := err.(*ParseError); !ok {
-		return Time{}, err
-	}
-	if t, err = parseRFC822Time(s); err == nil {
-		return t, err
-	}
-	if _, ok := err.(*ParseError); !ok {
-		return Time{}, err
-	}
-	if t, err = parseRFC822TimeAbreviatedNoSeconds(s); err == nil {
-		return t, err
-	}
-	if _, ok := err.(*ParseError); !ok {
-		return Time{}, err
-	}
-	return parseRFC822TimeNoSeconds(s)
-}
-
-// parseRFC822TimeAbbreviated attempts to parse a an RFC822 time with the month abbreviated.
-func parseRFC822TimeAbreviated(s string) (Time, error) {
-	t, err := Parse("Mon, 2 Jan 2006 15:04:05 MST", s)
-	if err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700", s); err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
-		return Time{}, err
-	}
-	if t, err = Parse("2 Jan 2006 15:04:05 MST", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 Jan 2006 15:04:05 -0700", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 Jan 2006 15:04:05 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	return Time{}, err
-}
-
-func parseRFC822TimeAbreviatedNoSeconds(s string) (Time, error) {
-	t, err := Parse("Mon, 2 Jan 2006 15:04 MST", s)
-	if err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 Jan 2006 15:04 -0700", s); err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 Jan 2006 15:04 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
-		return Time{}, err
-	}
-	if t, err = Parse("2 Jan 2006 15:04 MST", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 Jan 2006 15:04 -0700", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 Jan 2006 15:04 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	return Time{}, err
-}
-
-// parseRFC822Time attempts to parse an RFC822 time with the full month name.
-func parseRFC822Time(s string) (Time, error) {
-	t, err := Parse("Mon, 2 January 2006 15:04:05 MST", s)
-	if err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 January 2006 15:04:05 -0700", s); err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 January 2006 15:04:05 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
-		return Time{}, err
-	}
-	if t, err = Parse("2 January 2006 15:04:05 MST", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 January 2006 15:04:05 -0700", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 January 2006 15:04:05 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	return Time{}, err
-}
-
-func parseRFC822TimeNoSeconds(s string) (Time, error) {
-	t, err := Parse("Mon, 2 January 2006 15:04 MST", s)
-	if err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "MST" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 January 2006 15:04 -0700", s); err == nil {
-		return t, nil
-	}
-	if parseErr, ok := err.(*ParseError); !ok || (parseErr.LayoutElem != "" && parseErr.LayoutElem != "Mon") {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("Mon, 2 January 2006 15:04 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "Mon" {
-		return Time{}, err
-	}
-	if t, err = Parse("2 January 2006 15:04 MST", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "MST" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 January 2006 15:04 -0700", s); err == nil {
-		return t, err
-	}
-	if parseErr, ok := err.(*ParseError); !ok || parseErr.LayoutElem != "" {
-		return Time{}, parseErr
-	}
-	if t, err = Parse("2 January 2006 15:04 -0700 (MST)", s); err == nil {
-		return t, err
-	}
-	return Time{}, err
+	return t, err
 }
 
 // NewRFC822Time creates RFC822Time from a Unix timestamp (seconds from Epoch).
