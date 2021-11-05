@@ -137,10 +137,10 @@ func TestRFC822UnmarshalingError(t *testing.T) {
 		outError  string
 	}{{
 		inEncoded: `{"ts": "Thu, 29 Aug 2019 11:20:07"}`,
-		outError:  `parsing time "Thu, 29 Aug 2019 11:20:07" as "Mon, 2 January 2006 15:04 MST": cannot parse "Aug 2019 11:20:07" as "January"`,
+		outError:  `parsing time "Thu, 29 Aug 2019 11:20:07" as "January 2 2006 15:04 -0700 (MST)": cannot parse "Thu, 29 Aug 2019 11:20:07" as "January"`,
 	}, {
 		inEncoded: `{"ts": "foo"}`,
-		outError:  `parsing time "foo" as "2 January 2006 15:04 MST": cannot parse "foo" as "2"`,
+		outError:  `parsing time "foo" as "January 2 2006 15:04 -0700 (MST)": cannot parse "foo" as "January"`,
 	}, {
 		inEncoded: `{"ts": 42}`,
 		outError:  "invalid syntax",
@@ -170,6 +170,8 @@ func TestParseRFC822Time(t *testing.T) {
 		{"2 June 2021 17:06:41 GMT"},
 		{"2 June 2021 17:06:41 -0700"},
 		{"2 June 2021 17:06:41 -0700 (MST)"},
+		{"Wed, Nov 03 2021 17:48:06 CST"},
+		{"Wed, November 03 2021 17:48:06 CST"},
 
 		// Timestamps without seconds.
 		{"Sun, 31 Oct 2021 12:10 -5000"},
@@ -186,6 +188,8 @@ func TestParseRFC822Time(t *testing.T) {
 		{"2 June 2021 17:06 GMT"},
 		{"2 June 2021 17:06 -0700"},
 		{"2 June 2021 17:06 -0700 (MST)"},
+		{"Wed, Nov 03 2021 17:48 CST"},
+		{"Wed, November 03 2021 17:48 CST"},
 	} {
 		t.Run(tt.rfc822Time, func(t *testing.T) {
 			_, err := ParseRFC822Time(tt.rfc822Time)
