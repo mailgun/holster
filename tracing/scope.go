@@ -19,6 +19,9 @@ type S struct {
 type ScopeAction func(s *S) error
 
 // Call action function within a scoped tracing span.
+// Decorate span with file and line number where scope started.
+// Decorate span with error if one is returned from action function.
+// Pass scoped context and span into action function.
 func Scope(ctx context.Context, spanName string, action ScopeAction) error {
 	pc, file, line, callerOk := runtime.Caller(1)
 
