@@ -1,5 +1,11 @@
 // OpenTelemetry tools for tracing to Jaeger Tracing.
 //
+// Why OpenTelemetry?
+// Current standard for distributed tracing clients.
+// No longer need implementation specific client module (e.g. Jaeger client).
+// OpenTracing is now deprecated, superceded by OpenTelemetry.
+// See: opentelemetry.io
+//
 // OpenTelemetry dev reference:
 // https://pkg.go.dev/go.opentelemetry.io/otel
 //
