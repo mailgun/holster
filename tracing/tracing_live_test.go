@@ -15,6 +15,7 @@ import (
 
 func TestTracing(t *testing.T) {
 	ctx := context.Background()
+	logrus.SetLevel(logrus.DebugLevel)
 	tracer, err := tracing.InitTracing("TestTracing")
 	require.NoError(t, err)
 	defer func() {

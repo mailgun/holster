@@ -29,7 +29,14 @@ import (
 
 var globalTracer trace.Tracer
 
+var logLevels = []logrus.Level{
+	logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
+	logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
+	logrus.TraceLevel,
+}
+
 // Initialize an OpenTelemetry global tracer.
+// Call after initializing logrus.
 // Instrument logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 func InitTracing(serviceName string) (trace.Tracer, error) {
@@ -51,11 +58,16 @@ func InitTracing(serviceName string) (trace.Tracer, error) {
 	// Setup logrus instrumentation.
 	// Using logrus.WithContext() will mirror log to embedded span.
 	// Using WithFields() also converts to log attributes.
+	logLevel := logrus.GetLevel()
+	useLevels := []logrus.Level{}
+	for _, l := range logLevels {
+		if l <= logLevel {
+			useLevels = append(useLevels, l)
+		}
+	}
+
 	logrus.AddHook(otellogrus.NewHook(
-		otellogrus.WithLevels(
-			logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
-			logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
-		),
+		otellogrus.WithLevels(useLevels...),
 	))
 
 	globalTracer = tp.Tracer(serviceName)
