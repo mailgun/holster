@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -40,8 +41,16 @@ func Scope(ctx context.Context, spanName string, action ScopeAction) error {
 	defer span.End()
 
 	// Call action function.
-	return action(&S{
+	err := action(&S{
 		Ctx: ctx,
 		Span: span,
 	})
+
+	// If scope returns an error, mark span with error.
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
 }

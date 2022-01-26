@@ -63,5 +63,14 @@ func TestTracing(t *testing.T) {
 
 			require.NoError(t, err)
 		})
+
+		t.Run("Return error", func(t *testing.T) {
+			err := tracing.Scope(ctx, "Error scope", func(s *tracing.S) error {
+				time.Sleep(1 * time.Millisecond)
+				return errors.New("Test error")
+			})
+
+			require.Error(t, err)
+		})
 	})
 }
