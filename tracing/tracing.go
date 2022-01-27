@@ -84,9 +84,20 @@ func InitTracing(ctx context.Context, serviceName string) (context.Context, trac
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	tracer := tp.Tracer(serviceName)
-	ctx = context.WithValue(ctx, tracerKey{}, tracer)
+	return CreateTracer(ctx, serviceName)
+}
 
+// Create new tracer object using global tracer provider.
+// Must call InitTracing() first.
+// Library name is set in span attribute `otel.library.name`.
+func CreateTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	if !ok {
+		return nil, nil, errors.New("OpenTelemetry global tracer provider has not be initialized")
+	}
+
+	tracer := tp.Tracer(libraryName)
+	ctx = context.WithValue(ctx, tracerKey{}, tracer)
 	return ctx, tracer, nil
 }
 

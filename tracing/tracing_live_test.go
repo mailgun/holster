@@ -119,5 +119,17 @@ func TestTracing(t *testing.T) {
 
 			require.NoError(t, err)
 		})
+
+		t.Run("Custom library name", func(t *testing.T) {
+			const libraryName = "Foobar library"
+			ctx, _, err := tracing.CreateTracer(ctx, libraryName)
+			require.NoError(t, err)
+
+			err = tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
+				return nil
+			})
+
+			require.NoError(t, err)
+		})
 	})
 }
