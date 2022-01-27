@@ -6,6 +6,9 @@
 // OpenTracing is now deprecated, superceded by OpenTelemetry.
 // See: opentelemetry.io
 //
+// Why Jaeger Tracing server?
+// Easy to setup.  Powerful and easy to use web UI.
+//
 // OpenTelemetry dev reference:
 // https://pkg.go.dev/go.opentelemetry.io/otel
 //
