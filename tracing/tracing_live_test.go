@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -45,6 +46,25 @@ func TestTracing(t *testing.T) {
 			logrus.WithContext(ctx).
 				WithError(errors.New("Test error")).
 				Error("This is an error message")
+		})
+
+		t.Run("Return error", func(t *testing.T) {
+			_, span := tracer.Start(ctx, t.Name())
+			defer span.End()
+
+			err := errors.New("Test error")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		})
+
+		t.Run("Add attributes to span", func(t *testing.T) {
+			_, span := tracer.Start(ctx, t.Name())
+			defer span.End()
+
+			span.SetAttributes(
+				attribute.String("foobar_string", "Hello world."),
+				attribute.Int("foobar_number", 12345),
+			)
 		})
 	})
 
@@ -87,7 +107,7 @@ func TestTracing(t *testing.T) {
 			require.Error(t, err)
 		})
 
-		t.Run("Add tags to span", func(t *testing.T) {
+		t.Run("Add attributes to span", func(t *testing.T) {
 			err := tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
 				span := trace.SpanFromContext(ctx)
 				span.SetAttributes(
