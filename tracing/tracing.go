@@ -13,6 +13,12 @@
 // https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger
 // OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
 //
+// Instruments logrus.
+// Must use `WithContext()` method to propagate active trace.
+// Logs will mirror to active trace.
+// If it's an error level or higher, will mark span as error and set attributes
+// `otel.status_code` and `otel.status_description` with the error message.
+//
 // Find OpenTelemetry instrumentation for various technologies:
 // https://opentelemetry.io/registry/?language=go&component=instrumentation
 
@@ -33,7 +39,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var globalTracer trace.Tracer
+// Context Values key for embedding tracer object.
+type tracerKey struct{}
 
 var logLevels = []logrus.Level{
 	logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
@@ -41,14 +48,15 @@ var logLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
-// Initialize an OpenTelemetry global tracer.
-// Call after initializing logrus.
-// Instrument logrus to mirror to active trace.  Must use `WithContext()`
+// Initialize an OpenTelemetry global tracer provider.
+// Embeds tracer object in returned context.
+// Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
-func InitTracing(serviceName string) (trace.Tracer, error) {
+// Call after initializing logrus.
+func InitTracing(ctx context.Context, serviceName string) (context.Context, trace.Tracer, error) {
 	exp, err := jaeger.New(jaeger.WithAgentEndpoint())
 	if err != nil {
-		return nil, errors.Wrap(err, "Error in jaeger.New")
+		return ctx, nil, errors.Wrap(err, "error in jaeger.New")
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -76,22 +84,25 @@ func InitTracing(serviceName string) (trace.Tracer, error) {
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	globalTracer = tp.Tracer(serviceName)
+	tracer := tp.Tracer(serviceName)
+	ctx = context.WithValue(ctx, tracerKey{}, tracer)
 
-	return globalTracer, nil
+	return ctx, tracer, nil
 }
 
-// Close OpenTelemetry global tracer.
+// Close OpenTelemetry global tracer provider.
 // This allows queued up traces to be flushed.
 func CloseTracing(ctx context.Context) error {
-	if globalTracer != nil {
-		ctx, cancel := context.WithTimeout(ctx, 5 * time.Second)
-		defer cancel()
-		tp := otel.GetTracerProvider().(*sdktrace.TracerProvider)
-		err := tp.Shutdown(ctx)
-		if err != nil {
-			return errors.Wrap(err, "Error in globalTracer.Shutdown")
-		}
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	if !ok {
+		return errors.New("OpenTelemetry global tracer provider has not be initialized")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5 * time.Second)
+	defer cancel()
+	err := tp.Shutdown(ctx)
+	if err != nil {
+		return errors.Wrap(err, "error in tp.Shutdown")
 	}
 
 	return nil

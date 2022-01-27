@@ -1,3 +1,15 @@
+// Trace a code block as a scoped span.
+// * Use instead of manual instrumentation: `tracer.Start()`/`span.End()`.
+// * Must call `InitTracing()` first.
+// * Automates start/end of span.
+// * Default span name is fully qualified function name.
+// * Tags file and line number where span started.
+// * If function returned error:
+//   * Span is tagged as error.
+//   * Sets span attributes `otel.status_code` and `otel.status_description`
+//     with error details.
+//   * Logs error details to span.
+
 package tracing
 
 import (
@@ -10,18 +22,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Scope state.
-type S struct {
-	Ctx context.Context
-	Span trace.Span
-}
-
-type ScopeAction func(s *S) error
+type ScopeAction func(ctx context.Context) error
 
 // Call action function within a scoped tracing span.
-// Decorate span with file and line number where scope started.
-// Decorate span with error if one is returned from action function.
-// Pass scoped context and span into action function.
+// Must call `InitTracing()` first.
 func Scope(ctx context.Context, spanName string, action ScopeAction) error {
 	pc, file, line, callerOk := runtime.Caller(1)
 
@@ -38,16 +42,19 @@ func Scope(ctx context.Context, spanName string, action ScopeAction) error {
 	}
 
 	// Initialize span.
-	ctx, span := globalTracer.Start(ctx, spanName, trace.WithAttributes(
+	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
+	if !ok {
+		// No tracer embedded.  Just call the action function.
+		return action(ctx)
+	}
+
+	ctx, span := tracer.Start(ctx, spanName, trace.WithAttributes(
 		attribute.String("file", fileTag),
 	))
 	defer span.End()
 
 	// Call action function.
-	err := action(&S{
-		Ctx: ctx,
-		Span: span,
-	})
+	err := action(ctx)
 
 	// If scope returns an error, mark span with error.
 	if err != nil {
