@@ -1,30 +1,3 @@
-// OpenTelemetry tools for tracing to Jaeger Tracing.
-//
-// Why OpenTelemetry?
-// Current standard for distributed tracing clients.
-// No longer need implementation specific client module (e.g. Jaeger client).
-// OpenTracing is now deprecated, superceded by OpenTelemetry.
-// See: opentelemetry.io
-//
-// Why Jaeger Tracing server?
-// Easy to setup.  Powerful and easy to use web UI.
-//
-// OpenTelemetry dev reference:
-// https://pkg.go.dev/go.opentelemetry.io/otel
-//
-// Configuration via environment variables:
-// https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger
-// OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
-//
-// Instruments logrus.
-// Must use `WithContext()` method to propagate active trace.
-// Logs will mirror to active trace.
-// If it's an error level or higher, will mark span as error and set attributes
-// `otel.status_code` and `otel.status_description` with the error message.
-//
-// Find OpenTelemetry instrumentation for various technologies:
-// https://opentelemetry.io/registry/?language=go&component=instrumentation
-
 package tracing
 
 import (
@@ -120,4 +93,11 @@ func CloseTracing(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Get embedded `Tracer` from context.
+// Returns nil if not found.
+func TracerFromContext(ctx context.Context) trace.Tracer {
+	tracer, _ := ctx.Value(tracerKey{}).(trace.Tracer)
+	return tracer
 }
