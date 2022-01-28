@@ -70,9 +70,9 @@ func TestTracing(t *testing.T) {
 
 	t.Run("Scope()", func(t *testing.T) {
 		t.Run("Simple traces", func(t *testing.T) {
-			err := tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
+			err := tracing.NamedScope(ctx, t.Name(), func(ctx context.Context) error {
 				for i := 0; i < 10; i++ {
-					err := tracing.Scope(ctx, "", func(_ context.Context) error {
+					err := tracing.Scope(ctx, func(_ context.Context) error {
 						return nil
 					})
 
@@ -86,7 +86,7 @@ func TestTracing(t *testing.T) {
 		})
 
 		t.Run("Log to trace", func(t *testing.T) {
-			err := tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
+			err := tracing.NamedScope(ctx, t.Name(), func(ctx context.Context) error {
 				logrus.WithContext(ctx).
 					WithField("testId", 12345).
 					Info("This is a log message")
@@ -100,7 +100,7 @@ func TestTracing(t *testing.T) {
 		})
 
 		t.Run("Return error", func(t *testing.T) {
-			err := tracing.Scope(ctx, t.Name(), func(_ context.Context) error {
+			err := tracing.NamedScope(ctx, t.Name(), func(_ context.Context) error {
 				return errors.New("Test error")
 			})
 
@@ -108,7 +108,7 @@ func TestTracing(t *testing.T) {
 		})
 
 		t.Run("Add attributes to span", func(t *testing.T) {
-			err := tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
+			err := tracing.NamedScope(ctx, t.Name(), func(ctx context.Context) error {
 				span := trace.SpanFromContext(ctx)
 				span.SetAttributes(
 					attribute.String("foobar_string", "Hello world."),
@@ -122,10 +122,10 @@ func TestTracing(t *testing.T) {
 
 		t.Run("Custom library name", func(t *testing.T) {
 			const libraryName = "Foobar library"
-			ctx, _, err := tracing.CreateTracer(ctx, libraryName)
+			ctx, _, err := tracing.NewTracer(ctx, libraryName)
 			require.NoError(t, err)
 
-			err = tracing.Scope(ctx, t.Name(), func(ctx context.Context) error {
+			err = tracing.NamedScope(ctx, t.Name(), func(ctx context.Context) error {
 				return nil
 			})
 

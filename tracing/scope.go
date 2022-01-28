@@ -24,23 +24,43 @@ import (
 
 type ScopeAction func(ctx context.Context) error
 
-// Scope calls action function within a scoped tracing span.
+// Scope calls action function within a tracing span named after the calling
+// function.
 // Must call `InitTracing()` first.
-func Scope(ctx context.Context, spanName string, action ScopeAction) error {
+func Scope(ctx context.Context, action ScopeAction) error {
 	pc, file, line, callerOk := runtime.Caller(1)
 
 	// Determine source file and line number.
-	var fileTag string
+	var fileTag, spanName string
 	if callerOk {
 		fileTag = file + ":" + strconv.Itoa(line)
-		if spanName == "" {
-			spanName = runtime.FuncForPC(pc).Name()
-		}
+		spanName = runtime.FuncForPC(pc).Name()
 	} else {
 		// Rare condition.  Probably a bug in caller.
 		fileTag = "unknown"
 	}
 
+	return callAction(ctx, action, spanName, fileTag)
+}
+
+// NamedScope calls action function within a tracing span.
+// Must call `InitTracing()` first.
+func NamedScope(ctx context.Context, spanName string, action ScopeAction) error {
+	_, file, line, callerOk := runtime.Caller(1)
+
+	// Determine source file and line number.
+	var fileTag string
+	if callerOk {
+		fileTag = file + ":" + strconv.Itoa(line)
+	} else {
+		// Rare condition.  Probably a bug in caller.
+		fileTag = "unknown"
+	}
+
+	return callAction(ctx, action, spanName, fileTag)
+}
+
+func callAction(ctx context.Context, action ScopeAction, spanName, fileTag string) error {
 	// Initialize span.
 	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
 	if !ok {

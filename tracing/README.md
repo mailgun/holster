@@ -83,8 +83,14 @@ func MyFunc(ctx context.Context) error {
 ```
 
 ### Scope Tracing
-The `Scope()` function automates span start/end, error reporting, and logging
-to the active trace.
+The `Scope()`/`NamedScope()` functions automate span start/end and error
+reporting to the active trace.
+
+`Scope()` names the span after the fully qualified calling function.
+`NamedScope()` accepts span name as parameter.
+
+If the scope's action function returns an error, the error message is
+automatically logged to the trace and the trace is marked as error.
 
 ```go
 import (
@@ -95,7 +101,7 @@ import (
 )
 
 func MyFunc(ctx context.Context) error {
-	return tracing.Scope(ctx, "", func(ctx context.Context) error {
+	return tracing.Scope(ctx, func(ctx context.Context) error {
 		logrus.WithContext(ctx).Info("This message also logged to trace")
 
 		// ...
@@ -116,8 +122,9 @@ trace stored in the context.
 logrus.WithContext(ctx).Info("This message also logged to trace")
 ```
 
-If the log is error level or higher, the span is marked as error and sets attributes
-`otel.status_code` and `otel.status_description` with the error details.
+If the log is error level or higher, the span is also marked as error and sets
+attributes `otel.status_code` and `otel.status_description` with the error
+details.
 
 ### Other Instrumentation Options
 [https://opentelemetry.io/registry/?language=go&component=instrumentation](https://opentelemetry.io/registry/?language=go&component=instrumentation)
