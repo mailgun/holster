@@ -572,3 +572,9 @@ async.Async(id, ctx, backOff, func(ctx context.Context, i int) error {
 // Wait for all the asyncs to complete
 async.Wait()
 ```
+
+
+### OpenTelemetry
+Tracing tools using OpenTelemetry client SDK and Jaeger Tracing server.
+
+See [tracing readme](https://github.com/mailgun/holster/blob/master/tracing/README.md) for details.
