@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Context Values key for embedding tracer object.
+// Context Values key for embedding `Tracer` object.
 type tracerKey struct{}
 
 var logLevels = []logrus.Level{
@@ -24,8 +24,9 @@ var logLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
-// Initialize an OpenTelemetry global tracer provider.
-// Embeds tracer object in returned context.
+// InitTracing initializes a global OpenTelemetry tracer provider singleton.
+// Call once before using functions in this package.
+// Embeds `Tracer` object in returned context.
 // Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 // Call after initializing logrus.
@@ -60,13 +61,13 @@ func InitTracing(ctx context.Context, serviceName string) (context.Context, trac
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	return CreateTracer(ctx, serviceName)
+	return NewTracer(ctx, serviceName)
 }
 
-// Create new tracer object using global tracer provider.
-// Must call InitTracing() first.
+// NewTracer instantiates a new `Tracer` object using global tracer provider.
+// Must call `InitTracing()` first.
 // Library name is set in span attribute `otel.library.name`.
-func CreateTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
+func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
 	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	if !ok {
 		return nil, nil, errors.New("OpenTelemetry global tracer provider has not be initialized")
@@ -77,7 +78,7 @@ func CreateTracer(ctx context.Context, libraryName string) (context.Context, tra
 	return ctx, tracer, nil
 }
 
-// Close OpenTelemetry global tracer provider.
+// CloseTracing closes the global OpenTelemetry tracer provider.
 // This allows queued up traces to be flushed.
 func CloseTracing(ctx context.Context) error {
 	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
@@ -95,7 +96,7 @@ func CloseTracing(ctx context.Context) error {
 	return nil
 }
 
-// Get embedded `Tracer` from context.
+// TracerFromContext gets embedded `Tracer` from context.
 // Returns nil if not found.
 func TracerFromContext(ctx context.Context) trace.Tracer {
 	tracer, _ := ctx.Value(tracerKey{}).(trace.Tracer)

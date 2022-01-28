@@ -24,7 +24,7 @@ import (
 
 type ScopeAction func(ctx context.Context) error
 
-// Call action function within a scoped tracing span.
+// Scope calls action function within a scoped tracing span.
 // Must call `InitTracing()` first.
 func Scope(ctx context.Context, spanName string, action ScopeAction) error {
 	pc, file, line, callerOk := runtime.Caller(1)
