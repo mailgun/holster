@@ -27,7 +27,7 @@ type ScopeAction func(ctx context.Context) error
 // Scope calls action function within a tracing span named after the calling
 // function.
 // Must call `InitTracing()` first.
-func Scope(ctx context.Context, action ScopeAction) error {
+func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
 	pc, file, line, callerOk := runtime.Caller(1)
 
 	// Determine source file and line number.
@@ -40,12 +40,12 @@ func Scope(ctx context.Context, action ScopeAction) error {
 		fileTag = "unknown"
 	}
 
-	return callAction(ctx, action, spanName, fileTag)
+	return callAction(ctx, action, spanName, fileTag, opts...)
 }
 
 // NamedScope calls action function within a tracing span.
 // Must call `InitTracing()` first.
-func NamedScope(ctx context.Context, spanName string, action ScopeAction) error {
+func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
 	_, file, line, callerOk := runtime.Caller(1)
 
 	// Determine source file and line number.
@@ -57,10 +57,10 @@ func NamedScope(ctx context.Context, spanName string, action ScopeAction) error 
 		fileTag = "unknown"
 	}
 
-	return callAction(ctx, action, spanName, fileTag)
+	return callAction(ctx, action, spanName, fileTag, opts...)
 }
 
-func callAction(ctx context.Context, action ScopeAction, spanName, fileTag string) error {
+func callAction(ctx context.Context, action ScopeAction, spanName, fileTag string, opts ...trace.SpanStartOption) error {
 	// Initialize span.
 	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
 	if !ok {
@@ -68,9 +68,10 @@ func callAction(ctx context.Context, action ScopeAction, spanName, fileTag strin
 		return action(ctx)
 	}
 
-	ctx, span := tracer.Start(ctx, spanName, trace.WithAttributes(
+	opts = append(opts, trace.WithAttributes(
 		attribute.String("file", fileTag),
 	))
+	ctx, span := tracer.Start(ctx, spanName, opts...)
 	defer span.End()
 
 	// Call action function.

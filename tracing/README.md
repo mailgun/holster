@@ -50,7 +50,7 @@ OTEL_SERVICE_NAME=myapp
 OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
 ```
 
-Note: `OTEL_SERVICE_NAME` is recommended or default will be "unknown\_service:*".
+Note: Setting `OTEL_SERVICE_NAME` is recommended or default will be "unknown\_service:\<executable-name\>".
 
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
