@@ -9,9 +9,7 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -38,11 +36,6 @@ func InitTracing(ctx context.Context, serviceName string) (context.Context, trac
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			// Service name appears in Jaeger "Service" dropdown.
-			semconv.ServiceNameKey.String(serviceName),
-		)),
 	)
 	otel.SetTracerProvider(tp)
 

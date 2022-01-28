@@ -46,8 +46,11 @@ Configuration via environment variables:
 [https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger](https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger)
 Such as:
 ```
+OTEL_SERVICE_NAME=myapp
 OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
 ```
+
+Note: `OTEL_SERVICE_NAME` is recommended or default will be "unknown\_service:*".
 
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
