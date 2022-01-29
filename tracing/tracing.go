@@ -22,6 +22,8 @@ var logLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
+var defaultTracer trace.Tracer
+
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
 // Call once before using functions in this package.
 // Embeds `Tracer` object in returned context.
@@ -70,6 +72,11 @@ func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.
 	tracer := tp.Tracer(libraryName)
 	ctx = context.WithValue(ctx, tracerKey{}, tracer)
 	return ctx, tracer, nil
+}
+
+// SetDefaultTracer sets the global tracer used as a default by this package.
+func SetDefaultTracer(tracer trace.Tracer) {
+	defaultTracer = tracer
 }
 
 // CloseTracing closes the global OpenTelemetry tracer provider.

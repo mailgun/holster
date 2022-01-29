@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -64,8 +65,14 @@ func callAction(ctx context.Context, action ScopeAction, spanName, fileTag strin
 	// Initialize span.
 	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
 	if !ok {
-		// No tracer embedded.  Just call the action function.
-		return action(ctx)
+		// No tracer embedded.  Fall back to default tracer.
+		tracer = defaultTracer
+
+		// Else, just call the action function.
+		if tracer == nil {
+			logrus.Warn("No default tracer set")
+			return action(ctx)
+		}
 	}
 
 	opts = append(opts, trace.WithAttributes(
