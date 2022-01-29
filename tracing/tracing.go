@@ -28,7 +28,8 @@ var logLevels = []logrus.Level{
 // Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 // Call after initializing logrus.
-func InitTracing(ctx context.Context, serviceName string) (context.Context, trace.Tracer, error) {
+// libraryName is typically the application's module name.
+func InitTracing(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
 	exp, err := jaeger.New(jaeger.WithAgentEndpoint())
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error in jaeger.New")
@@ -54,7 +55,7 @@ func InitTracing(ctx context.Context, serviceName string) (context.Context, trac
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	return NewTracer(ctx, serviceName)
+	return NewTracer(ctx, libraryName)
 }
 
 // NewTracer instantiates a new `Tracer` object using global tracer provider.
