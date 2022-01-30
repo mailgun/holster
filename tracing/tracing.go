@@ -57,12 +57,20 @@ func InitTracing(ctx context.Context, libraryName string) (context.Context, trac
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	return NewTracer(ctx, libraryName)
+	ctx, tracer, err := NewTracer(ctx, libraryName)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error in NewTracer")
+	}
+
+	SetDefaultTracer(tracer)
+
+	return ctx, tracer, err
 }
 
-// NewTracer instantiates a new `Tracer` object using global tracer provider.
+// NewTracer instantiates a new `Tracer` object with a custom library name.
 // Must call `InitTracing()` first.
 // Library name is set in span attribute `otel.library.name`.
+// This is typically the relevant package name.
 func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
 	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	if !ok {

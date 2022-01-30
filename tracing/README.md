@@ -67,12 +67,6 @@ tracing.SetDefaultTracer(tracer)
 tracing.CloseTracing(ctx)
 ```
 
-Calling `SetDefaultTracer()` is critical.  The default tracer is used by
-`Scope()` when there is no tracer embedded in the context.  This may occur when
-receiving a context created from `context.Background()`.  Or, it may be that an
-instrumented component creates a span, but doesn't embed it in the context that
-is passed to your code.
-
 ### Manual Tracing
 ```go
 import (
