@@ -26,34 +26,13 @@ type ScopeAction func(ctx context.Context) error
 
 // Start a scope with span named after fully qualified caller function.
 func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	pc, file, line, ok := runtime.Caller(1)
-
-	// Determine source file and line number.
-	var fileTag, spanName string
-	if ok {
-		fileTag = file + ":" + strconv.Itoa(line)
-		spanName = runtime.FuncForPC(pc).Name()
-	} else {
-		// Rare condition.  Probably a bug in caller.
-		fileTag = "unknown"
-	}
-
+	spanName, fileTag := getCallerSpanName(2)
 	return startSpan(ctx, spanName, fileTag, opts...)
 }
 
 // Start a scope with user-provided span name.
 func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	_, file, line, ok := runtime.Caller(1)
-
-	// Determine source file and line number.
-	var fileTag string
-	if ok {
-		fileTag = file + ":" + strconv.Itoa(line)
-	} else {
-		// Rare condition.  Probably a bug in caller.
-		fileTag = "unknown"
-	}
-
+	fileTag := getFileTag(2)
 	return startSpan(ctx, spanName, fileTag, opts...)
 }
 
@@ -76,7 +55,8 @@ func EndScope(ctx context.Context, err error) {
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 // Must call `InitTracing()` first.
 func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	ctx = StartScope(ctx, opts...)
+	spanName, fileTag := getCallerSpanName(2)
+	ctx = startSpan(ctx, spanName, fileTag, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -86,7 +66,8 @@ func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOptio
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 // Must call `InitTracing()` first.
 func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	ctx = StartNamedScope(ctx, spanName, opts...)
+	fileTag := getFileTag(2)
+	ctx = startSpan(ctx, spanName, fileTag, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -111,4 +92,32 @@ func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.Span
 
 	ctx, _ = tracer.Start(ctx, spanName, opts...)
 	return ctx
+}
+
+func getCallerSpanName(skip int) (string, string) {
+	pc, file, line, ok := runtime.Caller(skip)
+
+	// Determine source file and line number.
+	var fileTag, spanName string
+	if ok {
+		fileTag = file + ":" + strconv.Itoa(line)
+		spanName = runtime.FuncForPC(pc).Name()
+	} else {
+		// Rare condition.  Probably a bug in caller.
+		fileTag = "unknown"
+	}
+
+	return spanName, fileTag
+}
+
+func getFileTag(skip int) string {
+	_, file, line, ok := runtime.Caller(1)
+
+	// Determine source file and line number.
+	if !ok {
+		// Rare condition.  Probably a bug in caller.
+		return "unknown"
+	}
+
+	return file + ":" + strconv.Itoa(line)
 }
