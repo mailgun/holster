@@ -43,7 +43,7 @@ OpenTelemetry dev reference:
 
 ### Configuration
 Configuration via environment variables:
-[https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger](https://github.com/open-telemetry/opentelemetry-go/tree/main/exporters/jaeger)
+[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md)
 Such as:
 ```
 OTEL_SERVICE_NAME=myapp
@@ -68,6 +68,8 @@ tracing.CloseTracing(ctx)
 ```
 
 ### Manual Tracing
+Basic instrumentation.  Traces function duration as a span and captures logrus logs.
+
 ```go
 import (
 	"context"
@@ -87,15 +89,42 @@ func MyFunc(ctx context.Context) error {
 ```
 
 ### Scope Tracing
-The `Scope()`/`NamedScope()` functions automate span start/end and error
-reporting to the active trace.
+The scope functions automate span start/end and error reporting to the active
+trace.
 
-`Scope()` names the span after the fully qualified calling function.
-`NamedScope()` accepts span name as parameter.
+| Function       | Description |
+| -------------- | ----------- |
+| `StartScope()` | Start a scope by creating a span named after the fully qualified calling function. |
+| `StartNamedScope()` | Start a scope by creating a span with user-provided name. |
+| `EndScope()`   | End the scope, record returned error value. |
+| `Scope()`      | Wraps a code block as a scope using `StartScope()`/`EndScope()` functionality. |
+| `NamedScope()` | Same as `Scope()` with a user-provided span name. |
 
 If the scope's action function returns an error, the error message is
 automatically logged to the trace and the trace is marked as error.
 
+#### Using `StartScope()`/`EndScope()`
+```go
+import (
+	"context"
+
+	"github.com/mailgun/holster/tracing"
+	"github.com/sirupsen/logrus"
+)
+
+func MyFunc(ctx context.Context) (err error) {
+	ctx = tracing.StartScope(ctx)
+	defer tracing.EndScope(ctx, err)
+
+	logrus.WithContext(ctx).Info("This message also logged to trace")
+
+	// ...
+
+	return nil
+}
+```
+
+#### Using `Scope()`
 ```go
 import (
 	"context"
@@ -131,4 +160,30 @@ attributes `otel.status_code` and `otel.status_description` with the error
 details.
 
 ### Other Instrumentation Options
-[https://opentelemetry.io/registry/?language=go&component=instrumentation](https://opentelemetry.io/registry/?language=go&component=instrumentation)
+See: [https://opentelemetry.io/registry/?language=go&component=instrumentation](https://opentelemetry.io/registry/?language=go&component=instrumentation)
+
+#### gRPC Server
+```go
+import (
+	"google.golang.org/grpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+)
+
+grpcSrv := grpc.NewServer(
+	grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+	grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+)
+```
+
+#### gRPC Client
+```go
+import (
+	"google.golang.org/grpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+)
+
+conn, err := grpc.Dial(server,
+	grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+)
+```

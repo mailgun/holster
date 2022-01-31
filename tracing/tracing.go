@@ -9,6 +9,7 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -63,6 +64,9 @@ func InitTracing(ctx context.Context, libraryName string) (context.Context, trac
 	}
 
 	SetDefaultTracer(tracer)
+
+	// Required for trace propagation between services.
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	return ctx, tracer, err
 }

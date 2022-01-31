@@ -24,15 +24,13 @@ import (
 
 type ScopeAction func(ctx context.Context) error
 
-// Scope calls action function within a tracing span named after the calling
-// function.
-// Must call `InitTracing()` first.
-func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	pc, file, line, callerOk := runtime.Caller(1)
+// Start a scope with span named after fully qualified caller function.
+func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	pc, file, line, ok := runtime.Caller(1)
 
 	// Determine source file and line number.
 	var fileTag, spanName string
-	if callerOk {
+	if ok {
 		fileTag = file + ":" + strconv.Itoa(line)
 		spanName = runtime.FuncForPC(pc).Name()
 	} else {
@@ -40,47 +38,29 @@ func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOptio
 		fileTag = "unknown"
 	}
 
-	return callAction(ctx, action, spanName, fileTag, opts...)
+	return startSpan(ctx, spanName, fileTag, opts...)
 }
 
-// NamedScope calls action function within a tracing span.
-// Must call `InitTracing()` first.
-func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	_, file, line, callerOk := runtime.Caller(1)
+// Start a scope with user-provided span name.
+func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	_, file, line, ok := runtime.Caller(1)
 
 	// Determine source file and line number.
 	var fileTag string
-	if callerOk {
+	if ok {
 		fileTag = file + ":" + strconv.Itoa(line)
 	} else {
 		// Rare condition.  Probably a bug in caller.
 		fileTag = "unknown"
 	}
 
-	return callAction(ctx, action, spanName, fileTag, opts...)
+	return startSpan(ctx, spanName, fileTag, opts...)
 }
 
-func callAction(ctx context.Context, action ScopeAction, spanName, fileTag string, opts ...trace.SpanStartOption) error {
-	// Initialize span.
-	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
-	if !ok {
-		// No tracer embedded.  Fall back to default tracer.
-		tracer = defaultTracer
-
-		// Else, just call the action function.
-		if tracer == nil {
-			return action(ctx)
-		}
-	}
-
-	opts = append(opts, trace.WithAttributes(
-		attribute.String("file", fileTag),
-	))
-	ctx, span := tracer.Start(ctx, spanName, opts...)
-	defer span.End()
-
-	// Call action function.
-	err := action(ctx)
+// End scope created by `StartScope()`/`StartNamedScope()`.
+// Logs error return value and ends span.
+func EndScope(ctx context.Context, err error) {
+	span := trace.SpanFromContext(ctx)
 
 	// If scope returns an error, mark span with error.
 	if err != nil {
@@ -88,5 +68,47 @@ func callAction(ctx context.Context, action ScopeAction, spanName, fileTag strin
 		span.SetStatus(codes.Error, err.Error())
 	}
 
+	span.End()
+}
+
+// Scope calls action function within a tracing span named after the calling
+// function.
+// Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
+// Must call `InitTracing()` first.
+func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	ctx = StartScope(ctx, opts...)
+	err := action(ctx)
+	EndScope(ctx, err)
 	return err
+}
+
+// NamedScope calls action function within a tracing span.
+// Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
+// Must call `InitTracing()` first.
+func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	ctx = StartNamedScope(ctx, spanName, opts...)
+	err := action(ctx)
+	EndScope(ctx, err)
+	return err
+}
+
+func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.SpanStartOption) context.Context {
+	// Initialize span.
+	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
+	if !ok {
+		// No tracer embedded.  Fall back to default tracer.
+		tracer = defaultTracer
+
+		// Else, omit tracing.
+		if tracer == nil {
+			return ctx
+		}
+	}
+
+	opts = append(opts, trace.WithAttributes(
+		attribute.String("file", fileTag),
+	))
+
+	ctx, _ = tracer.Start(ctx, spanName, opts...)
+	return ctx
 }
