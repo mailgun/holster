@@ -88,6 +88,49 @@ func MyFunc(ctx context.Context) error {
 }
 ```
 
+### Common OpenTelemetry Tasks
+#### Span Attributes
+The active `Span` object is embedded in the `Context` object.  This can be
+extracted to do things like add attribute metadata to the span:
+
+```go
+import (
+	"context"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+func MyFunc(ctx context.Context) error {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String("foobar", "value"),
+		attribute.Int("x", 12345),
+	)
+}
+```
+
+#### Add Span Event
+A span event is a log message added to the active span.  It can optionally
+include attribute metadata.
+
+```go
+span.AddEvent("My message")
+span.AddEvent("My metadata", trace.WithAttributes(
+	attribute.String("foobar", "value"),
+	attribute.Int("x", 12345"),
+))
+```
+
+#### Log an Error
+An `Error` object can be logged to the active span.  This appears as a log
+event on the span.
+
+```go
+err := errors.New("My error message")
+span.RecordError(err)
+```
+
 ### Scope Tracing
 The scope functions automate span start/end and error reporting to the active
 trace.

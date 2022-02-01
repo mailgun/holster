@@ -32,15 +32,18 @@ var defaultTracer trace.Tracer
 // method.
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
-func InitTracing(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
+func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
 	exp, err := jaeger.New(jaeger.WithAgentEndpoint())
 	if err != nil {
 		return ctx, nil, errors.Wrap(err, "error in jaeger.New")
 	}
 
-	tp := sdktrace.NewTracerProvider(
+	opts2 := []sdktrace.TracerProviderOption{
 		sdktrace.WithBatcher(exp),
-	)
+	}
+	opts2 = append(opts2, opts...)
+
+	tp := sdktrace.NewTracerProvider(opts2...)
 	otel.SetTracerProvider(tp)
 
 	// Setup logrus instrumentation.
