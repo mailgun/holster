@@ -6,15 +6,15 @@ From [opentelemetry.io](https://opentelemetry.io):
 > generate, collect, and export telemetry data (metrics, logs, and traces) to
 > help you analyze your software’s performance and behavior.
 
-Use OpenTelemetry to generate traces visualizing bnehavior in your application.
-It's comprised of nested spans that are visualized as a waterfall graph.  Each
+Use OpenTelemetry to generate traces visualizing behavior in your application.
+It's comprised of nested spans that are rendered as a waterfall graph.  Each
 span indicates start/end timings and optionally other developer specified
 metadata and logging output.
 
 Jaeger Tracing is the tool used to receive OpenTelemetry trace data.  Use its
 web UI to query for traces and view the waterfall graph.
 
-OpenTelemetry is distributed, which allows you to pass the trace ids to
+OpenTelemetry is distributed, which allows services to pass the trace ids to
 disparate remote services.  The remote service may generate child spans that
 will be visible on the same waterfall graph.  This requires that all services
 send traces to the same Jaeger server.
@@ -22,7 +22,7 @@ send traces to the same Jaeger server.
 ## Why OpenTelemetry?
 It is the latest standard for distributed tracing clients.
 
-OpenTelemetry supercedes its now deprecated predecessor,
+OpenTelemetry supersedes its now deprecated predecessor,
 [OpenTracing](https://opentracing.io).
 
 It no longer requires implementation specific client modules, such as Jaeger
@@ -54,6 +54,18 @@ OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
 
 Note: Setting `OTEL_SERVICE_NAME` is recommended or default will be "unknown\_service:\<executable-name\>".
 
+#### Probabilistic Sampling
+By default, all traces are sampled.
+
+In production, it may be ideal to limit this stream of trace data by sampling based on a percentage probability.  To enable, set environment variables:
+
+```
+OTEL_TRACES_SAMPLER=traceidratio
+OTEL_TRACES_SAMPLER_ARG=<percentage-between-0-and-100>
+```
+
+Previously in OpenTracing, this was configured in environment variables `JAEGER_SAMPLER_TYPE=probabilitistic` and `JAEGER_SAMPLER_PARAM` to the probability between 0 and 1.0.
+
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
 a `Tracer` object.  When application is exiting, call `CloseTracing()`.
@@ -66,7 +78,7 @@ tracing.SetDefaultTracer(tracer)
 
 // ...
 
-tracing.CloseTracing(ctx)
+tracing.CloseTracing(context.Background())
 ```
 
 ### Manual Tracing
@@ -159,7 +171,9 @@ import (
 
 func MyFunc(ctx context.Context) (err error) {
 	ctx = tracing.StartScope(ctx)
-	defer tracing.EndScope(ctx, err)
+	defer func() {
+		tracing.EndScope(ctx, err)
+	}()
 
 	logrus.WithContext(ctx).Info("This message also logged to trace")
 
