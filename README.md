@@ -574,7 +574,7 @@ async.Wait()
 ```
 
 
-### OpenTelemetry
+## OpenTelemetry
 Tracing tools using OpenTelemetry client SDK and Jaeger Tracing server.
 
 See [tracing
@@ -582,7 +582,7 @@ readme](https://github.com/mailgun/holster/blob/master/tracing/README.md) for
 details.
 
 
-### Context Utilities
+## Context Utilities
 See package directory `ctxutil`.
 
 Use functions `ctxutil.WithDeadline()`/`WithTimeout()` instead of the `context`

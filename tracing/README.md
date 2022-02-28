@@ -45,14 +45,15 @@ See unit tests for usage examples.
 
 ### Configuration
 Configuration via environment variables:
-[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md)
+[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
 Such as:
 ```
 OTEL_SERVICE_NAME=myapp
 OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
 ```
 
-Note: Setting `OTEL_SERVICE_NAME` is recommended or default will be "unknown\_service:\<executable-name\>".
+The service name appears in the Jaeger "Service" dropdown.  If unset, default
+is `unknown_service:<executable-filename>`.
 
 #### Probabilistic Sampling
 By default, all traces are sampled.
@@ -70,16 +71,45 @@ Previously in OpenTracing, this was configured in environment variables `JAEGER_
 The OpenTelemetry client must be initialized to read configuration and prepare
 a `Tracer` object.  When application is exiting, call `CloseTracing()`.
 
+The library name passed in the second argument appears in spans as metadata
+`otel.library.name`.  This is used to identify the library or module that
+generated that span.  This usually the fully qualified module name of your
+repo.
+
 ```go
 import "github.com/mailgun/holster/v4/tracing"
 
-ctx, tracer, err := tracing.InitTracing(ctx, "My service")
+ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
 tracing.SetDefaultTracer(tracer)
 
 // ...
 
 tracing.CloseTracing(context.Background())
 ```
+
+### Setting Resources
+OpenTelemetry is configured by environment variables and supplemental resource
+settings.  Some of these resources also map to environment variables.
+
+#### Service Name
+As an alternative to configuring service name with environment variable
+`OTEL_SERVICE_NAME`, it may be provided as a resource.  The resource setting
+takes precedent over the environment variable.
+
+```go
+res, err := resource.Merge(
+	resource.Default(),
+	resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String("My service"),
+		semconv.ServiceVersionKey.String("v1.0.0"),
+	),
+)
+ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
+```
+
+If neither resource nor environment variable are provided, the default service
+name is `unknown_service:<executable-filename>`.
 
 ### Manual Tracing
 Basic instrumentation.  Traces function duration as a span and captures logrus logs.

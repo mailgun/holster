@@ -102,6 +102,8 @@ func CloseTracing(ctx context.Context) error {
 		return errors.New("OpenTelemetry global tracer provider has not be initialized")
 	}
 
+	defaultTracer = nil
+
 	ctx, cancel := context.WithTimeout(ctx, 5 * time.Second)
 	defer cancel()
 	err := tp.Shutdown(ctx)
