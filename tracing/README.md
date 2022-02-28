@@ -97,6 +97,12 @@ As an alternative to configuring service name with environment variable
 takes precedent over the environment variable.
 
 ```go
+import (
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+)
+
 res, err := resource.Merge(
 	resource.Default(),
 	resource.NewWithAttributes(
