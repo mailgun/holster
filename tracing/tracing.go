@@ -61,9 +61,9 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	ctx, tracer, err := NewTracer(ctx, libraryName)
+	tracerCtx, tracer, err := NewTracer(ctx, libraryName)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error in NewTracer")
+		return ctx, nil, errors.Wrap(err, "error in NewTracer")
 	}
 
 	SetDefaultTracer(tracer)
@@ -71,7 +71,7 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 	// Required for trace propagation between services.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	return ctx, tracer, err
+	return tracerCtx, tracer, err
 }
 
 // NewTracer instantiates a new `Tracer` object with a custom library name.
