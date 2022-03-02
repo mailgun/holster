@@ -89,7 +89,7 @@ func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.
 	}
 
 	tracer := tp.Tracer(libraryName)
-	ctx = WithTracer(ctx, tracer)
+	ctx = ContextWithTracer(ctx, tracer)
 	return ctx, tracer, nil
 }
 
@@ -127,10 +127,10 @@ func CloseTracing(ctx context.Context) error {
 	return nil
 }
 
-// WithTracer creates a context with a tracer object embedded.
+// ContextWithTracer creates a context with a tracer object embedded.
 // This value is used by scope functions or use TracerFromContext() to retrieve
 // it.
-func WithTracer(ctx context.Context, tracer trace.Tracer) context.Context {
+func ContextWithTracer(ctx context.Context, tracer trace.Tracer) context.Context {
 	return context.WithValue(ctx, tracerKey{}, tracer)
 }
 
