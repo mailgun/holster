@@ -87,6 +87,24 @@ tracing.SetDefaultTracer(tracer)
 tracing.CloseTracing(context.Background())
 ```
 
+### Tracer Lifecycle
+The common use case is to call `InitTracing()` to build a single default tracer
+that the application uses througout its lifetime, then call `CloseTracing()` on
+shutdown.
+
+The default tracer is stored globally in the tracer package for use by tracing
+functions.
+
+The tracer object identifies itself by a library name, which can be seen in Jaeger
+traces as attribute `otel.library.name`.  This value is typically the module
+name of the application.
+
+If it's necessary to create traces with a different library name, additional
+tracer objects may be created by `NewTracer()` which returns a context with the
+tracer object embedded in it.  This context object must be passed to tracing
+functions use that tracer in particular, otherwise the default tracer will be
+selected.
+
 ### Setting Resources
 OpenTelemetry is configured by environment variables and supplemental resource
 settings.  Some of these resources also map to environment variables.
