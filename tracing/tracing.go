@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/mailgun/holster/v4/errors"
@@ -23,6 +24,7 @@ var logLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
+var globalMutex sync.RWMutex
 var defaultTracer trace.Tracer
 
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
@@ -66,7 +68,9 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 		return ctx, nil, errors.Wrap(err, "error in NewTracer")
 	}
 
-	SetDefaultTracer(tracer)
+	if GetDefaultTracer() == nil {
+		SetDefaultTracer(tracer)
+	}
 
 	// Required for trace propagation between services.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
@@ -81,16 +85,25 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
 	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	if !ok {
-		return nil, nil, errors.New("OpenTelemetry global tracer provider has not be initialized")
+		return nil, nil, errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
 
 	tracer := tp.Tracer(libraryName)
-	ctx = context.WithValue(ctx, tracerKey{}, tracer)
+	ctx = ContextWithTracer(ctx, tracer)
 	return ctx, tracer, nil
+}
+
+// GetDefaultTracer gets the global tracer used as a default by this package.
+func GetDefaultTracer() trace.Tracer {
+	globalMutex.RLock()
+	defer globalMutex.RUnlock()
+	return defaultTracer
 }
 
 // SetDefaultTracer sets the global tracer used as a default by this package.
 func SetDefaultTracer(tracer trace.Tracer) {
+	globalMutex.Lock()
+	defer globalMutex.Unlock()
 	defaultTracer = tracer
 }
 
@@ -99,19 +112,26 @@ func SetDefaultTracer(tracer trace.Tracer) {
 func CloseTracing(ctx context.Context) error {
 	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 	if !ok {
-		return errors.New("OpenTelemetry global tracer provider has not be initialized")
+		return errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
 
-	defaultTracer = nil
-
+	SetDefaultTracer(nil)
 	ctx, cancel := context.WithTimeout(ctx, 5 * time.Second)
 	defer cancel()
+
 	err := tp.Shutdown(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error in tp.Shutdown")
 	}
 
 	return nil
+}
+
+// ContextWithTracer creates a context with a tracer object embedded.
+// This value is used by scope functions or use TracerFromContext() to retrieve
+// it.
+func ContextWithTracer(ctx context.Context, tracer trace.Tracer) context.Context {
+	return context.WithValue(ctx, tracerKey{}, tracer)
 }
 
 // TracerFromContext gets embedded `Tracer` from context.

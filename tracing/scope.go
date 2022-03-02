@@ -77,12 +77,11 @@ func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.Span
 	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
 	if !ok {
 		// No tracer embedded.  Fall back to default tracer.
-		tracer = defaultTracer
-
-		// Else, omit tracing.
-		if tracer == nil {
-			return ctx
-		}
+		tracer = GetDefaultTracer()
+	}
+	// Else, omit tracing.
+	if tracer == nil {
+		return ctx
 	}
 
 	opts = append(opts, trace.WithAttributes(
