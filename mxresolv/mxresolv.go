@@ -39,7 +39,11 @@ func init() {
 // does not have explicit MX records, and its A record is returned instead.
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
-func Lookup(ctx context.Context, hostname string) ([]string, bool, error) {
+func Lookup(ctx context.Context, hostname string, r *net.Resolver) ([]string, bool, error) {
+	var resolver *net.Resolver
+	if r == nil {
+		resolver = net.DefaultResolver
+	}
 	if cachedVal, ok := lookupResultCache.Get(hostname); ok {
 		lookupResult := cachedVal.(lookupResult)
 		return lookupResult.mxHosts, lookupResult.implicit, lookupResult.err
@@ -48,7 +52,7 @@ func Lookup(ctx context.Context, hostname string) ([]string, bool, error) {
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid hostname")
 	}
-	mxRecords, err := net.DefaultResolver.LookupMX(ctx, asciiHostname)
+	mxRecords, err := resolver.LookupMX(ctx, asciiHostname)
 	if err != nil {
 		var timeouter interface{ Timeout() bool }
 		if errors.As(err, &timeouter) && timeouter.Timeout() {
@@ -56,7 +60,7 @@ func Lookup(ctx context.Context, hostname string) ([]string, bool, error) {
 		}
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.Err == "no such host" {
-			if _, err := net.DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
+			if _, err := resolver.LookupIPAddr(ctx, asciiHostname); err != nil {
 				return cacheAndReturn(hostname, nil, false, errors.WithStack(err))
 			}
 			return cacheAndReturn(hostname, []string{asciiHostname}, true, nil)

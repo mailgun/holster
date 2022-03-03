@@ -58,7 +58,7 @@ func TestLookup(t *testing.T) {
 		fmt.Printf("Test case #%d: %s, %s\n", i, tc.inDomainName, tc.desc)
 		// When
 		ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
-		mxHosts, explictMX, err := Lookup(ctx, tc.inDomainName)
+		mxHosts, explictMX, err := Lookup(ctx, tc.inDomainName, nil)
 		cancel()
 		// Then
 		assert.NoError(t, err)
@@ -67,7 +67,7 @@ func TestLookup(t *testing.T) {
 
 		// The second lookup returns the cached result, that only shows on the
 		// coverage report.
-		mxHosts, explictMX, err = Lookup(ctx, tc.inDomainName)
+		mxHosts, explictMX, err = Lookup(ctx, tc.inDomainName, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, tc.outMXHosts, mxHosts)
 		assert.Equal(t, tc.outImplicitMX, explictMX)
@@ -96,14 +96,14 @@ func TestLookupError(t *testing.T) {
 		fmt.Printf("Test case #%d: %s, %s\n", i, tc.inHostname, tc.desc)
 		// When
 		ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
-		_, _, err := Lookup(ctx, tc.inHostname)
+		_, _, err := Lookup(ctx, tc.inHostname, nil)
 		cancel()
 		// Then
 		assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
 
 		// The second lookup returns the cached result, that only shows on the
 		// coverage report.
-		_, _, err = Lookup(ctx, tc.inHostname)
+		_, _, err = Lookup(ctx, tc.inHostname, nil)
 		assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
 	}
 }
@@ -121,10 +121,10 @@ func TestLookupShuffle(t *testing.T) {
 	// When
 	ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
 	defer cancel()
-	shuffle1, _, err := Lookup(ctx, "test-mx.definbox.com")
+	shuffle1, _, err := Lookup(ctx, "test-mx.definbox.com", nil)
 	assert.NoError(t, err)
 	resetCache()
-	shuffle2, _, err := Lookup(ctx, "test-mx.definbox.com")
+	shuffle2, _, err := Lookup(ctx, "test-mx.definbox.com", nil)
 	assert.NoError(t, err)
 
 	// Then
