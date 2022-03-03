@@ -43,6 +43,8 @@ func Lookup(ctx context.Context, hostname string, r *net.Resolver) ([]string, bo
 	var resolver *net.Resolver
 	if r == nil {
 		resolver = net.DefaultResolver
+	} else {
+		resolver = r
 	}
 	if cachedVal, ok := lookupResultCache.Get(hostname); ok {
 		lookupResult := cachedVal.(lookupResult)
