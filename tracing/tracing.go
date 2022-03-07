@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
@@ -35,9 +36,9 @@ var defaultTracer trace.Tracer
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
 func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
-	exp, err := jaeger.New(jaeger.WithAgentEndpoint())
+	exp, err := makeJaegerExporter()
 	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error in jaeger.New")
+		return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
 	}
 
 	opts2 := []sdktrace.TracerProviderOption{
@@ -139,4 +140,26 @@ func ContextWithTracer(ctx context.Context, tracer trace.Tracer) context.Context
 func TracerFromContext(ctx context.Context) trace.Tracer {
 	tracer, _ := ctx.Value(tracerKey{}).(trace.Tracer)
 	return tracer
+}
+
+func makeJaegerExporter() (*jaeger.Exporter, error) {
+	var agentEndpointOpts []jaeger.AgentEndpointOption
+
+	agentHost := os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
+	if agentHost != "" && agentHost != "localhost" && agentHost != "127.0.0.1" {
+		// Default MaxPacketSize=65000, which only works with Jaeger agent on
+		// localhost (loopback interface).
+		// For tracing over network, packets must fit in MTU 1500, which has a
+		// payload size of 1472.
+		agentEndpointOpts = append(agentEndpointOpts, jaeger.WithMaxPacketSize(1472))
+	}
+
+	exp, err := jaeger.New(
+		jaeger.WithAgentEndpoint(agentEndpointOpts...),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in jaeger.New")
+	}
+
+	return exp, nil
 }
