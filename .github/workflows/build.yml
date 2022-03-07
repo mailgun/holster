@@ -1,0 +1,21 @@
+name: Python application
+
+on:
+    pull_request:
+        branches:
+            - master
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+    PYTHON_IMAGE_REPO: docker.io/library/python
+    PYTHON_VERSION: 3.7.9
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Use Pathwire CI Personal Access Token to access internal private repos when installing deps
+              run: git config --global "url.https://${{ secrets.CI_PAT }}:@github.com/.insteadOf" "https://github.com/"
