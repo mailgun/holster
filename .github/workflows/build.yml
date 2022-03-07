@@ -19,3 +19,8 @@ jobs:
 
             - name: Use Pathwire CI Personal Access Token to access internal private repos when installing deps
               run: git config --global "url.https://${{ secrets.CI_PAT }}:@github.com/.insteadOf" "https://github.com/"
+
+            - name: test clone internal repo
+              run: git clone "https://${{ secrets.CI_PAT }}:@github.com/mailgun/flagman.git"
+            - name: test to see if it worked
+              run: ls -a
