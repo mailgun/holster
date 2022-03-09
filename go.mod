@@ -25,10 +25,10 @@ require (
 )
 
 require (
-	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.1.7
+	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.1.9
 	go.opentelemetry.io/otel v1.4.1
-	go.opentelemetry.io/otel/exporters/jaeger v1.3.0
-	go.opentelemetry.io/otel/sdk v1.3.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.4.1
+	go.opentelemetry.io/otel/sdk v1.4.1
 	go.opentelemetry.io/otel/trace v1.4.1
 )
 
@@ -57,12 +57,12 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
-	github.com/uptrace/opentelemetry-go-extra/otelutil v0.1.7 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelutil v0.1.9 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/sys v0.0.0-20211210111614-af8b64212486 // indirect
+	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
