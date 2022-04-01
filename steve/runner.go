@@ -3,64 +3,81 @@ package steve
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/mailgun/holster/v4/collections"
 	"github.com/mailgun/holster/v4/syncutil"
+	"github.com/pkg/errors"
 )
 
 var (
 	ErrJobNotFound   = errors.New("no such job found")
 	ErrJobNotRunning = errors.New("job not running")
+	ErrTooManyJobs   = errors.New("too many jobs")
 )
 
 type jobIO struct {
-	br      syncutil.Broadcaster
-	writer  io.WriteCloser
-	mutex   sync.Mutex
-	buffer  bytes.Buffer
-	id      ID
-	running int64
-	job     Job
+	sync.RWMutex
+	br       syncutil.Broadcaster
+	writer   io.WriteCloser
+	buffer   bytes.Buffer
+	id       ID
+	job      Job
+	status   Status
+	stopChan chan struct{}
 }
 
 type runner struct {
-	jobs *collections.LRUCache
-	//jobs  map[ID]*jobIO
-	mutex sync.Mutex
-	wg    syncutil.WaitGroup
+	sync.Mutex
+	capacity int
+	jobs     *collections.LRUCache
+	wg       syncutil.WaitGroup
 }
 
 func NewJobRunner(capacity int) Runner {
 	return &runner{
-		//jobs: make(map[ID]*jobIO),
-		jobs: collections.NewLRUCache(capacity),
+		capacity: capacity,
+		jobs:     collections.NewLRUCache(capacity),
 	}
 }
 
 func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
+	// FIXME: How to clean up jobs cache once at capacity?
+	if r.jobs.Size() >= r.capacity {
+		return "", ErrTooManyJobs
+	}
+
 	reader, writer := io.Pipe()
 
+	id := ID(uuid.New().String())
 	j := jobIO{
-		id:     ID(uuid.New().String()),
+		id:     id,
 		br:     syncutil.NewBroadcaster(),
 		writer: writer,
 		job:    job,
+		status: Status{
+			ID: id,
+		},
+		stopChan: make(chan struct{}),
 	}
+
+	startChan := make(chan struct{})
 
 	// Spawn a go routine to monitor job output, storing the output into the j.buffer
 	r.wg.Go(func() {
 		ch := make(chan []byte)
-		atomic.StoreInt64(&j.running, 1)
+		j.Lock()
+		j.status.Running = true
+		j.status.Started = time.Now()
+		j.Unlock()
+		close(startChan)
 
-		// Spawn a separate go routine as the read could block forever
+		// Pipe data from reader to channel.
 		go func() {
 			buf := make([]byte, 2024)
 			for {
@@ -75,43 +92,53 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 			}
 		}()
 
+		// Read job output from channel, broadcast to readers.
+	readLoop:
 		for {
 			select {
 			case line, ok := <-ch:
 				if !ok {
-					atomic.StoreInt64(&j.running, 0)
-					j.br.Broadcast()
-					return
+					break readLoop
 				}
-				j.mutex.Lock()
+
+				j.Lock()
 				j.buffer.Write(line)
+				j.Unlock()
 				j.br.Broadcast()
-				j.mutex.Unlock()
+
+			case <-ctx.Done():
+				break readLoop
 			}
 		}
+
+		// Job stopped
+		j.Lock()
+		j.status.Running = false
+		j.status.Stopped = time.Now()
+		j.Unlock()
+		close(j.stopChan)
+		j.br.Broadcast()
+		return
 	})
+
 	r.jobs.Add(j.id, &j)
 
 	if err := job.Start(ctx, writer); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error in job.Start")
 	}
 
-	for {
-		if atomic.LoadInt64(&j.running) == 1 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		}
+	// Wait for job to start.
+	select {
+	case <-startChan:
+		return id, nil
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
-
-	return j.id, nil
 }
 
 func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
-	defer r.mutex.Unlock()
-	r.mutex.Lock()
+	r.Lock()
+	defer r.Unlock()
 
 	obj, ok := r.jobs.Get(id)
 	if !ok {
@@ -121,9 +148,12 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 
 	// If the job isn't running, then copy the current buffer
 	// into a read closer and return that to the caller.
-	if atomic.LoadInt64(&j.running) == 0 {
-		j.mutex.Lock()
-		defer j.mutex.Unlock()
+	j.RLock()
+	running := j.status.Running
+	j.RUnlock()
+	if !running {
+		j.Lock()
+		defer j.Unlock()
 		buf := bytes.Buffer{}
 		buf.Write(j.buffer.Bytes())
 		return ioutil.NopCloser(&buf), nil
@@ -136,11 +166,12 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 		var idx = 0
 		for {
 			// Grab any bytes from the buffer we haven't sent to our reader
-			j.mutex.Lock()
+			j.RLock()
+			running := j.status.Running
 			src := j.buffer.Bytes()
 			dst := make([]byte, j.buffer.Len()-idx)
 			copy(dst, src[idx:j.buffer.Len()])
-			j.mutex.Unlock()
+			j.RUnlock()
 
 			// Preform the write outside the mutex as it could block and we don't
 			// want to hold on to the mutex for long
@@ -153,14 +184,13 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 
 			// The job routine will broadcast when it stops the job and no
 			// more bytes are available to read.
-			if atomic.LoadInt64(&j.running) == 0 {
+			if !running {
 				writer.Close()
 				return
 			}
 
 			// Wait for broadcaster to tell us there are new bytes to read.
 			j.br.Wait(string(j.id))
-
 		}
 	})
 
@@ -168,8 +198,8 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 }
 
 func (r *runner) Stop(ctx context.Context, id ID) error {
-	defer r.mutex.Unlock()
-	r.mutex.Lock()
+	r.Lock()
+	defer r.Unlock()
 
 	obj, ok := r.jobs.Get(id)
 	if !ok {
@@ -178,7 +208,10 @@ func (r *runner) Stop(ctx context.Context, id ID) error {
 	j := obj.(*jobIO)
 
 	// Ignore if already stopped
-	if atomic.LoadInt64(&j.running) == 0 {
+	j.RLock()
+	running := j.status.Running
+	j.RUnlock()
+	if !running {
 		return ErrJobNotRunning
 	}
 
@@ -191,45 +224,51 @@ func (r *runner) stop(ctx context.Context, j *jobIO) error {
 		return err
 	}
 
-	// Close the writer, this should tell the reading go routine to shutdown
+	// Close the writer, this tells the reader goroutine in Run() to shutdown.
 	j.writer.Close()
-	return nil
+
+	// Wait for stop.
+	select {
+	case <-j.stopChan:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
+// Status gets job status by id.
+// Returns bool as ok flag.
 func (r *runner) Status(id ID) (Status, bool) {
 	obj, ok := r.jobs.Get(id)
 	if !ok {
 		return Status{}, false
 	}
 	j := obj.(*jobIO)
-	// TODO: Add Status to the jobIO
-	return Status{
-		ID:      "",
-		Running: false,
-		Started: time.Time{},
-		Stopped: time.Time{},
-	}
+	j.RLock()
+	defer j.RUnlock()
+	return j.status, true
 }
 
 func (r *runner) List() []Status {
-	defer r.mutex.Unlock()
-	r.mutex.Lock()
+	r.Lock()
+	defer r.Unlock()
 
 	var result []Status
 	r.jobs.Each(1, func(key interface{}, value interface{}) error {
 		j := value.(*jobIO)
-		result = append(result, Status{
-			ID:      j.id,
-			Running: atomic.LoadInt64(&j.running) == 1,
-		})
+		j.RLock()
+		defer j.RUnlock()
+
+		result = append(result, j.status)
 		return nil
 	})
+
 	return result
 }
 
 func (r *runner) Close(ctx context.Context) error {
-	defer r.mutex.Unlock()
-	r.mutex.Lock()
+	r.Lock()
+	defer r.Unlock()
 
 	for _, s := range r.List() {
 		obj, ok := r.jobs.Get(s.ID)
@@ -237,13 +276,17 @@ func (r *runner) Close(ctx context.Context) error {
 			continue
 		}
 		j := obj.(*jobIO)
-		// Skip if not running
-		if atomic.LoadInt64(&j.running) == 0 {
-			continue
-		}
-		if err := r.stop(ctx, j); err != nil {
-			return fmt.Errorf("while stopping '%s': %w", j.id, err)
+
+		j.RLock()
+		running := j.status.Running
+		j.RUnlock()
+		if running {
+			// Stop running job.
+			if err := r.stop(ctx, j); err != nil {
+				return errors.Wrap(err, fmt.Sprintf("while stopping job id '%s'", j.id))
+			}
 		}
 	}
+
 	return nil
 }

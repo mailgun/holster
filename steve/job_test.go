@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,60 +43,65 @@ func (t *testJob) Stop(ctx context.Context) error {
 }
 
 func TestRunner(t *testing.T) {
-	runner := steve.NewJobRunner(20)
-	require.NotNil(t, runner)
+	t.Run("Happy path", func(t *testing.T) {
+		runner := steve.NewJobRunner(20)
+		require.NotNil(t, runner)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
 
-	id, err := runner.Run(ctx, &testJob{})
-	require.NoError(t, err)
-	assert.NotEmpty(t, id)
-
-	// Supports Multiple Readers for the same job
-	go func() {
-		r, err := runner.NewReader(id)
+		id, err := runner.Run(ctx, &testJob{})
 		require.NoError(t, err)
+		assert.NotEmpty(t, id)
 
-		buf := bufio.NewReader(r)
-		for {
-			line, err := buf.ReadBytes('\n')
-			if err != nil {
-				return
+		// Supports Multiple Readers for the same job
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, err := runner.NewReader(id)
+			require.NoError(t, err)
+
+			buf := bufio.NewReader(r)
+			for {
+				line, err := buf.ReadBytes('\n')
+				if err != nil {
+					return
+				}
+				fmt.Printf("+ GOT: %s", string(line))
 			}
-			fmt.Printf("+ GOT: %s", string(line))
-		}
-	}()
+		}()
 
-	go func() {
-		r, err := runner.NewReader(id)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, err := runner.NewReader(id)
+			require.NoError(t, err)
+
+			buf := bufio.NewReader(r)
+			for {
+				line, err := buf.ReadBytes('\n')
+				if err != nil {
+					return
+				}
+				fmt.Printf("- GOT: %s", string(line))
+			}
+		}()
+
+		s, ok := runner.Status(id)
+		require.True(t, ok)
+		assert.Equal(t, id, s.ID)
+		assert.Equal(t, true, s.Running)
+		assert.False(t, s.Started.IsZero())
+		assert.True(t, s.Stopped.IsZero())
+
+		err = runner.Stop(ctx, id)
 		require.NoError(t, err)
+		wg.Wait()
 
-		buf := bufio.NewReader(r)
-		for {
-			line, err := buf.ReadBytes('\n')
-			if err != nil {
-				return
-			}
-			fmt.Printf("- GOT: %s", string(line))
-		}
-	}()
-
-	time.Sleep(time.Second)
-
-	s, ok := runner.Status(id)
-	require.True(t, ok)
-	assert.Equal(t, id, s.ID)
-	assert.Equal(t, true, s.Running)
-	assert.False(t, s.Started.IsZero())
-	assert.True(t, s.Stopped.IsZero())
-
-	err = runner.Stop(ctx, id)
-	require.NoError(t, err)
-
-	// List should show the job as not running
-	l := runner.List()
-	assert.Equal(t, id, l[0].ID)
-	assert.Equal(t, false, l[0].Running)
-
+		// List should show the job as not running
+		l := runner.List()
+		assert.Equal(t, id, l[0].ID)
+		assert.Equal(t, false, l[0].Running)
+	})
 }
