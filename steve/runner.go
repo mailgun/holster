@@ -136,6 +136,8 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	}
 }
 
+var readerCounter int64
+
 func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -253,6 +255,10 @@ func (r *runner) List() []Status {
 	r.Lock()
 	defer r.Unlock()
 
+	return r.list()
+}
+
+func (r *runner) list() []Status {
 	var result []Status
 	r.jobs.Each(1, func(key interface{}, value interface{}) error {
 		j := value.(*jobIO)
@@ -270,7 +276,7 @@ func (r *runner) Close(ctx context.Context) error {
 	r.Lock()
 	defer r.Unlock()
 
-	for _, s := range r.List() {
+	for _, s := range r.list() {
 		obj, ok := r.jobs.Get(s.ID)
 		if !ok {
 			continue
