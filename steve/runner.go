@@ -7,28 +7,34 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/mailgun/holster/v4/collections"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/syncutil"
-	"github.com/pkg/errors"
 )
 
 var (
 	ErrJobNotFound   = errors.New("no such job found")
 	ErrJobNotRunning = errors.New("job not running")
 	ErrTooManyJobs   = errors.New("too many jobs")
+
+	readerCounter int64
 )
 
 type jobIO struct {
+	// Mutex used to synchronize status field.
 	sync.RWMutex
-	br       syncutil.Broadcaster
-	writer   io.WriteCloser
-	buffer   bytes.Buffer
-	id       ID
-	job      Job
-	status   Status
+	br     syncutil.PayloadBroadcaster
+	writer io.WriteCloser
+	buffer bytes.Buffer
+	id     ID
+	job    Job
+	status Status
+
+	// Run() will close stopChan to signal a stop request has completed.
 	stopChan chan struct{}
 }
 
@@ -57,7 +63,7 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	id := ID(uuid.New().String())
 	j := jobIO{
 		id:     id,
-		br:     syncutil.NewBroadcaster(),
+		br:     syncutil.NewPayloadBroadcaster(),
 		writer: writer,
 		job:    job,
 		status: Status{
@@ -68,47 +74,29 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 
 	startChan := make(chan struct{})
 
-	// Spawn a go routine to monitor job output, storing the output into the j.buffer
-	r.wg.Go(func() {
-		ch := make(chan []byte)
-		j.Lock()
-		j.status.Running = true
-		j.status.Started = time.Now()
-		j.Unlock()
-		close(startChan)
+	// Spawn a goroutine to monitor job output.
+	j.Lock()
+	j.status.Running = true
+	j.status.Started = time.Now()
+	j.Unlock()
+	close(startChan)
 
-		// Pipe data from reader to channel.
-		go func() {
-			buf := make([]byte, 2024)
-			for {
-				n, err := reader.Read(buf)
-				if err != nil {
-					close(ch)
-					return
-				}
-				out := make([]byte, n)
-				copy(out, buf[:n])
-				ch <- out
-			}
-		}()
-
-		// Read job output from channel, broadcast to readers.
-	readLoop:
+	// Pipe data from job output to broadcaster.
+	go func() {
+		fmt.Println("Run() goroutine start")
+		defer fmt.Println("Run() goroutine done")
+		buf := make([]byte, 2024)
 		for {
-			select {
-			case line, ok := <-ch:
-				if !ok {
-					break readLoop
-				}
-
-				j.Lock()
-				j.buffer.Write(line)
-				j.Unlock()
-				j.br.Broadcast()
-
-			case <-ctx.Done():
-				break readLoop
+			n, err := reader.Read(buf)
+			if err != nil {
+				fmt.Printf("Run() Reader error: %s\n", err.Error())
+				break
 			}
+			out := make([]byte, n)
+			copy(out, buf[:n])
+
+			fmt.Printf("Run() broadcasting %d bytes...\n", len(out))
+			j.br.Broadcast(out)
 		}
 
 		// Job stopped
@@ -117,9 +105,8 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 		j.status.Stopped = time.Now()
 		j.Unlock()
 		close(j.stopChan)
-		j.br.Broadcast()
 		return
-	})
+	}()
 
 	r.jobs.Add(j.id, &j)
 
@@ -136,8 +123,8 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	}
 }
 
-var readerCounter int64
-
+// NewReader creates a reader that starts at the beginning of the job's output
+// log.
 func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -161,40 +148,49 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 		return ioutil.NopCloser(&buf), nil
 	}
 
+	readerId := atomic.AddInt64(&readerCounter, 1)
+
 	// Create a go routine that sends all unread bytes to the reader then
 	// waits for new bytes to be written to the j.buffer via the broadcaster.
 	reader, writer := io.Pipe()
-	r.wg.Go(func() {
-		var idx = 0
+	go func() {
+		fmt.Printf("NewReader() %d goroutine\n", readerId)
 		for {
+			fmt.Printf("NewReader() %d loop\n", readerId)
+
+			// Wait for broadcaster to tell us there are new bytes to read.
+			payload, done := j.br.Wait(string(j.id))
+			if done {
+				fmt.Printf("NewReaders() %d Wait() returned done\n", readerId)
+				return
+			}
+			jobOutput := payload.([]byte)
+
 			// Grab any bytes from the buffer we haven't sent to our reader
 			j.RLock()
 			running := j.status.Running
-			src := j.buffer.Bytes()
-			dst := make([]byte, j.buffer.Len()-idx)
-			copy(dst, src[idx:j.buffer.Len()])
 			j.RUnlock()
+			fmt.Printf("NewReader() %d read %d bytes\n", readerId, len(jobOutput))
 
 			// Preform the write outside the mutex as it could block and we don't
 			// want to hold on to the mutex for long
-			n, err := writer.Write(dst)
+			_, err := writer.Write(jobOutput)
 			if err != nil {
 				// If the reader called Close() on the pipe
+				fmt.Printf("NewReaders() %d writerWrite() error: %s\n", readerId, err.Error())
 				return
 			}
-			idx += n
 
 			// The job routine will broadcast when it stops the job and no
 			// more bytes are available to read.
 			if !running {
 				writer.Close()
+				fmt.Printf("NewReaders() %d job stopped\n", readerId)
 				return
 			}
 
-			// Wait for broadcaster to tell us there are new bytes to read.
-			j.br.Wait(string(j.id))
 		}
-	})
+	}()
 
 	return reader, nil
 }

@@ -19,11 +19,13 @@ import (
 type TestJob struct {
 	wg        syncutil.WaitGroup
 	startChan chan struct{}
+	t         *testing.T
 }
 
-func NewTestJob() *TestJob {
+func NewTestJob(t *testing.T) *TestJob {
 	return &TestJob{
 		startChan: make(chan struct{}),
+		t:         t,
 	}
 }
 
@@ -31,7 +33,8 @@ func (j *TestJob) Start(ctx context.Context, writer io.Writer) error {
 	go func() {
 		// Wait for signal to start writing.
 		<-j.startChan
-		fmt.Fprintln(writer, "Job start")
+		_, err := fmt.Fprintln(writer, "Job start")
+		require.NoError(j.t, err)
 	}()
 	return nil
 }
@@ -161,7 +164,7 @@ func TestSteve(t *testing.T) {
 
 	t.Run("Multiple readers", func(t *testing.T) {
 		// FIXME: Bug prevents this test from passing consistently with >1 readers.
-		const numReaders = 1
+		const numReaders = 2
 		deadline, ok := t.Deadline()
 		require.True(t, ok)
 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
@@ -175,7 +178,7 @@ func TestSteve(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		testJob := NewTestJob()
+		testJob := NewTestJob(t)
 		id, err := runner.Run(ctx, testJob)
 		require.NoError(t, err)
 		assert.NotEmpty(t, id)
