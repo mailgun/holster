@@ -47,7 +47,7 @@ type Runner interface {
 	Close(context.Context) error
 
 	// Status returns the status of the job, returns false if the job doesn't exist
-	Status(ID) (Status, bool)
+	Status(ID) (status Status, exists bool)
 
 	// List all jobs
 	List() []Status
