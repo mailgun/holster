@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/mailgun/holster/v4/steve"
@@ -163,14 +162,12 @@ func TestSteve(t *testing.T) {
 	})
 
 	t.Run("Multiple readers", func(t *testing.T) {
-		// FIXME: Bug prevents this test from passing consistently with >1 readers.
-		const numReaders = 2
+		const numReaders = 100
 		deadline, ok := t.Deadline()
 		require.True(t, ok)
 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
 		defer cancel()
 
-		t.Log("Launch job...")
 		runner := steve.NewJobRunner(20)
 		require.NotNil(t, runner)
 		defer func() {
@@ -186,42 +183,39 @@ func TestSteve(t *testing.T) {
 		// Create multiple readers for the same job.
 		var wgPass sync.WaitGroup
 		var wgReady sync.WaitGroup
-		var passCount int64
-		t.Logf("Spawning %d readers...", numReaders)
 		for i := 0; i < numReaders; i++ {
 			wgPass.Add(1)
 			wgReady.Add(1)
+
+			// Launch reader in goroutine.
 			go func(i int) {
 				r, err := runner.NewReader(id)
 				require.NoError(t, err)
 
 				buf := bufio.NewReader(r)
 				wgReady.Done()
-				var readBuf []byte
 				for {
-					t.Logf("Reader %d/%d ReadBytes()", i+1, numReaders)
+					// Wait for next line of text.
 					line, err := buf.ReadBytes('\n')
 					if err == io.EOF {
 						break
 					}
 					require.NoError(t, err)
 
-					readBuf = append(readBuf, line...)
-					t.Logf("Reader %d/%d read %d bytes", i+1, numReaders, len(readBuf))
-					if string(readBuf) == "Job start\n" {
+					// Check if we got the expected value.
+					if string(line) == "Job start\n" {
 						wgPass.Done()
-						t.Logf("Reader %d/%d passed", atomic.AddInt64(&passCount, 1), numReaders)
 						return
 					}
 				}
-
 			}(i)
 		}
 
-		// Signal start then wait for passing condition.
+		// Wait for readers to be ready.
 		wgReady.Wait()
-		t.Log("Start job...")
+		// Signal job to start sending output.
 		close(testJob.startChan)
+		// Then wait for passing condition.
 		wgPass.Wait()
 	})
 }
