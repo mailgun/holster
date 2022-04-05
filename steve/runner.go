@@ -174,6 +174,10 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 	reader, writer := io.Pipe()
 
 	go func() {
+		defer func() {
+			j.br.Remove(broadcastId)
+		}()
+
 		var idx = 0
 		var dst []byte
 

@@ -2,46 +2,19 @@ package steve_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/steve"
-	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type TestJob struct {
-	wg        syncutil.WaitGroup
-	startChan chan struct{}
-	t         *testing.T
-}
-
-func NewTestJob(t *testing.T) *TestJob {
-	return &TestJob{
-		startChan: make(chan struct{}),
-		t:         t,
-	}
-}
-
-func (j *TestJob) Start(ctx context.Context, writer io.Writer) error {
-	go func() {
-		// Wait for signal to start writing.
-		<-j.startChan
-		_, err := fmt.Fprintln(writer, "Job start")
-		require.NoError(j.t, err)
-	}()
-	return nil
-}
-
-func (j *TestJob) Stop(ctx context.Context) error {
-	j.wg.Stop()
-	return nil
-}
 
 func TestSteve(t *testing.T) {
 	t.Run("Happy path", func(t *testing.T) {
@@ -162,7 +135,7 @@ func TestSteve(t *testing.T) {
 	})
 
 	t.Run("Multiple readers", func(t *testing.T) {
-		const numReaders = 100
+		const numReaders = 1000
 		deadline, ok := t.Deadline()
 		require.True(t, ok)
 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
@@ -175,10 +148,22 @@ func TestSteve(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		testJob := NewTestJob(t)
-		id, err := runner.Run(ctx, testJob)
+		// Create a mock job and capture the writer object.
+		mockJob := &MockJob{}
+		var jobWriter io.Writer
+		var jobReadyWg sync.WaitGroup
+		message := []byte("Foobar\n")
+		jobReadyWg.Add(1)
+		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				jobWriter = args.Get(1).(io.Writer)
+				jobReadyWg.Done()
+			}).
+			Return(nil)
+		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+
+		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
-		assert.NotEmpty(t, id)
 
 		// Create multiple readers for the same job.
 		var wgPass sync.WaitGroup
@@ -194,28 +179,102 @@ func TestSteve(t *testing.T) {
 
 				buf := bufio.NewReader(r)
 				wgReady.Done()
+				pass := false
+
 				for {
 					// Wait for next line of text.
 					line, err := buf.ReadBytes('\n')
 					if err == io.EOF {
-						break
-					}
-					require.NoError(t, err)
-
-					// Check if we got the expected value.
-					if string(line) == "Job start\n" {
-						wgPass.Done()
 						return
 					}
+					require.NoError(t, err)
+					require.False(t, pass, "Got extraneous data after passing condition")
+
+					// Check if we got the expected value.
+					require.Zero(t, bytes.Compare(line, message), "Buffer mismatch")
+					wgPass.Done()
+					pass = true
 				}
 			}(i)
 		}
 
 		// Wait for readers to be ready.
 		wgReady.Wait()
-		// Signal job to start sending output.
-		close(testJob.startChan)
+		// Wait for job to be ready.
+		jobReadyWg.Wait()
+		// Send output.
+		jobWriter.Write(message)
 		// Then wait for passing condition.
 		wgPass.Wait()
+	})
+
+	t.Run("Readers created and closed sequentially", func(t *testing.T) {
+		const numReaders = 1000
+		deadline, ok := t.Deadline()
+		require.True(t, ok)
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+
+		runner := steve.NewJobRunner(20)
+		require.NotNil(t, runner)
+		defer func() {
+			err := runner.Close(ctx)
+			require.NoError(t, err)
+		}()
+
+		// Create a mock job and capture the writer object.
+		mockJob := &MockJob{}
+		var jobWriter io.Writer
+		var jobStartWg sync.WaitGroup
+		jobStartWg.Add(1)
+		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				jobWriter = args.Get(1).(io.Writer)
+				jobStartWg.Done()
+			}).
+			Return(nil)
+		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+
+		id, err := runner.Run(ctx, mockJob)
+		require.NoError(t, err)
+
+		// Simulate job output, create a reader, verify total job output, close
+		// reader.
+		jobStartWg.Wait()
+		message := []byte("Foobar\n")
+		accumulator := bytes.NewBuffer(nil)
+		readBuf := make([]byte, numReaders * len(message))
+
+		for i := 0; i < numReaders; i++ {
+			reader, err := runner.NewReader(id)
+			require.NoError(t, err)
+
+			jobWriter.Write(message)
+			accumulator.Write(message)
+			var readCount int
+
+			for {
+				n, err := reader.Read(readBuf[readCount:])
+				require.NoError(t, err)
+				readCount += n
+
+				// Sometimes the Write doesn't pipe to the Read fast
+				// enough.  Retry until success.
+				if readCount == accumulator.Len() {
+					break
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+
+			assert.Equal(t, accumulator.Bytes(), readBuf[:readCount], fmt.Sprintf("i=%d", i))
+
+			reader.Close()
+		}
+
+		// Clean up.
+		err = runner.Stop(ctx, id)
+		require.NoError(t, err)
+
+		mockJob.AssertExpectations(t)
 	})
 }
