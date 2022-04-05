@@ -167,10 +167,8 @@ func TestSteve(t *testing.T) {
 
 		// Create multiple readers for the same job.
 		var wgPass sync.WaitGroup
-		var wgReady sync.WaitGroup
 		for i := 0; i < numReaders; i++ {
 			wgPass.Add(1)
-			wgReady.Add(1)
 
 			// Launch reader in goroutine.
 			go func(i int) {
@@ -178,7 +176,6 @@ func TestSteve(t *testing.T) {
 				require.NoError(t, err)
 
 				buf := bufio.NewReader(r)
-				wgReady.Done()
 				pass := false
 
 				for {
@@ -191,7 +188,7 @@ func TestSteve(t *testing.T) {
 					require.False(t, pass, "Got extraneous data after passing condition")
 
 					// Check if we got the expected value.
-					require.Zero(t, bytes.Compare(line, message), "Buffer mismatch")
+					require.Equal(t, message, line, "Buffer mismatch")
 					wgPass.Done()
 					pass = true
 				}
@@ -199,8 +196,6 @@ func TestSteve(t *testing.T) {
 		}
 
 		// Wait for readers to be ready.
-		wgReady.Wait()
-		// Wait for job to be ready.
 		jobReadyWg.Wait()
 		// Send output.
 		jobWriter.Write(message)
@@ -238,8 +233,11 @@ func TestSteve(t *testing.T) {
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
 
-		// Simulate job output, create a reader, verify total job output, close
-		// reader.
+		// Simulate job output
+		// Create a reader
+		// Verify total job output
+		// Close reader
+		// Repeat.
 		jobStartWg.Wait()
 		message := []byte("Foobar\n")
 		accumulator := bytes.NewBuffer(nil)
