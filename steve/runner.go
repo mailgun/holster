@@ -156,39 +156,69 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	}
 }
 
-// NewReader creates a reader that starts at the beginning of the job's output
-// log.
-func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
+func (r *runner) NewReader(id ID, offset int) (io.ReadCloser, error) {
+	if offset < 0 {
+		return nil, errors.New("invalid offset")
+	}
+
 	r.Lock()
 	defer r.Unlock()
-
-	readerId := atomic.AddInt64(&readerCounter, 1)
 
 	obj, ok := r.jobs.Get(id)
 	if !ok {
 		return nil, ErrJobNotFound
 	}
+
 	j := obj.(*jobIO)
+	j.RLock()
+	defer j.RUnlock()
+
+	if offset > j.buffer.Len() {
+		return nil, fmt.Errorf("offset beyond upper bound %d", j.buffer.Len())
+	}
+
+	buf := bytes.Buffer{}
+	output := j.buffer.Bytes()[offset:]
+	buf.Write(output)
+	return ioutil.NopCloser(&buf), nil
+}
+
+func (r *runner) NewStreamingReader(id ID, offset int) (io.ReadCloser, error) {
+	if offset < 0 {
+		return nil, errors.New("invalid offset")
+	}
+
+	r.Lock()
+	defer r.Unlock()
+
+	obj, ok := r.jobs.Get(id)
+	if !ok {
+		return nil, ErrJobNotFound
+	}
+
+	j := obj.(*jobIO)
+	readerId := atomic.AddInt64(&readerCounter, 1)
 	broadcastId := fmt.Sprintf("%s-%d", string(j.id), readerId)
 
-	// If the job isn't running, then copy the current buffer
-	// into a read closer and return that to the caller.
-	j.Lock()
+	// If the job isn't running, fall back to non-streaming reader.
+	j.RLock()
+	if offset > j.buffer.Len() {
+		return nil, fmt.Errorf("offset beyond upper bound %d", j.buffer.Len())
+	}
 	running := j.status.Running
 	if !running {
-		j.Unlock()
-		buf := bytes.Buffer{}
-		buf.Write(j.buffer.Bytes())
-		return ioutil.NopCloser(&buf), nil
+		j.RUnlock()
+		return r.NewReader(id, offset)
 	}
 	j.br.WaitChan(broadcastId)
-	j.Unlock()
+	j.RUnlock()
 
 	// Create a go routine that sends all unread bytes to the reader then
 	// waits for new bytes to be written to the j.buffer via the broadcaster.
 	reader, writer := io.Pipe()
 
 	go func() {
+		defer writer.Close()
 		defer func() {
 			j.br.Remove(broadcastId)
 		}()
@@ -233,6 +263,22 @@ func (r *runner) NewReader(id ID) (io.ReadCloser, error) {
 	}()
 
 	return reader, nil
+}
+
+func (r *runner) OutputLen(id ID) (n int, exists bool) {
+	r.Lock()
+	defer r.Unlock()
+
+	obj, ok := r.jobs.Get(id)
+	if !ok {
+		return 0, false
+	}
+
+	j := obj.(*jobIO)
+	j.RLock()
+	defer j.RUnlock()
+
+	return j.buffer.Len(), true
 }
 
 func (r *runner) Stop(ctx context.Context, id ID) error {

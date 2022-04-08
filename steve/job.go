@@ -29,8 +29,9 @@ type Status struct {
 }
 
 type Job interface {
-	// Start the job, returns an error if the job failed to start or context was cancelled
-	Start(context.Context, io.Writer) error
+	// Start the job, returns an error if the job failed to start or context was canceled.
+	// Closing the writer indicates job is done.
+	Start(context.Context, io.WriteCloser) error
 
 	// Stop the job, returns an error if the context was cancelled before job was stopped
 	Stop(context.Context) error
@@ -51,12 +52,23 @@ type Runner interface {
 	// Returns an error if the job failed to start of context was cancelled.
 	Run(context.Context, Job) (ID, error)
 
-	// NewReader returns an io.Reader which can be read to get the most current output from a running job.
-	// Job runner supports multiple readers for the same job. In this way multiple remote clients may monitor
-	// the output of the job simultaneously. Reader will return io.EOF when the job is no longer running and all
-	// output has been read. Caller should called Close() on the reader when it is done reading, this will
-	// free up resources.
-	NewReader(ID) (io.ReadCloser, error)
+	// NewStreamingReader returns an io.Reader which can be read to get the
+	// most current output from a running job.  Job runner supports multiple
+	// readers for the same job. In this way multiple remote clients may
+	// monitor the output of the job simultaneously.  Reader will return io.EOF
+	// when all output has been read and the job is stopped.
+	// Be sure to close the reader when done reading.
+	NewStreamingReader(id ID, offset int) (io.ReadCloser, error)
+
+	// NewReader returns an io.Reader which reads the current job output.
+	// Reader will return io.EOF when it reaches the end of the output buffer.
+	// Multiple readers from NewReader and StreamReader can coexist to read
+	// from the same job output.
+	// Be sure to close the reader when done reading.
+	NewReader(id ID, offset int) (io.ReadCloser, error)
+
+	// OutputLen returns length of the job's output buffer.
+	OutputLen(id ID) (n int, exists bool)
 
 	// Stop a currently running job, returns an error if the context was cancelled before the job stopped.
 	Stop(context.Context, ID) error
