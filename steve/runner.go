@@ -274,9 +274,21 @@ func (r *runner) stop(ctx context.Context, j *jobIO) error {
 	}
 }
 
+// Done returns a channel that closes when the job stops.
+func (r *runner) Done(id ID) (done <-chan struct{}, exists bool) {
+	obj, ok := r.jobs.Get(id)
+	if !ok {
+		return nil, false
+	}
+
+	j := obj.(*jobIO)
+	return j.stopChan, true
+}
+
+// Status returns the status of the job, returns false if the job doesn't exist.
 // Status gets job status by id.
 // Returns bool as ok flag.
-func (r *runner) Status(id ID) (Status, bool) {
+func (r *runner) Status(id ID) (status Status, exists bool) {
 	obj, ok := r.jobs.Get(id)
 	if !ok {
 		return Status{}, false
@@ -308,6 +320,7 @@ func (r *runner) list() []Status {
 	return result
 }
 
+// Close all currently running jobs.
 func (r *runner) Close(ctx context.Context) error {
 	r.Lock()
 	defer r.Unlock()

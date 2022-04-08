@@ -34,6 +34,9 @@ type Job interface {
 
 	// Stop the job, returns an error if the context was cancelled before job was stopped
 	Stop(context.Context) error
+
+	// TODO: Add `Status()` method.
+	// Returns running flag, finish time, success flag, error message.
 }
 
 type ID string
@@ -58,12 +61,15 @@ type Runner interface {
 	// Stop a currently running job, returns an error if the context was cancelled before the job stopped.
 	Stop(context.Context, ID) error
 
-	// Close all currently running jobs
+	// Done returns a channel that closes when the job stops.
+	Done(ID) (done <-chan struct{}, exists bool)
+
+	// Close all currently running jobs.
 	Close(context.Context) error
 
-	// Status returns the status of the job, returns false if the job doesn't exist
+	// Status returns the status of the job, returns false if the job doesn't exist.
 	Status(ID) (status Status, exists bool)
 
-	// List all jobs
+	// List all jobs.
 	List() []Status
 }

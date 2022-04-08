@@ -275,4 +275,52 @@ func TestSteve(t *testing.T) {
 
 		mockJob.AssertExpectations(t)
 	})
+
+	t.Run("Wait for job to finish", func(t *testing.T) {
+		deadline, ok := t.Deadline()
+		require.True(t, ok)
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+
+		runner := steve.NewJobRunner(20)
+		require.NotNil(t, runner)
+		defer func() {
+			err := runner.Close(ctx)
+			require.NoError(t, err)
+		}()
+
+		mockJob := &MockJob{}
+		var writer io.Writer
+		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				writer = args.Get(1).(io.Writer)
+				require.NotNil(t, writer)
+			}).
+			Return(nil)
+		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+
+		// Start job.
+		id, err := runner.Run(ctx, mockJob)
+		require.NoError(t, err)
+		assert.NotEmpty(t, id)
+
+		// Check that Done() doesn't close.
+		doneChan, exists := runner.Done(id)
+		require.True(t, exists)
+		select {
+		case <-doneChan:
+			require.Fail(t, "unexpected job stop")
+		case <-time.After(10 * time.Millisecond):
+			// Expected outcome.
+		}
+
+		// Stop the job.
+		err = runner.Stop(ctx, id)
+		require.NoError(t, err)
+
+		// Wait for done signal.
+		<-doneChan
+
+		mockJob.AssertExpectations(t)
+	})
 }
