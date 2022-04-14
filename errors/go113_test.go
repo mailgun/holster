@@ -10,19 +10,27 @@ import (
 func TestIs(t *testing.T) {
 	target := New("wrapped")
 
-	err := Wrap(target, "some reason")
+	tests := []struct {
+		name   string
+		target error
+		err    error
+	}{
+		{
+			name:   "holster_wrap",
+			target: target,
+			err:    Wrap(target, "some reason"),
+		},
+		{
+			name:   "std_wrap",
+			target: target,
+			err:    fmt.Errorf("some reason: %w", target),
+		},
+	}
 
-	is := Is(err, target)
-	assert.True(t, is)
-	assert.ErrorIs(t, err, target)
-}
-
-func TestStdIs(t *testing.T) {
-	target := New("wrapped")
-
-	err := fmt.Errorf("some reason: %w", target)
-
-	is := Is(err, target)
-	assert.True(t, is)
-	assert.ErrorIs(t, err, target)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.True(t, Is(tt.err, tt.target))
+			assert.ErrorIs(t, tt.err, tt.target)
+		})
+	}
 }
