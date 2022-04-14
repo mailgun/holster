@@ -26,12 +26,17 @@ func TestIs(t *testing.T) {
 		{
 			name:   "holster_double_wrap",
 			target: target,
-			err:    Wrap(Wrap(target, "reason2"), "reason1"),
+			err:    Wrap(Wrap(target, "reason 2"), "reason 1"),
 		},
 		{
 			name:   "holster_triple_wrap",
 			target: target,
-			err:    Wrap(Wrap(Wrap(target, "reason3"), "reason2"), "reason1"),
+			err:    Wrap(Wrap(Wrap(target, "reason 3"), "reason 2"), "reason 1"),
+		},
+		{
+			name:   "holster_triple_wrapf",
+			target: target,
+			err:    Wrapf(Wrapf(Wrapf(target, "reason %d", 3), "reason %d", 2), "reason %d", 1),
 		},
 		{
 			name:   "std_wrap",
@@ -41,7 +46,7 @@ func TestIs(t *testing.T) {
 		{
 			name:   "std_double_wrap",
 			target: target,
-			err:    fmt.Errorf("reason1: %w", fmt.Errorf("reason2: %w", target)),
+			err:    fmt.Errorf("reason 1: %w", fmt.Errorf("reason 2: %w", target)),
 		},
 	}
 
