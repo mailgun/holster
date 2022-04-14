@@ -24,9 +24,19 @@ func TestIs(t *testing.T) {
 			err:    Wrap(target, "some reason"),
 		},
 		{
+			name:   "holster_double_wrap",
+			target: target,
+			err:    Wrap(Wrap(target, "reason2"), "reason1"),
+		},
+		{
 			name:   "std_wrap",
 			target: target,
 			err:    fmt.Errorf("some reason: %w", target),
+		},
+		{
+			name:   "std_double_wrap",
+			target: target,
+			err:    fmt.Errorf("reason1: %w", fmt.Errorf("reason2: %w", target)),
 		},
 	}
 
