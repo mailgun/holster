@@ -169,7 +169,8 @@ type withStack struct {
 	*stack.CallStack
 }
 
-func (w *withStack) Cause() error { return w.error }
+func (w *withStack) Cause() error  { return w.error }
+func (w *withStack) Unwrap() error { return w.error }
 func (w *withStack) Context() map[string]interface{} {
 	if child, ok := w.error.(HasContext); ok {
 		return child.Context()
@@ -263,6 +264,7 @@ type withMessage struct {
 
 func (w *withMessage) Error() string { return w.msg + ": " + w.cause.Error() }
 func (w *withMessage) Cause() error  { return w.cause }
+func (w *withMessage) Unwrap() error { return w.cause }
 
 func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
