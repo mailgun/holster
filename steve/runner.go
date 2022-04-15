@@ -68,12 +68,12 @@ func NewJobRunner(capacity int) Runner {
 	}
 }
 
+// Run a `Job`.
+// Job concurrency limited to capacity set in `NewJobRunner`.  Additional calls
+// to `Run` will result in the least used job to be rolled off the cache and no
+// longer watched.  This may have indeterminate effects as the expired job will
+// continue to run if it hasn't already stopped.
 func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
-	// FIXME: How to clean up jobs cache once at capacity?
-	if r.jobs.Size() >= r.capacity {
-		return "", ErrTooManyJobs
-	}
-
 	reader, writer := io.Pipe()
 
 	id := ID(uuid.New().String())
