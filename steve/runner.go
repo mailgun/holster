@@ -39,6 +39,7 @@ var (
 	readerCounter int64
 )
 
+// Runtime state for a running Job.
 type jobIO struct {
 	// Mutex used to synchronize status field.
 	sync.RWMutex
@@ -76,7 +77,7 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	reader, writer := io.Pipe()
 
 	id := ID(uuid.New().String())
-	j := jobIO{
+	j := &jobIO{
 		id:     id,
 		br:     syncutil.NewBroadcaster(),
 		writer: writer,
@@ -126,9 +127,6 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 			case line, ok := <-ch:
 				if !ok {
 					// Channel closed.
-					j.Lock()
-					j.status.Running = false
-					j.Unlock()
 					j.br.Broadcast()
 					return
 				}
@@ -141,9 +139,14 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 		}
 	})
 
-	r.jobs.Add(j.id, &j)
+	r.jobs.Add(j.id, j)
 
-	if err := job.Start(ctx, writer); err != nil {
+	closer := &JobCloser{
+		job:    j,
+		writer: writer,
+	}
+
+	if err := job.Start(ctx, writer, closer); err != nil {
 		return "", errors.Wrap(err, "error in job.Start")
 	}
 

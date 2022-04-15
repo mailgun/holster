@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/steve"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -31,7 +32,7 @@ func TestSteve(t *testing.T) {
 		}()
 
 		mockJob := &MockJob{}
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().Return(nil)
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
 
 		id, err := runner.Run(ctx, mockJob)
@@ -57,6 +58,54 @@ func TestSteve(t *testing.T) {
 		mockJob.AssertExpectations(t)
 	})
 
+	t.Run("Job returned error", func(t *testing.T) {
+		deadline, ok := t.Deadline()
+		require.True(t, ok)
+		ctx, cancel := context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+
+		runner := steve.NewJobRunner(20)
+		require.NotNil(t, runner)
+		defer func() {
+			err := runner.Close(ctx)
+			require.NoError(t, err)
+		}()
+
+		mockJob := &MockJob{}
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				closer := args.Get(2).(*steve.JobCloser)
+				closer.Close(errors.New("Foobar error"))
+			}).
+			Return(nil)
+
+		id, err := runner.Run(ctx, mockJob)
+		require.NoError(t, err)
+		assert.NotEmpty(t, id)
+
+		// Wait for job to stop.
+		var status steve.Status
+		for {
+			var ok bool
+			status, ok = runner.Status(id)
+			require.True(t, ok)
+			require.Equal(t, id, status.ID)
+
+			if !status.Running {
+				break
+			}
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Verify status.
+		assert.False(t, status.Running)
+		assert.False(t, status.Started.IsZero())
+		assert.False(t, status.Stopped.IsZero())
+		assert.Contains(t, "Foobar error", status.Error.Error())
+
+		mockJob.AssertExpectations(t)
+	})
+
 	t.Run("Stop jobs on close", func(t *testing.T) {
 		deadline, ok := t.Deadline()
 		require.True(t, ok)
@@ -67,7 +116,7 @@ func TestSteve(t *testing.T) {
 		require.NotNil(t, runner)
 
 		mockJob := &MockJob{}
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().Return(nil)
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
 
 		id, err := runner.Run(ctx, mockJob)
@@ -118,7 +167,7 @@ func TestSteve(t *testing.T) {
 		}()
 
 		mockJob := &MockJob{}
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().Return(nil)
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
 
 		id, err := runner.Run(ctx, mockJob)
@@ -152,9 +201,10 @@ func TestSteve(t *testing.T) {
 		mockJob := &MockJob{}
 		var jobWriter io.Writer
 		var jobReadyWg sync.WaitGroup
+		startReaderChan := make(chan struct{})
 		message := []byte("Foobar\n")
 		jobReadyWg.Add(1)
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().
 			Run(func(args mock.Arguments) {
 				jobWriter = args.Get(1).(io.Writer)
 				jobReadyWg.Done()
@@ -172,8 +222,12 @@ func TestSteve(t *testing.T) {
 
 			// Launch reader in goroutine.
 			go func(i int) {
-				r, err := runner.NewReader(id)
+				// Wait to start.
+				<-startReaderChan
+
+				r, err := runner.NewReader(id, 0)
 				require.NoError(t, err)
+				defer r.Close()
 
 				buf := bufio.NewReader(r)
 				pass := false
@@ -182,29 +236,32 @@ func TestSteve(t *testing.T) {
 					// Wait for next line of text.
 					line, err := buf.ReadBytes('\n')
 					if err == io.EOF {
+						assert.True(t, pass, fmt.Sprintf("[%d] Unexpected EOF", i))
 						return
 					}
 					require.NoError(t, err)
-					require.False(t, pass, "Got extraneous data after passing condition")
+					require.False(t, pass, fmt.Sprintf("[%d] Got extraneous data after passing condition", i))
 
 					// Check if we got the expected value.
-					require.Equal(t, message, line, "Buffer mismatch")
+					require.Equal(t, message, line, fmt.Sprintf("[%d] Buffer mismatch", i))
 					wgPass.Done()
 					pass = true
 				}
 			}(i)
 		}
 
-		// Wait for readers to be ready.
+		// Wait for job to be ready.
 		jobReadyWg.Wait()
 		// Send output.
 		jobWriter.Write(message)
+		// Start readers.
+		close(startReaderChan)
 		// Then wait for passing condition.
 		wgPass.Wait()
 	})
 
 	t.Run("Readers created and closed sequentially", func(t *testing.T) {
-		const numReaders = 1000
+		const numReaders = 100
 		deadline, ok := t.Deadline()
 		require.True(t, ok)
 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
@@ -222,7 +279,7 @@ func TestSteve(t *testing.T) {
 		var jobWriter io.Writer
 		var jobStartWg sync.WaitGroup
 		jobStartWg.Add(1)
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().
 			Run(func(args mock.Arguments) {
 				jobWriter = args.Get(1).(io.Writer)
 				jobStartWg.Done()
@@ -233,7 +290,7 @@ func TestSteve(t *testing.T) {
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
 
-		// Simulate job output
+		// Write job output
 		// Create a reader
 		// Verify total job output
 		// Close reader
@@ -242,31 +299,43 @@ func TestSteve(t *testing.T) {
 		message := []byte("Foobar\n")
 		accumulator := bytes.NewBuffer(nil)
 		readBuf := make([]byte, numReaders * len(message))
+		var lastReadCount int
 
 		for i := 0; i < numReaders; i++ {
-			reader, err := runner.NewReader(id)
-			require.NoError(t, err)
-
 			jobWriter.Write(message)
 			accumulator.Write(message)
 			var readCount int
+			var err error
+			var reader io.ReadCloser
 
 			for {
-				n, err := reader.Read(readBuf[readCount:])
+				reader, err = runner.NewReader(id, 0)
 				require.NoError(t, err)
-				readCount += n
 
-				// Sometimes the Write doesn't pipe to the Read fast
-				// enough.  Retry until success.
-				if readCount == accumulator.Len() {
+				n, err := reader.Read(readBuf[readCount:])
+				if err != nil && err != io.EOF {
+					require.NoError(t, err, fmt.Sprintf("[%d] error in reader.Read", i))
+				}
+
+				if n > lastReadCount {
+					// Got new data.
+					readCount += n
+
+					require.Equal(t, accumulator.Len(), readCount, fmt.Sprintf("[%d] Read buffer size mismatch", i))
 					break
 				}
-				time.Sleep(5 * time.Millisecond)
+
+				// No new data.
+				// Sometimes the Write doesn't pipe to the Read fast
+				// enough and Read() returns no new data.
+				// Retry until success.
+				reader.Close()
+				time.Sleep(1 * time.Millisecond)
 			}
 
-			assert.Equal(t, accumulator.Bytes(), readBuf[:readCount], fmt.Sprintf("i=%d", i))
-
 			reader.Close()
+			lastReadCount = readCount
+			assert.Equal(t, accumulator.Bytes(), readBuf[:readCount], fmt.Sprintf("[%d] Read buffer mismatch", i))
 		}
 
 		// Clean up.
@@ -291,7 +360,7 @@ func TestSteve(t *testing.T) {
 
 		mockJob := &MockJob{}
 		var writer io.Writer
-		mockJob.On("Start", mock.Anything, mock.Anything).Once().
+		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().
 			Run(func(args mock.Arguments) {
 				writer = args.Get(1).(io.Writer)
 				require.NotNil(t, writer)

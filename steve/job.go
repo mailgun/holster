@@ -26,14 +26,16 @@ type Status struct {
 	Running bool      `json:"running"`
 	Started time.Time `json:"created"`
 	Stopped time.Time `json:"stopped"`
+	Error   error     `json:"error"`
 }
 
 type Job interface {
-	// Start the job, returns an error if the job failed to start or context was canceled.
-	// Closing the writer indicates job is done.
-	Start(context.Context, io.WriteCloser) error
+	// Start the job in background and return immediately.
+	// Returns an error if the job failed to start or context was canceled.
+	Start(context.Context, io.Writer, *JobCloser) error
 
-	// Stop the job, returns an error if the context was cancelled before job was stopped
+	// Stop the job and wait for stop.
+	// Returns an error if the context was cancelled before job was stopped.
 	Stop(context.Context) error
 
 	// TODO: Add `Status()` method.
