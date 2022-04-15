@@ -21,3 +21,7 @@ func (m *MockJob) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
 }
+
+func (m *MockJob) Status(status steve.Status) {
+	m.Called(status)
+}

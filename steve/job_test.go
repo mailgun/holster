@@ -34,6 +34,7 @@ func TestSteve(t *testing.T) {
 		mockJob := &MockJob{}
 		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -78,6 +79,7 @@ func TestSteve(t *testing.T) {
 				closer.Close(errors.New("Foobar error"))
 			}).
 			Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -118,6 +120,7 @@ func TestSteve(t *testing.T) {
 		mockJob := &MockJob{}
 		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -169,6 +172,7 @@ func TestSteve(t *testing.T) {
 		mockJob := &MockJob{}
 		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -211,6 +215,7 @@ func TestSteve(t *testing.T) {
 			}).
 			Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -286,6 +291,7 @@ func TestSteve(t *testing.T) {
 			}).
 			Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		id, err := runner.Run(ctx, mockJob)
 		require.NoError(t, err)
@@ -367,6 +373,7 @@ func TestSteve(t *testing.T) {
 			}).
 			Return(nil)
 		mockJob.On("Stop", mock.Anything).Once().Return(nil)
+		mockJob.On("Status", mock.Anything).Return()
 
 		// Start job.
 		id, err := runner.Run(ctx, mockJob)

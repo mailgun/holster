@@ -35,11 +35,12 @@ type Job interface {
 	Start(context.Context, io.Writer, *JobCloser) error
 
 	// Stop the job and wait for stop.
-	// Returns an error if the context was cancelled before job was stopped.
+	// Returns an error if the context was canceled before job was stopped.
 	Stop(context.Context) error
 
-	// TODO: Add `Status()` method.
-	// Returns running flag, finish time, success flag, error message.
+	// Status change notification.
+	// Provides running flag, start/stop times, and error message.
+	Status(Status)
 }
 
 type ID string

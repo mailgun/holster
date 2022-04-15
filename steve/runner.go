@@ -92,18 +92,18 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 
 	r.wg.Go(func() {
 		ch := make(chan []byte)
-		j.Lock()
-		j.status.Running = true
-		j.status.Started = time.Now()
-		j.Unlock()
+		updateStatus(j, func(status *Status) {
+			status.Running = true
+			status.Started = time.Now()
+		})
 		close(startChan)
 
 		defer func() {
 			// Stop job on exit.
-			j.Lock()
-			j.status.Running = false
-			j.status.Stopped = time.Now()
-			j.Unlock()
+			updateStatus(j, func(status *Status) {
+				status.Running = false
+				status.Stopped = time.Now()
+			})
 			close(j.stopChan)
 		}()
 
@@ -149,6 +149,9 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	if err := job.Start(ctx, writer, closer); err != nil {
 		return "", errors.Wrap(err, "error in job.Start")
 	}
+
+	// Send initial status once job has started.
+	updateStatus(j, nil)
 
 	// Wait for job to start.
 	select {
@@ -393,4 +396,15 @@ func (r *runner) Close(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Callback updates status, then signal a status change event.
+func updateStatus(j *jobIO, fn func(status *Status)) {
+	j.Lock()
+	if fn != nil {
+		fn(&j.status)
+	}
+	status := j.status
+	j.Unlock()
+	j.job.Status(status)
 }
