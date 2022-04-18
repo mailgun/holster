@@ -22,7 +22,7 @@ import (
 )
 
 type Status struct {
-	ID      ID        `json:"id"`
+	TaskId  TaskId    `json:"task_id"`
 	Running bool      `json:"running"`
 	Started time.Time `json:"created"`
 	Stopped time.Time `json:"stopped"`
@@ -43,7 +43,8 @@ type Job interface {
 	Status(Status)
 }
 
-type ID string
+// TaskId of a running `Job`.
+type TaskId string
 
 // Runner provides a job running service which runs a single job. The job is provided a writer which
 // is buffered and stored for live monitoring or later retrieval. A client interested in a job may
@@ -51,9 +52,10 @@ type ID string
 // of the job. In this way long running jobs can be monitored for output, disconnect and resume
 // monitoring later.
 type Runner interface {
-	// Run the provided job, returning a ID which can be used to track the status of a job.
-	// Returns an error if the job failed to start of context was cancelled.
-	Run(context.Context, Job) (ID, error)
+	// Run the provided job, returning a TaskId which can be used to track the
+	// status of a job.
+	// Returns an error if the job failed to start of context was canceled.
+	Run(context.Context, Job) (TaskId, error)
 
 	// NewStreamingReader returns an io.Reader which can be read to get the
 	// most current output from a running job.  Job runner supports multiple
@@ -61,29 +63,29 @@ type Runner interface {
 	// monitor the output of the job simultaneously.  Reader will return io.EOF
 	// when all output has been read and the job is stopped.
 	// Be sure to close the reader when done reading.
-	NewStreamingReader(id ID, offset int) (io.ReadCloser, error)
+	NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error)
 
 	// NewReader returns an io.Reader which reads the current job output.
 	// Reader will return io.EOF when it reaches the end of the output buffer.
 	// Multiple readers from NewReader and StreamReader can coexist to read
 	// from the same job output.
 	// Be sure to close the reader when done reading.
-	NewReader(id ID, offset int) (io.ReadCloser, error)
+	NewReader(id TaskId, offset int) (io.ReadCloser, error)
 
 	// OutputLen returns length of the job's output buffer.
-	OutputLen(id ID) (n int, exists bool)
+	OutputLen(id TaskId) (n int, exists bool)
 
-	// Stop a currently running job, returns an error if the context was cancelled before the job stopped.
-	Stop(context.Context, ID) error
+	// Stop a currently running job, returns an error if the context was canceled before the job stopped.
+	Stop(context.Context, TaskId) error
 
 	// Done returns a channel that closes when the job stops.
-	Done(ID) (done <-chan struct{}, exists bool)
+	Done(TaskId) (done <-chan struct{}, exists bool)
 
 	// Close all currently running jobs.
 	Close(context.Context) error
 
 	// Status returns the status of the job, returns false if the job doesn't exist.
-	Status(ID) (status Status, exists bool)
+	Status(TaskId) (status Status, exists bool)
 
 	// List all jobs.
 	List() []Status

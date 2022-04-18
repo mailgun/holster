@@ -42,7 +42,7 @@ func TestSteve(t *testing.T) {
 
 		s, ok := runner.Status(id)
 		require.True(t, ok)
-		assert.Equal(t, id, s.ID)
+		assert.Equal(t, id, s.TaskId)
 		assert.True(t, s.Running)
 		assert.False(t, s.Started.IsZero())
 		assert.True(t, s.Stopped.IsZero())
@@ -53,7 +53,7 @@ func TestSteve(t *testing.T) {
 		// List should show the job as not running
 		l := runner.List()
 		require.Len(t, l, 1)
-		assert.Equal(t, id, l[0].ID)
+		assert.Equal(t, id, l[0].TaskId)
 		assert.False(t, l[0].Running)
 
 		mockJob.AssertExpectations(t)
@@ -91,7 +91,7 @@ func TestSteve(t *testing.T) {
 			var ok bool
 			status, ok = runner.Status(id)
 			require.True(t, ok)
-			require.Equal(t, id, status.ID)
+			require.Equal(t, id, status.TaskId)
 
 			if !status.Running {
 				break
@@ -131,7 +131,7 @@ func TestSteve(t *testing.T) {
 
 		s, ok := runner.Status(id)
 		require.True(t, ok)
-		assert.Equal(t, id, s.ID)
+		assert.Equal(t, id, s.TaskId)
 		assert.False(t, s.Running)
 		assert.False(t, s.Started.IsZero())
 		assert.False(t, s.Stopped.IsZero())
@@ -152,7 +152,7 @@ func TestSteve(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		err := runner.Stop(ctx, steve.ID("bogus"))
+		err := runner.Stop(ctx, steve.TaskId("bogus"))
 		require.Equal(t, steve.ErrJobNotFound, err)
 	})
 
@@ -304,7 +304,7 @@ func TestSteve(t *testing.T) {
 		jobStartWg.Wait()
 		message := []byte("Foobar\n")
 		accumulator := bytes.NewBuffer(nil)
-		readBuf := make([]byte, numReaders * len(message))
+		readBuf := make([]byte, numReaders*len(message))
 		var lastReadCount int
 
 		for i := 0; i < numReaders; i++ {

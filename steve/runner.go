@@ -46,7 +46,7 @@ type jobIO struct {
 	br     syncutil.Broadcaster
 	writer io.WriteCloser
 	buffer bytes.Buffer
-	id     ID
+	id     TaskId
 	job    Job
 	status Status
 
@@ -73,17 +73,17 @@ func NewJobRunner(capacity int) Runner {
 // to `Run` will result in the least used job to be rolled off the cache and no
 // longer watched.  This may have indeterminate effects as the expired job will
 // continue to run if it hasn't already stopped.
-func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
+func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 	reader, writer := io.Pipe()
 
-	id := ID(uuid.New().String())
+	id := TaskId(uuid.New().String())
 	j := &jobIO{
 		id:     id,
 		br:     syncutil.NewBroadcaster(),
 		writer: writer,
 		job:    job,
 		status: Status{
-			ID: id,
+			TaskId: id,
 		},
 		stopChan: make(chan struct{}),
 	}
@@ -162,7 +162,7 @@ func (r *runner) Run(ctx context.Context, job Job) (ID, error) {
 	}
 }
 
-func (r *runner) NewReader(id ID, offset int) (io.ReadCloser, error) {
+func (r *runner) NewReader(id TaskId, offset int) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, errors.New("invalid offset")
 	}
@@ -189,7 +189,7 @@ func (r *runner) NewReader(id ID, offset int) (io.ReadCloser, error) {
 	return ioutil.NopCloser(&buf), nil
 }
 
-func (r *runner) NewStreamingReader(id ID, offset int) (io.ReadCloser, error) {
+func (r *runner) NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, errors.New("invalid offset")
 	}
@@ -271,7 +271,7 @@ func (r *runner) NewStreamingReader(id ID, offset int) (io.ReadCloser, error) {
 	return reader, nil
 }
 
-func (r *runner) OutputLen(id ID) (n int, exists bool) {
+func (r *runner) OutputLen(id TaskId) (n int, exists bool) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -287,7 +287,7 @@ func (r *runner) OutputLen(id ID) (n int, exists bool) {
 	return j.buffer.Len(), true
 }
 
-func (r *runner) Stop(ctx context.Context, id ID) error {
+func (r *runner) Stop(ctx context.Context, id TaskId) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -327,7 +327,7 @@ func (r *runner) stop(ctx context.Context, j *jobIO) error {
 }
 
 // Done returns a channel that closes when the job stops.
-func (r *runner) Done(id ID) (done <-chan struct{}, exists bool) {
+func (r *runner) Done(id TaskId) (done <-chan struct{}, exists bool) {
 	obj, ok := r.jobs.Get(id)
 	if !ok {
 		return nil, false
@@ -340,7 +340,7 @@ func (r *runner) Done(id ID) (done <-chan struct{}, exists bool) {
 // Status returns the status of the job, returns false if the job doesn't exist.
 // Status gets job status by id.
 // Returns bool as ok flag.
-func (r *runner) Status(id ID) (status Status, exists bool) {
+func (r *runner) Status(id TaskId) (status Status, exists bool) {
 	obj, ok := r.jobs.Get(id)
 	if !ok {
 		return Status{}, false
@@ -378,7 +378,7 @@ func (r *runner) Close(ctx context.Context) error {
 	defer r.Unlock()
 
 	for _, s := range r.list() {
-		obj, ok := r.jobs.Get(s.ID)
+		obj, ok := r.jobs.Get(s.TaskId)
 		if !ok {
 			continue
 		}
