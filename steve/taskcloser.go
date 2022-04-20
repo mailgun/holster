@@ -19,7 +19,7 @@ import (
 	"io"
 )
 
-// TaskCloser closes a running job to signal it is done.
+// TaskCloser closes a running task to signal it is done.
 type TaskCloser struct {
 	job    *jobIO
 	writer io.WriteCloser

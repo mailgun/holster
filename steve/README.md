@@ -1,35 +1,33 @@
 # Steve Jobs
-A generic tmux/screen like batch job running system
+A generic batch job running system inspired by tmux.
 
 The idea here is that this library would be used in a service to facilitate starting
-a local job remotely via HTTP or Websockets and allow the client to disconnect then
-reconnect later and see the previous output and stream any further output. (like
-tmux or screen sessions in ssh)
-
-One intended use case is to expose these jobs via service endpoints over HTTP,
-gRPC, etc. to invoke batch jobs, such as health checks or benchmarks.
+a local job remotely via HTTP or gRPC, such health checks or benchmarks.  And
+then allow the client to disconnect then reconnect later and see the previous
+output and stream any further output (like tmux or screen sessions).
 
 ## Usage
 ### Implement a Job
 Implement a `steve.Job` interface, which provides start/stop methods.
 
-The start method should kick off the job in a goroutine and return quickly.
+The start method should create a task to run the job in a goroutine or similar
+and return quickly.
 
-Job logic can send output to the provided writer.  Be sure to close the writer
-before exiting to indicate the job is done.
+Job logic can send output to the provided writer.  Be sure to call the closer
+before exiting to indicate the task is done.
 
-The stop method should signal the goroutine to close the writer and exit.
+The stop method signals the task to close and exit.
 
 ### Run the Job
-Launch the job with `Runner.Run()`, which returns a job id.
+Launch the job with `Runner.Run()`, which returns a task id.
 
-The runner captures job output, which can be read using the `io.Reader`
+The runner captures task output, which can be read using the `io.Reader`
 returned from `Runner.NewReader()`.
 
-Clients should read the `io.Reader` until `err == io.EOF`, indicating the job
-is done and no more output can be read.  Reads from this reader will block
-until new data is available or EOF.
+Or use `Runner.NewStreamingReader()` to block, continuously reading until the
+task is finished.  Clients should read the `io.Reader` until `err == io.EOF`,
+indicating the job is done and no more output can be read.  Reads from this
+reader will block until new data is available or EOF.
 
-The reader is designed to allow multiple clients to read from the same buffer
-simultaneously.  In this way, many clients can monitor the progress of a job in
-real time.
+Multiple readers may be created against a running task simultaneously.  In this
+way, many clients can monitor the progress of a job in real time.
