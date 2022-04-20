@@ -19,16 +19,16 @@ import (
 	"io"
 )
 
-// JobCloser closes a running job to signal it is done.
-type JobCloser struct {
+// TaskCloser closes a running job to signal it is done.
+type TaskCloser struct {
 	job    *jobIO
 	writer io.WriteCloser
 }
 
-func (jc *JobCloser) Close(err error) {
-	jc.job.Lock()
-	jc.job.status.Error = err
-	jc.job.Unlock()
+func (tc *TaskCloser) Close(err error) {
+	tc.job.Lock()
+	tc.job.status.Error = err
+	tc.job.Unlock()
 
-	jc.writer.Close()
+	tc.writer.Close()
 }

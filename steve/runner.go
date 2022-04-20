@@ -32,9 +32,9 @@ import (
 )
 
 var (
-	ErrJobNotFound   = errors.New("no such job found")
-	ErrJobNotRunning = errors.New("job not running")
-	ErrTooManyJobs   = errors.New("too many jobs")
+	ErrTaskNotFound   = errors.New("no such task found")
+	ErrTaskNotRunning = errors.New("task not running")
+	ErrTooManyTasks   = errors.New("too many tasks")
 
 	readerCounter int64
 )
@@ -46,7 +46,7 @@ type jobIO struct {
 	br     syncutil.Broadcaster
 	writer io.WriteCloser
 	buffer bytes.Buffer
-	id     TaskId
+	taskId TaskId
 	job    Job
 	status Status
 
@@ -57,33 +57,33 @@ type jobIO struct {
 type runner struct {
 	sync.Mutex
 	capacity int
-	jobs     *collections.LRUCache
+	tasks    *collections.LRUCache
 	wg       syncutil.WaitGroup
 }
 
 func NewJobRunner(capacity int) Runner {
 	return &runner{
 		capacity: capacity,
-		jobs:     collections.NewLRUCache(capacity),
+		tasks:    collections.NewLRUCache(capacity),
 	}
 }
 
 // Run a `Job`.
 // Job concurrency limited to capacity set in `NewJobRunner`.  Additional calls
-// to `Run` will result in the least used job to be rolled off the cache and no
-// longer watched.  This may have indeterminate effects as the expired job will
-// continue to run if it hasn't already stopped.
+// to `Run` will result in the least used task to be rolled off the cache and
+// no longer watched.  This may have indeterminate effects as the expired task
+// will continue to run if it hasn't already stopped.
 func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 	reader, writer := io.Pipe()
 
-	id := TaskId(uuid.New().String())
+	taskId := TaskId(uuid.New().String())
 	j := &jobIO{
-		id:     id,
+		taskId: taskId,
 		br:     syncutil.NewBroadcaster(),
 		writer: writer,
 		job:    job,
 		status: Status{
-			TaskId: id,
+			TaskId: taskId,
 		},
 		stopChan: make(chan struct{}),
 	}
@@ -99,7 +99,7 @@ func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 		close(startChan)
 
 		defer func() {
-			// Stop job on exit.
+			// Stop task on exit.
 			updateStatus(j, func(status *Status) {
 				status.Running = false
 				status.Stopped = time.Now()
@@ -139,9 +139,9 @@ func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 		}
 	})
 
-	r.jobs.Add(j.id, j)
+	r.tasks.Add(j.taskId, j)
 
-	closer := &JobCloser{
+	closer := &TaskCloser{
 		job:    j,
 		writer: writer,
 	}
@@ -150,19 +150,19 @@ func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 		return "", errors.Wrap(err, "error in job.Start")
 	}
 
-	// Send initial status once job has started.
+	// Send initial status once task has started.
 	updateStatus(j, nil)
 
-	// Wait for job to start.
+	// Wait for task to start.
 	select {
 	case <-startChan:
-		return id, nil
+		return taskId, nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
 }
 
-func (r *runner) NewReader(id TaskId, offset int) (io.ReadCloser, error) {
+func (r *runner) NewReader(taskId TaskId, offset int) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, errors.New("invalid offset")
 	}
@@ -170,9 +170,9 @@ func (r *runner) NewReader(id TaskId, offset int) (io.ReadCloser, error) {
 	r.Lock()
 	defer r.Unlock()
 
-	obj, ok := r.jobs.Get(id)
+	obj, ok := r.tasks.Get(taskId)
 	if !ok {
-		return nil, ErrJobNotFound
+		return nil, ErrTaskNotFound
 	}
 
 	j := obj.(*jobIO)
@@ -189,7 +189,7 @@ func (r *runner) NewReader(id TaskId, offset int) (io.ReadCloser, error) {
 	return ioutil.NopCloser(&buf), nil
 }
 
-func (r *runner) NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error) {
+func (r *runner) NewStreamingReader(taskId TaskId, offset int) (io.ReadCloser, error) {
 	if offset < 0 {
 		return nil, errors.New("invalid offset")
 	}
@@ -197,16 +197,16 @@ func (r *runner) NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error
 	r.Lock()
 	defer r.Unlock()
 
-	obj, ok := r.jobs.Get(id)
+	obj, ok := r.tasks.Get(taskId)
 	if !ok {
-		return nil, ErrJobNotFound
+		return nil, ErrTaskNotFound
 	}
 
 	j := obj.(*jobIO)
 	readerId := atomic.AddInt64(&readerCounter, 1)
-	broadcastId := fmt.Sprintf("%s-%d", string(j.id), readerId)
+	broadcastId := fmt.Sprintf("%s-%d", string(j.taskId), readerId)
 
-	// If the job isn't running, fall back to non-streaming reader.
+	// If the task isn't running, fall back to non-streaming reader.
 	j.RLock()
 	if offset > j.buffer.Len() {
 		return nil, fmt.Errorf("offset beyond upper bound %d", j.buffer.Len())
@@ -214,7 +214,7 @@ func (r *runner) NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error
 	running := j.status.Running
 	if !running {
 		j.RUnlock()
-		return r.NewReader(id, offset)
+		return r.NewReader(taskId, offset)
 	}
 	j.br.WaitChan(broadcastId)
 	j.RUnlock()
@@ -255,7 +255,7 @@ func (r *runner) NewStreamingReader(id TaskId, offset int) (io.ReadCloser, error
 				idx += n
 			}
 
-			// Check if job was stopped.
+			// Check if task was stopped.
 			select {
 			case <-j.stopChan:
 				writer.Close()
@@ -275,7 +275,7 @@ func (r *runner) OutputLen(id TaskId) (n int, exists bool) {
 	r.Lock()
 	defer r.Unlock()
 
-	obj, ok := r.jobs.Get(id)
+	obj, ok := r.tasks.Get(id)
 	if !ok {
 		return 0, false
 	}
@@ -287,13 +287,13 @@ func (r *runner) OutputLen(id TaskId) (n int, exists bool) {
 	return j.buffer.Len(), true
 }
 
-func (r *runner) Stop(ctx context.Context, id TaskId) error {
+func (r *runner) Stop(ctx context.Context, taskId TaskId) error {
 	r.Lock()
 	defer r.Unlock()
 
-	obj, ok := r.jobs.Get(id)
+	obj, ok := r.tasks.Get(taskId)
 	if !ok {
-		return ErrJobNotFound
+		return ErrTaskNotFound
 	}
 	j := obj.(*jobIO)
 
@@ -302,14 +302,14 @@ func (r *runner) Stop(ctx context.Context, id TaskId) error {
 	running := j.status.Running
 	j.RUnlock()
 	if !running {
-		return ErrJobNotRunning
+		return ErrTaskNotRunning
 	}
 
 	return r.stop(ctx, j)
 }
 
 func (r *runner) stop(ctx context.Context, j *jobIO) error {
-	// Stop the job
+	// Stop the task
 	if err := j.job.Stop(ctx); err != nil {
 		return err
 	}
@@ -326,9 +326,9 @@ func (r *runner) stop(ctx context.Context, j *jobIO) error {
 	}
 }
 
-// Done returns a channel that closes when the job stops.
-func (r *runner) Done(id TaskId) (done <-chan struct{}, exists bool) {
-	obj, ok := r.jobs.Get(id)
+// Done returns a channel that closes when the task stops.
+func (r *runner) Done(taskId TaskId) (done <-chan struct{}, exists bool) {
+	obj, ok := r.tasks.Get(taskId)
 	if !ok {
 		return nil, false
 	}
@@ -337,11 +337,12 @@ func (r *runner) Done(id TaskId) (done <-chan struct{}, exists bool) {
 	return j.stopChan, true
 }
 
-// Status returns the status of the job, returns false if the job doesn't exist.
-// Status gets job status by id.
-// Returns bool as ok flag.
-func (r *runner) Status(id TaskId) (status Status, exists bool) {
-	obj, ok := r.jobs.Get(id)
+// Status returns the status of the task, returns false if the task doesn't
+// exist.
+// Status gets task status by id.
+// Returns bool as exists flag.
+func (r *runner) Status(taskId TaskId) (status Status, exists bool) {
+	obj, ok := r.tasks.Get(taskId)
 	if !ok {
 		return Status{}, false
 	}
@@ -360,7 +361,7 @@ func (r *runner) List() []Status {
 
 func (r *runner) list() []Status {
 	var result []Status
-	r.jobs.Each(1, func(key interface{}, value interface{}) error {
+	r.tasks.Each(1, func(key interface{}, value interface{}) error {
 		j := value.(*jobIO)
 		j.RLock()
 		defer j.RUnlock()
@@ -378,7 +379,7 @@ func (r *runner) Close(ctx context.Context) error {
 	defer r.Unlock()
 
 	for _, s := range r.list() {
-		obj, ok := r.jobs.Get(s.TaskId)
+		obj, ok := r.tasks.Get(s.TaskId)
 		if !ok {
 			continue
 		}
@@ -388,9 +389,9 @@ func (r *runner) Close(ctx context.Context) error {
 		running := j.status.Running
 		j.RUnlock()
 		if running {
-			// Stop running job.
+			// Stop running task.
 			if err := r.stop(ctx, j); err != nil {
-				return errors.Wrap(err, fmt.Sprintf("while stopping job id '%s'", j.id))
+				return errors.Wrap(err, fmt.Sprintf("while stopping task id '%s'", j.taskId))
 			}
 		}
 	}

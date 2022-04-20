@@ -12,7 +12,7 @@ type MockJob struct {
 	mock.Mock
 }
 
-func (m *MockJob) Start(ctx context.Context, writer io.Writer, closer *steve.JobCloser) error {
+func (m *MockJob) Start(ctx context.Context, writer io.Writer, closer *steve.TaskCloser) error {
 	args := m.Called(ctx, writer, closer)
 	return args.Error(0)
 }

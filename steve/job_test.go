@@ -75,7 +75,7 @@ func TestSteve(t *testing.T) {
 		mockJob := &MockJob{}
 		mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().
 			Run(func(args mock.Arguments) {
-				closer := args.Get(2).(*steve.JobCloser)
+				closer := args.Get(2).(*steve.TaskCloser)
 				closer.Close(errors.New("Foobar error"))
 			}).
 			Return(nil)
@@ -153,7 +153,7 @@ func TestSteve(t *testing.T) {
 		}()
 
 		err := runner.Stop(ctx, steve.TaskId("bogus"))
-		require.Equal(t, steve.ErrJobNotFound, err)
+		require.Equal(t, steve.ErrTaskNotFound, err)
 	})
 
 	t.Run("Error stopping an already stopped job", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestSteve(t *testing.T) {
 		require.NoError(t, err)
 
 		err = runner.Stop(ctx, id)
-		require.Equal(t, steve.ErrJobNotRunning, err)
+		require.Equal(t, steve.ErrTaskNotRunning, err)
 
 		mockJob.AssertExpectations(t)
 	})
