@@ -107,7 +107,7 @@ func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 			close(j.stopChan)
 		}()
 
-		// Spawn a separate go routine as the read could block forever
+		// Spawn a separate goroutine as the read could block forever
 		go func() {
 			defer close(ch)
 			buf := make([]byte, 2024)
@@ -205,46 +205,33 @@ func (r *runner) NewStreamingReader(taskId TaskId, offset int) (io.ReadCloser, e
 	j := obj.(*jobIO)
 	readerId := atomic.AddInt64(&readerCounter, 1)
 	broadcastId := fmt.Sprintf("%s-%d", string(j.taskId), readerId)
-
-	// If the task isn't running, fall back to non-streaming reader.
-	j.RLock()
-	if offset > j.buffer.Len() {
-		return nil, fmt.Errorf("offset beyond upper bound %d", j.buffer.Len())
-	}
-	running := j.status.Running
-	if !running {
-		j.RUnlock()
-		return r.NewReader(taskId, offset)
-	}
-	j.br.WaitChan(broadcastId)
-	j.RUnlock()
+	broadcastChan := j.br.WaitChan(broadcastId)
 
 	// Create a go routine that sends all unread bytes to the reader then
 	// waits for new bytes to be written to the j.buffer via the broadcaster.
 	reader, writer := io.Pipe()
 
 	go func() {
-		defer writer.Close()
 		defer func() {
 			j.br.Remove(broadcastId)
+			writer.Close()
 		}()
 
-		var idx = 0
 		var dst []byte
 
 		for {
 			// Grab any bytes from the buffer we haven't sent to our reader
 			j.RLock()
 			bufLen := j.buffer.Len()
-			newBytesCount := bufLen - idx
+			newBytesCount := bufLen - offset
 			if newBytesCount > 0 {
 				src := j.buffer.Bytes()
 				dst = make([]byte, newBytesCount)
-				copy(dst, src[idx:bufLen])
+				copy(dst, src[offset:bufLen])
 			}
 			j.RUnlock()
 
-			// Preform the write outside the mutex as it could block and we don't
+			// Perform the write outside the mutex as it could block and we don't
 			// want to hold on to the mutex for long
 			if newBytesCount > 0 {
 				n, err := writer.Write(dst)
@@ -252,19 +239,18 @@ func (r *runner) NewStreamingReader(taskId TaskId, offset int) (io.ReadCloser, e
 					// If the reader called Close() on the pipe
 					return
 				}
-				idx += n
-			}
-
-			// Check if task was stopped.
-			select {
-			case <-j.stopChan:
-				writer.Close()
-				return
-			default:
+				offset += n
+				continue
 			}
 
 			// Wait for broadcaster to tell us there are new bytes to read.
-			j.br.Wait(broadcastId)
+			select {
+			case <-broadcastChan:
+				// Broadcast signals new data available.
+			case <-j.stopChan:
+				// Task stopped.
+				return
+			}
 		}
 	}()
 
