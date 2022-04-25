@@ -1,4 +1,4 @@
-//go:build !holster_test_mode
+//go:build holster_test_mode
 
 // Package clock provides the same functions as the system package time. In
 // production it forwards all calls to the system time package, but in tests
@@ -14,12 +14,16 @@
 // not a channel, but a function that returns <-chan time.Time.
 package clock
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 var (
 	frozenAt time.Time
 	realtime       = &systemTime{}
 	provider Clock = realtime
+	rwMutex        = sync.RWMutex{}
 )
 
 // Freeze after this function is called all time related functions start
@@ -28,6 +32,8 @@ var (
 // one-liner in tests: defer clock.Freeze(clock.Now()).Unfreeze()
 func Freeze(now time.Time) Unfreezer {
 	frozenAt = now.UTC()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 	provider = &frozenTime{now: now}
 	return Unfreezer{}
 }
@@ -40,6 +46,8 @@ func (u Unfreezer) Unfreeze() {
 
 // Unfreeze reverses effect of Freeze.
 func Unfreeze() {
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 	provider = realtime
 }
 
@@ -54,7 +62,9 @@ func Realtime() Clock {
 // passed since it was frozen. So you can assert on the return value in tests
 // to make it explicit where you stand on the deterministic time scale.
 func Advance(d time.Duration) time.Duration {
+	rwMutex.RLock()
 	ft, ok := provider.(*frozenTime)
+	rwMutex.RUnlock()
 	if !ok {
 		panic("Freeze time first!")
 	}
@@ -66,40 +76,56 @@ func Advance(d time.Duration) time.Duration {
 // the timeout elapses. It returns true if the wait condition has been met
 // before the timeout expired, false otherwise.
 func Wait4Scheduled(count int, timeout time.Duration) bool {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.Wait4Scheduled(count, timeout)
 }
 
 // Now see time.Now.
 func Now() time.Time {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.Now()
 }
 
 // Sleep see time.Sleep.
 func Sleep(d time.Duration) {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	provider.Sleep(d)
 }
 
 // After see time.After.
 func After(d time.Duration) <-chan time.Time {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.After(d)
 }
 
 // NewTimer see time.NewTimer.
 func NewTimer(d time.Duration) Timer {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.NewTimer(d)
 }
 
 // AfterFunc see time.AfterFunc.
 func AfterFunc(d time.Duration, f func()) Timer {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.AfterFunc(d, f)
 }
 
 // NewTicker see time.Ticker.
 func NewTicker(d time.Duration) Ticker {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.NewTicker(d)
 }
 
 // Tick see time.Tick.
 func Tick(d time.Duration) <-chan time.Time {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return provider.Tick(d)
 }
