@@ -84,13 +84,6 @@ func After(d time.Duration) <-chan time.Time {
 	return provider.After(d)
 }
 
-// Timer see time.Timer.
-type Timer interface {
-	C() <-chan time.Time
-	Stop() bool
-	Reset(d time.Duration) bool
-}
-
 // NewTimer see time.NewTimer.
 func NewTimer(d time.Duration) Timer {
 	return provider.NewTimer(d)
@@ -101,12 +94,6 @@ func AfterFunc(d time.Duration, f func()) Timer {
 	return provider.AfterFunc(d, f)
 }
 
-// Ticker see time.Ticker.
-type Ticker interface {
-	C() <-chan time.Time
-	Stop()
-}
-
 // NewTicker see time.Ticker.
 func NewTicker(d time.Duration) Ticker {
 	return provider.NewTicker(d)
@@ -115,23 +102,4 @@ func NewTicker(d time.Duration) Ticker {
 // Tick see time.Tick.
 func Tick(d time.Duration) <-chan time.Time {
 	return provider.Tick(d)
-}
-
-// NewStoppedTimer returns a stopped timer. Call Reset to get it ticking.
-func NewStoppedTimer() Timer {
-	t := NewTimer(42 * time.Hour)
-	t.Stop()
-	return t
-}
-
-// Clock is an interface that mimics the one of the SDK time package.
-type Clock interface {
-	Now() time.Time
-	Sleep(d time.Duration)
-	After(d time.Duration) <-chan time.Time
-	NewTimer(d time.Duration) Timer
-	AfterFunc(d time.Duration, f func()) Timer
-	NewTicker(d time.Duration) Ticker
-	Tick(d time.Duration) <-chan time.Time
-	Wait4Scheduled(n int, timeout time.Duration) bool
 }
