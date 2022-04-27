@@ -38,7 +38,7 @@ func TestFunctional(t *testing.T) {
 
 			t.Run("Fails", func(t *testing.T) {
 				testFunc := func(ft *functional.T) {
-					ft.Run("Subtest 1", func(_ *functional.T) {
+					ft.Run("Subtest 1", func(ft *functional.T) {
 						ft.FailNow()
 					})
 				}
@@ -51,10 +51,10 @@ func TestFunctional(t *testing.T) {
 	t.Run("RunSuite()", func(t *testing.T) {
 		t.Run("Happy path", func(t *testing.T) {
 			var counter int64
-			testFunc1 := func(ft *functional.T) {
+			testFunc1 := func(_ *functional.T) {
 				counter++
 			}
-			testFunc2 := func(ft *functional.T) {
+			testFunc2 := func(_ *functional.T) {
 				counter++
 			}
 			tests := []functional.TestFunc{testFunc1, testFunc2}
@@ -65,7 +65,7 @@ func TestFunctional(t *testing.T) {
 
 		t.Run("Partial failure", func(t *testing.T) {
 			var counter int64
-			testFunc1 := func(ft *functional.T) {
+			testFunc1 := func(_ *functional.T) {
 				counter++
 			}
 			testFunc2 := func(ft *functional.T) {
