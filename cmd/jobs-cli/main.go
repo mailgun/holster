@@ -19,12 +19,14 @@ type Options struct {
 	Endpoint string        `short:"e" long:"endpoint" description:"gRPC endpoint host:port" value-name:"x" default:"127.0.0.1:8081"`
 	Timeout  time.Duration `short:"t" long:"timeout" description:"gRPC request timeout (not job timeout)" value-name:"duration" default:"30s"`
 	Quiet    bool          `short:"q" description:"Quiet logging"`
-	Run      RunOptions    `command:"run"`
-	Ls       LsOptions     `command:"ls"`
+	Run      RunOptions    `command:"run" description:"Run jobs"`
+	Ls       LsOptions     `command:"ls" description:"List available jobs"`
+	Output   OutputOptions `command:"logs" description:"Get task output logs"`
 }
 
 type RunOptions struct {
 	ContinueOnError bool `long:"continue" description:"Continue to next job on error"`
+	Detach          bool `short:"d" description:"Detach task, don't follow output"`
 	Args            struct {
 		JobIds []string `positional-arg-name:"job-id" description:"Job ids to run" required:"1"`
 	} `positional-args:"yes" required:"yes"`
@@ -32,13 +34,19 @@ type RunOptions struct {
 
 type LsOptions struct{}
 
+type OutputOptions struct {
+	Follow bool `short:"f" description:"Follow task output"`
+	Args struct {
+		TaskId string `position-arg-name:"task-id" description:"Task id" required:"yes"`
+	} `positional-args:"yes" required:"yes"`
+}
+
 var (
 	log        = logrus.WithField("category", "jobs-cli")
 	options    Options
 	mainCtx    context.Context
 	mainCancel context.CancelFunc
 	mainWg     sync.WaitGroup
-	maxTimeout = 5 * time.Minute
 )
 
 func main() {
@@ -86,7 +94,7 @@ func startTask(ctx context.Context, client steve.JobsV1Client, jobId steve.JobId
 	return steve.TaskId(resp.TaskId), nil
 }
 
-func watchTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId steve.TaskId) error {
+func followTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId steve.TaskId) error {
 	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
 	defer cancel()
 	outputClt, err := client.GetStreamingTaskOutput(ctx, &steve.GetTaskOutputReq{
@@ -113,14 +121,39 @@ func watchTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId stev
 	return nil
 }
 
+func getTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId steve.TaskId) error {
+	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
+	defer cancel()
+	pagination := &steve.PaginationArgs{Limit: 1000}
+
+	for {
+		resp, err := client.GetTaskOutput(ctx, &steve.GetTaskOutputReq{
+			Pagination: pagination,
+			TaskId: string(taskId),
+		})
+		if err != nil {
+			return errors.Wrap(err, "error in client.GetTaskOutput")
+		}
+
+		for _, line := range resp.Output {
+			fmt.Println(line)
+		}
+
+		if int64(len(resp.Output)) < pagination.Limit {
+			break
+		}
+
+		pagination.Offset += pagination.Limit
+	}
+
+	return nil
+}
+
 func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOptions) bool {
 	success := true
 
 	for _, jobId := range runOptions.getJobIds() {
 		startTime := time.Now()
-		log.WithFields(logrus.Fields{
-			"jobId": jobId,
-		}).Info("Starting task...")
 
 		// Run task.
 		taskId, err := startTask(ctx, client, jobId)
@@ -129,14 +162,22 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 				log.WithFields(logrus.Fields{
 					"jobId":   jobId,
 					"elapsed": time.Now().Sub(startTime),
-				}).Error(err)
+				}).WithError(err).Error("Error starting task")
 				continue
 			}
-			panic(err)
+			panic(errors.Wrap(err, "error starting task"))
+		}
+		log.WithFields(logrus.Fields{
+			"jobId": jobId,
+			"taskId": taskId,
+		}).Info("Starting task...")
+
+		if runOptions.Detach {
+			continue
 		}
 
 		// Watch for output.
-		err = watchTaskOutput(ctx, client, taskId)
+		err = followTaskOutput(ctx, client, taskId)
 		if err != nil {
 			if runOptions.ContinueOnError {
 				log.WithFields(logrus.Fields{
@@ -267,10 +308,29 @@ func (o *RunOptions) getJobIds() []steve.JobId {
 func (o *LsOptions) Execute(_ []string) error {
 	processOptions()
 
-	ctx, cancel := context.WithTimeout(mainCtx, maxTimeout)
+	ctx, cancel := context.WithTimeout(mainCtx, options.Timeout)
 	defer cancel()
 
 	client := newClient(ctx, options.Endpoint)
 	lsJobs(mainCtx, client)
+	return nil
+}
+
+func (o *OutputOptions) Execute(_ []string) error {
+	processOptions()
+
+	taskId := steve.TaskId(o.Args.TaskId)
+	client := newClient(mainCtx, options.Endpoint)
+	if o.Follow {
+		err := followTaskOutput(mainCtx, client, taskId)
+		if err != nil {
+			return errors.Wrap(err, "error in followTaskOutput")
+		}
+	} else {
+		err := getTaskOutput(mainCtx, client, taskId)
+		if err != nil {
+			return errors.Wrap(err, "error in getTaskOutput")
+		}
+	}
 	return nil
 }

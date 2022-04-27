@@ -159,4 +159,17 @@ $ ./jobs-cli --endpoint myserver:8081 ls
 ```sh
 # Run a job.  Displays task output until finished.
 $ ./jobs-cli --endpoint myserver:8081 run job1
+
+# Run a job detached.  No task output.
+$ ./jobs-cli --endpoint myserver:8081 run -d job1
+```
+
+Note: `run` command prints task id, which can be used by commands requiring it.
+
+```sh
+# Show task output.
+$ ./jobs-cli --endpoint myserver:8081 logs <task-id>
+
+# Follow running task output until finished.
+$ ./jobs-cli --endpoint myserver:8081 logs -f <task-id>
 ```
