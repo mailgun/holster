@@ -19,6 +19,8 @@ import (
 	"context"
 	"io"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Status struct {
@@ -45,6 +47,10 @@ type Job interface {
 
 // TaskId of a running `Job`.
 type TaskId string
+
+// Unique id for `Job` object.
+// Not to be confused with `TaskId` assigned to a running job.
+type JobId string
 
 // Runner provides a task running service which runs a job to create a task.
 // The task is provided a writer which is buffered and stored for live
@@ -93,3 +99,5 @@ type Runner interface {
 	// List all tasks.
 	List() []Status
 }
+
+var log = logrus.WithField("category", "steve")
