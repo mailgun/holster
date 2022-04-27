@@ -156,7 +156,8 @@ func TestJobs(t *testing.T) {
 
 			mockJob := &MockJob{}
 			mockJob.On("Start", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
-			mockJob.On("Status", mock.Anything).Return()
+			// Status() called once on start.
+			mockJob.On("Status", mock.Anything).Once().Return()
 
 			// Start gRPC server.
 			jobMap := map[steve.JobId]steve.Job{
@@ -184,6 +185,8 @@ func TestJobs(t *testing.T) {
 
 			t.Run("StopTask()", func(t *testing.T) {
 				mockJob.On("Stop", mock.Anything).Once().Return(nil)
+				// Status() called again on stop.
+				mockJob.On("Status", mock.Anything).Once().Return()
 
 				// Call code.
 				resp, err := client.StopTask(ctx, &steve.StopTaskReq{

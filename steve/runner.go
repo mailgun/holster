@@ -150,9 +150,6 @@ func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 		return "", errors.Wrap(err, "error in job.Start")
 	}
 
-	// Send initial status once task has started.
-	updateStatus(j, nil)
-
 	// Wait for task to start.
 	select {
 	case <-startChan:
