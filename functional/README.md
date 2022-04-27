@@ -11,6 +11,7 @@ Steve Job framework in the `steve` package.
 ```go
 import (
 	"context"
+	"time"
 
 	"github.com/mailgun/holster/v4/functional"
 )
@@ -46,19 +47,26 @@ func myTest1(t *functional.T) {
 ```
 
 ## Run in a Steve Job
+Jobs can be run natively (in-process) or can be writen in a separate executable
+and called by a job.
+
 ### In-process Execution
 Run the functional test inside a Steve Job in-process.
 
 ```go
 import (
+	"context"
+	"time"
+
 	"github.com/mailgun/holster/v4/functional"
 	"github.com/mailgun/holster/v4/steve"
 	"github.com/stretchr/testify/require"
 )
 
+ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
+defer cancel()
 myAction := new(MyAction)
 myJob := steve.NewEZJob(myAction)
-
 runner := steve.NewRunner(1000)
 taskId, err := runner.Run(ctx, myJob)
 
@@ -77,14 +85,21 @@ func (a *MyAction) Status(status steve.Status) {
 
 ### Out-of-process Execution
 Run the same test in a separate process.  This has the advantage of protection
-should ensure any faulty tests would not bring down the parent process.
+to ensure any faulty tests would not bring down the parent process.  Also,
+using `ExecJob` type will capture all STDOUT/STDERR as job output, whereas a
+native job only captures what is sent to its `writer`..
 
 ```go
 import (
+	"context"
+	"time"
+
 	"github.com/mailgun/holster/v4/steve"
 	"github.com/sirupsen/logrus"
 )
 
+ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
+defer cancel()
 myHandler := new(MyHandler)
 myJob := steve.NewExecJob(myHandler, "mytest1")
 runner := steve.NewRunner(1000)
