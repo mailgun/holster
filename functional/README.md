@@ -77,6 +77,7 @@ type MyAction struct{}
 func (a *MyAction) Run(ctx context.Context, writer io.Writer) error {
 	tests := []functional.TestFunc{myTest1}
 	functional.RunSuite(ctx, "My suite", tests)
+	return nil
 }
 
 func (a *MyAction) Status(status steve.Status) {
