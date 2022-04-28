@@ -507,7 +507,7 @@ func TestJobs(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			jobId := steve.JobId("mockJob")
-			mockJob, taskId, _, closer, client := setupMockTask(ctx, t, srvWg)
+			mockJob, taskId, _, closer, client := setupMockTask(ctx, t, &srvWg)
 			closer.Close(errors.New("Foobar error"))
 
 			// Wait for job to stop.
@@ -732,7 +732,7 @@ func TestJobs(t *testing.T) {
 			defer srvWg.Wait()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+			mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 			// Send some output.
 			const numLines = 10
@@ -772,7 +772,7 @@ func TestJobs(t *testing.T) {
 			defer srvWg.Wait()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+			mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 			// Send some output.
 			const numLines = 10
@@ -813,7 +813,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				var expectedOutput []string
@@ -849,7 +849,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				const limit = 5
@@ -886,7 +886,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				const offset = 10
@@ -923,7 +923,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				const limit = 5
@@ -964,7 +964,7 @@ func TestJobs(t *testing.T) {
 			defer srvWg.Wait()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			mockJob, taskId, writer, closer, client := setupMockTask(ctx, t, srvWg)
+			mockJob, taskId, writer, closer, client := setupMockTask(ctx, t, &srvWg)
 
 			// Send some output.
 			const numLines = 10
@@ -1013,7 +1013,7 @@ func TestJobs(t *testing.T) {
 			defer srvWg.Wait()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			mockJob, taskId, writer, closer, client := setupMockTask(ctx, t, srvWg)
+			mockJob, taskId, writer, closer, client := setupMockTask(ctx, t, &srvWg)
 
 			// Send some output.
 			const numLines = 10
@@ -1067,7 +1067,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				var expectedOutput []string
@@ -1118,7 +1118,7 @@ func TestJobs(t *testing.T) {
 				defer srvWg.Wait()
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
-				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, srvWg)
+				mockJob, taskId, writer, _, client := setupMockTask(ctx, t, &srvWg)
 
 				// Send some output.
 				const offset = 10
@@ -1188,7 +1188,7 @@ func AssertEqualGetStoppedTask(t *testing.T, expectedJobTask JobTaskItem, taskHe
 // Start a TestServer, create a MockJob, start a task, and capture the writer object.
 // Be sure to cancel the context to teardown resources.
 // Then use `WaitGroup` to wait for teardown to finish.
-func setupMockTask(ctx context.Context, t *testing.T, wg sync.WaitGroup) (*MockJob, steve.TaskId, io.Writer, *steve.TaskCloser, steve.JobsV1Client) {
+func setupMockTask(ctx context.Context, t *testing.T, wg *sync.WaitGroup) (*MockJob, steve.TaskId, io.Writer, *steve.TaskCloser, steve.JobsV1Client) {
 	const grpcPort = 0
 	wg.Add(1)
 	jobId := steve.JobId("mockJob")
