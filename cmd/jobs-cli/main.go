@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -62,38 +63,35 @@ var (
 	mainCtx    context.Context
 	mainCancel context.CancelFunc
 	mainWg     sync.WaitGroup
+	exitCode   int
 )
 
 func main() {
 	mainCtx, mainCancel = context.WithCancel(context.Background())
-	defer func() {
-		// Handle panic and gracefully teardown.
-		if err := recover(); err != nil {
-			log.Error(err)
-		}
-		mainCancel()
-		mainWg.Wait()
-	}()
 
 	// Parse CLI arguments.
 	// `Options` implements handlers for CLI commands.
 	parser := flags.NewParser(&options, flags.Default)
 	_, err := parser.Parse()
 	if err != nil {
-		panic(fmt.Sprintf("Error parsing command line: %s", err.Error()))
+		exitCode = 1
 	}
 
-	return
+	// Gracefully teardown.
+	mainCancel()
+	mainWg.Wait()
+	os.Exit(exitCode)
 }
 
-func healthCheck(ctx context.Context, client steve.JobsV1Client) {
+func healthCheck(ctx context.Context, client steve.JobsV1Client) error {
 	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
 	defer cancel()
 	_, err := client.HealthCheck(ctx, new(emptypb.Empty))
-
 	if err != nil {
-		panic(fmt.Sprintf("Error checking health of endpoint.  Does it support jobs API?: %s", err.Error()))
+		return errors.Wrap(err, "Error checking health of endpoint.  Does it support jobs API?")
 	}
+
+	return nil
 }
 
 func startTask(ctx context.Context, client steve.JobsV1Client, jobId steve.JobId) (steve.TaskId, error) {
@@ -164,7 +162,7 @@ func getTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId steve.
 	return nil
 }
 
-func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOptions) bool {
+func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOptions) (bool, error) {
 	success := true
 
 	for _, jobId := range runOptions.getJobIds() {
@@ -180,7 +178,7 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 				}).WithError(err).Error("Error starting task")
 				continue
 			}
-			panic(errors.Wrap(err, "error starting task"))
+			return false, errors.Wrap(err, "error starting task")
 		}
 		log.WithFields(logrus.Fields{
 			"jobId":  jobId,
@@ -201,7 +199,7 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 				}).Error(err)
 				continue
 			}
-			panic(err)
+			return false, errors.Wrap(err, "error in followTasksOutput")
 		}
 
 		// Get status.
@@ -214,7 +212,7 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 				}).Error(err)
 				continue
 			}
-			panic(err)
+			return false, errors.Wrap(err, "error in getTasksSuccess")
 		}
 
 		if taskSuccess {
@@ -232,7 +230,7 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 		success = success && taskSuccess
 	}
 
-	return success
+	return success, nil
 }
 
 func getTaskSuccess(ctx context.Context, client steve.JobsV1Client, taskId steve.TaskId) (bool, error) {
@@ -253,7 +251,7 @@ func getTaskSuccess(ctx context.Context, client steve.JobsV1Client, taskId steve
 	return resp.Tasks[0].Pass, nil
 }
 
-func lsJobs(ctx context.Context, client steve.JobsV1Client) {
+func lsJobs(ctx context.Context, client steve.JobsV1Client) error {
 	pagination := &steve.PaginationArgs{
 		Limit: 1000,
 	}
@@ -261,7 +259,7 @@ func lsJobs(ctx context.Context, client steve.JobsV1Client) {
 	for {
 		getResp, err := client.GetJobs(ctx, &steve.GetJobsReq{Pagination: pagination})
 		if err != nil {
-			panic(errors.Wrap(err, "error in client.GetJobs"))
+			return errors.Wrap(err, "error in client.GetJobs")
 		}
 
 		for _, item := range getResp.Jobs {
@@ -274,9 +272,11 @@ func lsJobs(ctx context.Context, client steve.JobsV1Client) {
 
 		pagination.Offset += pagination.Limit
 	}
+
+	return nil
 }
 
-func newClient(ctx context.Context, endpoint string) steve.JobsV1Client {
+func newClient(ctx context.Context, endpoint string) (steve.JobsV1Client, error) {
 	// Connect to server.
 	log.Infof("Connecting to %s...", endpoint)
 	opts := []grpc.DialOption{
@@ -291,12 +291,15 @@ func newClient(ctx context.Context, endpoint string) steve.JobsV1Client {
 		mainWg.Done()
 	}()
 	if err != nil {
-		panic(fmt.Sprintf("Error connecting: %s", err.Error()))
+		return nil, errors.Wrap(err, "error in grpc.Dial")
 	}
 	client := steve.NewJobsV1Client(conn)
-	healthCheck(ctx, client)
+	err = healthCheck(ctx, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in healthCheck")
+	}
 
-	return client
+	return client, nil
 }
 
 func processOptions() {
@@ -307,8 +310,21 @@ func processOptions() {
 
 func (o *RunOptions) Execute(_ []string) error {
 	processOptions()
-	client := newClient(mainCtx, options.Endpoint)
-	runTasks(mainCtx, client, o)
+
+	client, err := newClient(mainCtx, options.Endpoint)
+	if err != nil {
+		log.WithError(err).Error("Error connecting")
+		exitCode = 1
+		return nil
+	}
+
+	_, err = runTasks(mainCtx, client, o)
+	if err != nil {
+		log.WithError(err).Error("Error in runTasks")
+		exitCode = 1
+		return nil
+	}
+
 	return nil
 }
 
@@ -323,11 +339,23 @@ func (o *RunOptions) getJobIds() []steve.JobId {
 func (o *LsOptions) Execute(_ []string) error {
 	processOptions()
 
+	client, err := newClient(mainCtx, options.Endpoint)
+	if err != nil {
+		log.WithError(err).Error("Error connecting")
+		exitCode = 1
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(mainCtx, options.Timeout)
 	defer cancel()
 
-	client := newClient(ctx, options.Endpoint)
-	lsJobs(mainCtx, client)
+	err = lsJobs(ctx, client)
+	if err != nil {
+		log.WithError(err).Error("Error in lsJobs")
+		exitCode = 1
+		return nil
+	}
+
 	return nil
 }
 
@@ -335,17 +363,27 @@ func (o *OutputOptions) Execute(_ []string) error {
 	processOptions()
 
 	taskId := steve.TaskId(o.Args.TaskId)
-	client := newClient(mainCtx, options.Endpoint)
+	client, err := newClient(mainCtx, options.Endpoint)
+	if err != nil {
+		log.WithError(err).Error("Error connecting")
+		exitCode = 1
+		return nil
+	}
 	if o.Follow {
 		err := followTaskOutput(mainCtx, client, taskId)
 		if err != nil {
-			return errors.Wrap(err, "error in followTaskOutput")
+			log.WithError(err).Error("Error in followTaskOutput")
+			exitCode = 1
+			return nil
 		}
 	} else {
 		err := getTaskOutput(mainCtx, client, taskId)
 		if err != nil {
-			return errors.Wrap(err, "error in getTaskOutput")
+			log.WithError(err).Error("Error in getTaskOutput")
+			exitCode = 1
+			return nil
 		}
 	}
+
 	return nil
 }
