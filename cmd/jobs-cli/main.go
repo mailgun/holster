@@ -51,7 +51,7 @@ type LsOptions struct{}
 
 type OutputOptions struct {
 	Follow bool `short:"f" description:"Follow task output"`
-	Args struct {
+	Args   struct {
 		TaskId string `position-arg-name:"task-id" description:"Task id" required:"yes"`
 	} `positional-args:"yes" required:"yes"`
 }
@@ -144,7 +144,7 @@ func getTaskOutput(ctx context.Context, client steve.JobsV1Client, taskId steve.
 	for {
 		resp, err := client.GetTaskOutput(ctx, &steve.GetTaskOutputReq{
 			Pagination: pagination,
-			TaskId: string(taskId),
+			TaskId:     string(taskId),
 		})
 		if err != nil {
 			return errors.Wrap(err, "error in client.GetTaskOutput")
@@ -183,7 +183,7 @@ func runTasks(ctx context.Context, client steve.JobsV1Client, runOptions *RunOpt
 			panic(errors.Wrap(err, "error starting task"))
 		}
 		log.WithFields(logrus.Fields{
-			"jobId": jobId,
+			"jobId":  jobId,
 			"taskId": taskId,
 		}).Info("Starting task...")
 

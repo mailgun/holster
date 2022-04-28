@@ -56,23 +56,25 @@ type jobIO struct {
 
 type runner struct {
 	sync.Mutex
-	capacity int
-	tasks    *collections.LRUCache
-	wg       syncutil.WaitGroup
+	tasks *collections.LRUCache
+	wg    syncutil.WaitGroup
 }
 
+// NewJobRunner creates a Runner object.
+// This uses an LRU cache to store tasks.
 func NewJobRunner(capacity int) Runner {
 	return &runner{
-		capacity: capacity,
-		tasks:    collections.NewLRUCache(capacity),
+		tasks: collections.NewLRUCache(capacity),
 	}
 }
 
 // Run a `Job`.
 // Job concurrency limited to capacity set in `NewJobRunner`.  Additional calls
-// to `Run` will result in the least used task to be rolled off the cache and
-// no longer watched.  This may have indeterminate effects as the expired task
-// will continue to run if it hasn't already stopped.
+// to `Run` will result in the least used task to be evicted from the cache and
+// no longer accessible.
+// FIXME: When LRU evicts an item, it doesn't know that that task might still be
+// running.  This will cause a running task to unexpectedly disappear from
+// the API.  If this task gets hung up, it could be stuck running forever.
 func (r *runner) Run(ctx context.Context, job Job) (TaskId, error) {
 	reader, writer := io.Pipe()
 

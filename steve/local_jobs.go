@@ -46,7 +46,7 @@ var (
 		Offset: 0,
 		Limit:  20,
 	}
-	ErrJobNotFound  = errors.New("no such job found")
+	ErrJobNotFound = errors.New("no such job found")
 )
 
 func NewLocalJobsV1Server(jobMap map[JobId]Job) *LocalJobsV1Server {
