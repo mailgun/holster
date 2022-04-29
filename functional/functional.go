@@ -41,13 +41,10 @@ func RunWithName(ctx context.Context, name string, fn TestFunc) bool {
 // Run a suite of tests as a unit.
 // Generates summary when finished.
 func RunSuite(ctx context.Context, suiteName string, tests []TestFunc) bool {
-	suiteStartTime := time.Now()
 	result := map[bool]int{true: 0, false: 0}
 	numTests := len(tests)
-	t := &T{
-		name: suiteName,
-		pass: true,
-	}
+	t := newT(suiteName)
+	suiteStartTime := time.Now()
 
 	t.invoke(ctx, func(t *T) {
 		for _, test := range tests {
@@ -56,13 +53,14 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc) bool {
 			result[pass]++
 		}
 
+		suiteEndTime := time.Now()
 		pass := result[false] == 0
 		passPct := float64(result[true]) / float64(numTests) * 100
 		t.Log()
 		t.Log("Suite test result summary:")
 		t.Logf("    pass: %d (%0.1f%%)", result[true], passPct)
 		t.Logf("    fail: %d", result[false])
-		t.Logf("    elapsed: %s", time.Now().Sub(suiteStartTime))
+		t.Logf("    elapsed: %s", suiteEndTime.Sub(suiteStartTime))
 
 		if !pass {
 			t.FailNow()
@@ -70,4 +68,52 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc) bool {
 	})
 
 	return t.pass
+}
+
+// Run a benchmark test.  Test named after function name.
+func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int) BenchmarkResult {
+	name := funcName(fn)
+	b := newB(name, times)
+	b.invoke(ctx, fn)
+	return b.result()
+}
+
+// Run a benchmark test with user-provided name.
+func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFunc, times int) BenchmarkResult {
+	b := newB(name, times)
+	b.invoke(ctx, fn)
+	return b.result()
+}
+
+// Run a suite of benchmark tests as a unit.
+// Run each benchmark n times.
+// Generates summary when finished.
+func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, tests []BenchmarkFunc) bool {
+	result := map[bool]int{true: 0, false: 0}
+	numTests := len(tests)
+	b := newB(suiteName, 1)
+	suiteStartTime := time.Now()
+
+	b.invoke(ctx, func(b *B) {
+		for _, test := range tests {
+			testName := funcName(test)
+			bret := b.RunTimes(testName, test, times)
+			result[bret.Pass]++
+		}
+
+		suiteEndTime := time.Now()
+		pass := result[false] == 0
+		passPct := float64(result[true]) / float64(numTests) * 100
+		b.Log()
+		b.Log("Suite benchmark test result summary:")
+		b.Logf("    pass: %d (%0.1f%%)", result[true], passPct)
+		b.Logf("    fail: %d", result[false])
+		b.Logf("    elapsed: %s", suiteEndTime.Sub(suiteStartTime))
+
+		if !pass {
+			b.FailNow()
+		}
+	})
+
+	return b.pass
 }

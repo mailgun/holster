@@ -3,8 +3,9 @@
 
 ## Why use `functional`?
 `functional` is used when you want to rapidly develop code in the format of a
-unit test using existing testing tools, but run it outside of the `go test`
-environment.
+unit test or benchmark test using existing testing tools, but run it outside of
+the `go test` environment.  This is handy for use cases needing data inspection
+and having low tolerance for errors.
 
 `go test` doesn't support running tests programmatically from compiled code; it
 requires the source code, which won't be available in production.

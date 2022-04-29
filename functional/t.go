@@ -49,7 +49,6 @@ var (
 func newT(name string) *T {
 	return &T{
 		name: name,
-		pass: true,
 	}
 }
 
@@ -61,7 +60,6 @@ func (t *T) Run(name string, fn TestFunc) bool {
 	t2 := &T{
 		name:   joinName(t.name, name),
 		indent: t.indent + 1,
-		pass:   true,
 	}
 
 	t2.invoke(t.ctx, fn)
@@ -98,8 +96,6 @@ func (t *T) Logf(format string, args ...interface{}) {
 }
 
 func (t *T) invoke(ctx context.Context, fn TestFunc) {
-	startTime := time.Now()
-
 	if ctx.Err() != nil {
 		panic(ctx.Err())
 	}
@@ -108,7 +104,9 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 	ctx, cancel := context.WithDeadline(ctx, t.deadline)
 	defer cancel()
 	t.ctx = ctx
+	t.pass = true
 	t.Logf("≈≈≈ RUN   %s", t.name)
+	startTime := time.Now()
 
 	func() {
 		defer func() {
@@ -127,7 +125,8 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 		fn(t)
 	}()
 
-	elapsed := time.Now().Sub(startTime)
+	endTime := time.Now()
+	elapsed := endTime.Sub(startTime)
 	if t.pass {
 		t.Logf("⁓⁓⁓ PASS: %s (%s)", t.name, elapsed)
 	} else {
