@@ -1,11 +1,21 @@
 # Functional Test Framework
 `go test`-like functional testing framework.
 
-Use to develop test cases that need to run outside of the `go test`
+## Why use `functional`?
+`functional` is used when you want to rapidly develop code in the format of a
+unit test using existing testing tools, but run it outside of the `go test`
 environment.
 
-The original intended use case is to implement tests to be executed using the
-Steve Job framework in the `steve` package.
+`go test` doesn't support running tests programmatically from compiled code; it
+requires the source code, which won't be available in production.
+
+The original intended use case is to implement tests to run as a background job
+within the Steve Job framework in the `steve` package.
+
+One such use case: runtime health check.  An admin may remotely invoke a health
+check job and watch it run.
+
+Tools like Testify may be used for assertions and mocking.
 
 ## Run Tests
 ```go
