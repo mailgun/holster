@@ -22,6 +22,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -115,9 +116,8 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 				errMsg := fmt.Sprintf("%v", err)
 				if errMsg != "" {
 					log.WithField("test", t.name).Error(errMsg)
+					debug.PrintStack()
 				}
-				// TODO: Print stack trace.
-
 				t.pass = false
 			}
 		}()
