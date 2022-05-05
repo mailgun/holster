@@ -11,7 +11,7 @@ and having low tolerance for errors.
 requires the source code, which won't be available in production.
 
 The original intended use case is to implement tests to run as a background job
-within the Steve Job framework in the `steve` package.
+within the Silo job framework in the package `github.com/mailgun/silo`.
 
 One such use case: runtime health check.  An admin may remotely invoke a health
 check job and watch it run.
@@ -57,12 +57,12 @@ func myTest1(t *functional.T) {
 }
 ```
 
-## Run in a Steve Job
+## Run in a Silo Job
 Jobs can be run natively (in-process) or can be writen in a separate executable
 and called by a job.
 
 ### In-process Execution
-Run the functional test inside a Steve Job in-process.
+Run the functional test inside a Silo job in-process.
 
 ```go
 import (
@@ -70,15 +70,15 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/functional"
-	"github.com/mailgun/holster/v4/steve"
+   "github.com/mailgun/silo"
 	"github.com/stretchr/testify/require"
 )
 
 ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
 defer cancel()
 myAction := new(MyAction)
-myJob := steve.NewEZJob(myAction)
-runner := steve.NewRunner(1000)
+myJob := silo.NewEZJob(myAction)
+runner := silo.NewRunner(1000)
 taskId, err := runner.Run(ctx, myJob)
 
 // ...
@@ -91,7 +91,7 @@ func (a *MyAction) Run(ctx context.Context, writer io.Writer) error {
 	return nil
 }
 
-func (a *MyAction) Status(status steve.Status) {
+func (a *MyAction) Status(status silo.Status) {
 }
 ```
 
@@ -106,15 +106,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/mailgun/holster/v4/steve"
+	"github.com/mailgun/silo"
 	"github.com/sirupsen/logrus"
 )
 
 ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
 defer cancel()
 myHandler := new(MyHandler)
-myJob := steve.NewExecJob(myHandler, "mytest1")
-runner := steve.NewRunner(1000)
+myJob := silo.NewExecJob(myHandler, "mytest1")
+runner := silo.NewRunner(1000)
 taskId, err := runner.Run(ctx, myJob)
 
 // ...
@@ -130,7 +130,6 @@ Compile the test code to executable file `mytest1`:
 ```go
 import (
 	"github.com/mailgun/holster/v4/functional"
-	"github.com/mailgun/holster/v4/steve"
 )
 
 func main() {
