@@ -8,10 +8,11 @@ import (
 )
 
 type frozenTime struct {
-	mu     sync.Mutex
-	now    time.Time
-	timers []*frozenTimer
-	waiter *waiter
+	mu       sync.Mutex
+	frozenAt time.Time
+	now      time.Time
+	timers   []*frozenTimer
+	waiter   *waiter
 }
 
 type waiter struct {
