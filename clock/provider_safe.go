@@ -17,7 +17,7 @@ func setProvider(p Clock) {
 
 func getProvider() Clock {
 	providerMu.RLock()
-	p = provider
+	p := provider
 	providerMu.RUnlock()
 	return p
 }
