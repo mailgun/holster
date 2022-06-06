@@ -59,10 +59,10 @@ host and port can be changed by setting environment variable
 It's important to ensure UDP traces are sent on the loopback interface (aka
 localhost).  UDP datagrams are limited in size to the MTU of the interface and
 the payload cannot be split into multiple datagrams.  The loopback interface
-MTU is large, typically 65000 or higher.  Network interfaces MTU are much lower
-at 1500.  Jaeger client is sometimes unable to limit its payload to fit in a
-1500 byte datagram and will drop those packets.  This causes traces that are
-missing detail or mangled.
+MTU is large, typically 65000 or higher.  Network interface MTU is typically
+much lower at 1500.  Jaeger client is sometimes unable to limit its payload to
+fit in a 1500 byte datagram and will drop those packets.  This causes traces
+that are missing detail or mangled.
 
 ##### Export via HTTP
 If it's not possible to install a Jaeger Agent on localhost, the client can
