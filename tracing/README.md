@@ -31,9 +31,10 @@ client.  The provided OpenTelemetry SDK includes a client for Jaeger.
 ## Why Jaeger Tracing server?
 Easy to setup.  Powerful and easy to use web UI.  Open source.
 
-Traces are sent as UDP packets.  This minimizes burden on client to not
-need to maintain an open socket or rely on server response time.  If tracing is
-not needed, the packets sent by the client will be simply discarded by the OS.
+Traces are sent as UDP packets by default.  This minimizes burden on client to
+not need to maintain an open socket or rely on server response time.  If
+tracing is not needed, the packets sent by the client will be simply discarded
+by the OS.
 
 ## Getting Started
 [opentelemetry.io](https://opentelemetry.io)
@@ -44,28 +45,53 @@ OpenTelemetry dev reference:
 See unit tests for usage examples.
 
 ### Configuration
-Configuration via environment variables:
-[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
-Such as:
-```
-OTEL_SERVICE_NAME=myapp
-OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
-```
+In ideal conditions where you wish to send traces to localhost on 6831/udp, no
+configuration is necessary.
 
-The service name appears in the Jaeger "Service" dropdown.  If unset, default
-is `unknown_service:<executable-filename>`.
+Configuration reference via environment variables:
+[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
+
+#### Export via UDP vs. HTTP
+By default, Jaeger exports to a Jaeger agent on localhost port 6831/udp.  The
+host and port can be changed by setting environment variable
+`OTEL_EXPORTER_JAEGER_AGENT_HOST` to the "host:port" of the agent.
+
+It's important to ensure UDP traces are sent on the loopback interface (aka
+localhost).  UDP datagrams are limited in size to the MTU of the interface and
+the payload cannot be split into multiple datagrams.  The loopback interface
+MTU is large, typically 65000 or higher.  Network interfaces MTU are much lower
+at 1500.  Jaeger client is sometimes unable to limit its payload to fit in a
+1500 byte datagram and will drop those packets.  This causes traces that are
+missing detail or mangled.
+
+##### Export via HTTP
+If it's not possible to install a Jaeger Agent on localhost, the client can
+instead send directly to the Jaeger Collector of the Jaeger server on HTTP port
+14268.
+
+Enable HTTP exporter with configuration:
+```
+OTEL_EXPORTER_JAEGER_PROTOCOL=http/thift.binary
+OTEL_EXPORTER_JAEGER_ENDPOINT=http://<jaeger-server>:14268/api/traces
+```
 
 #### Probabilistic Sampling
 By default, all traces are sampled.
 
-In production, it may be ideal to limit this stream of trace data by sampling based on a percentage probability.  To enable, set environment variables:
+In production, it may be ideal to limit this stream of trace data by sampling
+based on a percentage probability.  The probability can be set in Jaeger server
+configuration or locally.
+
+To enable locally, set environment variables:
 
 ```
 OTEL_TRACES_SAMPLER=traceidratio
 OTEL_TRACES_SAMPLER_ARG=<percentage-between-0-and-100>
 ```
 
-Previously in OpenTracing, this was configured in environment variables `JAEGER_SAMPLER_TYPE=probabilitistic` and `JAEGER_SAMPLER_PARAM` to the probability between 0 and 1.0.
+Note: Previously in OpenTracing, this was configured in environment variables
+`JAEGER_SAMPLER_TYPE=probabilitistic` and `JAEGER_SAMPLER_PARAM` to the
+probability between 0 and 1.0.
 
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
@@ -80,11 +106,10 @@ repo.
 import "github.com/mailgun/holster/v4/tracing"
 
 ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
-tracing.SetDefaultTracer(tracer)
 
 // ...
 
-tracing.CloseTracing(context.Background())
+err = tracing.CloseTracing(context.Background())
 ```
 
 ### Tracer Lifecycle
@@ -110,9 +135,14 @@ OpenTelemetry is configured by environment variables and supplemental resource
 settings.  Some of these resources also map to environment variables.
 
 #### Service Name
-As an alternative to configuring service name with environment variable
-`OTEL_SERVICE_NAME`, it may be provided as a resource.  The resource setting
-takes precedent over the environment variable.
+The service name appears in the Jaeger "Service" dropdown.  If unset, default
+is `unknown_service:<executable-filename>`.
+
+Service name may be set in configuration by environment variable
+`OTEL_SERVICE_NAME`.
+
+As an alternative to environment variable, it may be provided as a resource.
+The resource setting takes precedent over the environment variable.
 
 ```go
 import (
@@ -131,9 +161,6 @@ res, err := resource.Merge(
 )
 ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
 ```
-
-If neither resource nor environment variable are provided, the default service
-name is `unknown_service:<executable-filename>`.
 
 ### Manual Tracing
 Basic instrumentation.  Traces function duration as a span and captures logrus logs.
@@ -223,10 +250,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func MyFunc(ctx context.Context) (err error) {
+func MyFunc(ctx context.Context) (reterr error) {
 	ctx = tracing.StartScope(ctx)
 	defer func() {
-		tracing.EndScope(ctx, err)
+		tracing.EndScope(ctx, reterr)
 	}()
 
 	logrus.WithContext(ctx).Info("This message also logged to trace")

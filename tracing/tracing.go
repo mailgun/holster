@@ -143,20 +143,20 @@ func TracerFromContext(ctx context.Context) trace.Tracer {
 }
 
 func makeJaegerExporter() (*jaeger.Exporter, error) {
-	var agentEndpointOpts []jaeger.AgentEndpointOption
+	var endpointOption jaeger.EndpointOption
 
-	agentHost := os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
-	if agentHost != "" && agentHost != "localhost" && agentHost != "127.0.0.1" {
-		// Default MaxPacketSize=65000, which only works with Jaeger agent on
-		// localhost (loopback interface).
-		// For tracing over network, packets must fit in MTU 1500, which has a
-		// payload size of 1472.
-		agentEndpointOpts = append(agentEndpointOpts, jaeger.WithMaxPacketSize(1472))
+	// Otel Jaeger client doesn't seem to implement the spec for
+	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.
+	switch os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL") {
+	case "http/thift.binary":
+		endpointOption = jaeger.WithCollectorEndpoint()
+
+	default:
+		// Default protocol "udp/thift.binary".
+		endpointOption = jaeger.WithAgentEndpoint()
 	}
 
-	exp, err := jaeger.New(
-		jaeger.WithAgentEndpoint(agentEndpointOpts...),
-	)
+	exp, err := jaeger.New(endpointOption)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in jaeger.New")
 	}
