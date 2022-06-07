@@ -84,12 +84,10 @@ To enable locally, set environment variables:
 
 ```
 OTEL_TRACES_SAMPLER=traceidratio
-OTEL_TRACES_SAMPLER_ARG=<percentage-between-0-and-100>
+OTEL_TRACES_SAMPLER_ARG=<value-between-0-and-1>
 ```
 
-Note: Previously in OpenTracing, this was configured in environment variables
-`JAEGER_SAMPLER_TYPE=probabilitistic` and `JAEGER_SAMPLER_PARAM` to the
-probability between 0 and 1.0.
+Where 1 is always sample every trace and 0 is do not sample anything.
 
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
@@ -146,7 +144,7 @@ The resource setting takes precedent over the environment variable.
 import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 )
 
 res, err := resource.Merge(
