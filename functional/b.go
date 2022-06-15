@@ -12,7 +12,8 @@ type B struct {
 	N int
 
 	// Mean nanoseconds per operation.
-	nsPerOp float64
+	nsPerOp   float64
+	startTime time.Time
 }
 
 // Functional test code.
@@ -62,6 +63,10 @@ func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...Functiona
 	return b.result()
 }
 
+func (b *B) ResetTimer() {
+	b.startTime = time.Now()
+}
+
 func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 	if ctx.Err() != nil {
 		panic(ctx.Err())
@@ -73,7 +78,7 @@ func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 	b.ctx = ctx
 	b.pass = true
 	b.Logf("≈≈≈ RUN   %s", b.name)
-	startTime := time.Now()
+	b.startTime = time.Now()
 
 	func() {
 		defer func() {
@@ -93,7 +98,7 @@ func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 	}()
 
 	endTime := time.Now()
-	elapsed := endTime.Sub(startTime)
+	elapsed := endTime.Sub(b.startTime)
 	b.nsPerOp = float64(elapsed.Nanoseconds()) / float64(b.N)
 	nsPerOpDur := time.Duration(int64(b.nsPerOp))
 	b.Logf("%s\t%d\t%s ns/op (%s/op)", b.name, b.N, formatFloat(b.nsPerOp), nsPerOpDur.String())
