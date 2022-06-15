@@ -19,6 +19,7 @@ package functional
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"runtime"
@@ -37,6 +38,7 @@ type T struct {
 	deadline time.Time
 	pass     bool
 	indent   int
+	writer   io.Writer
 }
 
 // Functional test code.
@@ -47,10 +49,17 @@ var (
 	maxTimeout = 10 * time.Minute
 )
 
-func newT(name string) *T {
-	return &T{
-		name: name,
+func newT(name string, opts ...FunctionalOption) *T {
+	t := &T{
+		name:   name,
+		writer: os.Stdout,
 	}
+
+	for _, opt := range opts {
+		opt.Apply(t)
+	}
+
+	return t
 }
 
 func (t *T) Name() string {
@@ -89,11 +98,11 @@ func (t *T) FailNow() {
 }
 
 func (t *T) Log(message ...interface{}) {
-	fmt.Println(message...)
+	fmt.Fprintln(t.writer, message...)
 }
 
 func (t *T) Logf(format string, args ...interface{}) {
-	fmt.Printf(format+"\n", args...)
+	fmt.Fprintf(t.writer, format+"\n", args...)
 }
 
 func (t *T) invoke(ctx context.Context, fn TestFunc) {

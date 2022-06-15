@@ -99,7 +99,7 @@ func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 
 func (b *B) result() BenchmarkResult {
 	return BenchmarkResult{
-		Pass:   b.pass,
+		Pass:    b.pass,
 		NsPerOp: b.nsPerOp,
 	}
 }

@@ -24,16 +24,16 @@ import (
 )
 
 // Run a test.  Test named after function name.
-func Run(ctx context.Context, fn TestFunc) bool {
+func Run(ctx context.Context, fn TestFunc, opts ...FunctionalOption) bool {
 	name := funcName(fn)
-	t := newT(name)
+	t := newT(name, opts...)
 	t.invoke(ctx, fn)
 	return t.pass
 }
 
 // Run a test with user-provided name.
-func RunWithName(ctx context.Context, name string, fn TestFunc) bool {
-	t := newT(name)
+func RunWithName(ctx context.Context, name string, fn TestFunc, opts ...FunctionalOption) bool {
+	t := newT(name, opts...)
 	t.invoke(ctx, fn)
 	return t.pass
 }

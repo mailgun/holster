@@ -169,7 +169,7 @@ func TestFunctional(t *testing.T) {
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
 			assert.True(t, pass)
-			assert.Equal(t, 2 * times, counter)
+			assert.Equal(t, 2*times, counter)
 		})
 
 		t.Run("Partial failure", func(t *testing.T) {
@@ -184,7 +184,7 @@ func TestFunctional(t *testing.T) {
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
 			assert.False(t, pass)
-			assert.Equal(t, 2 * times, counter)
+			assert.Equal(t, 2*times, counter)
 		})
 
 		t.Run("Complete failure", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestFunctional(t *testing.T) {
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
 			assert.False(t, pass)
-			assert.Equal(t, 2 * times, counter)
+			assert.Equal(t, 2*times, counter)
 		})
 	})
 }
