@@ -24,24 +24,31 @@ type BenchmarkResult struct {
 	NsPerOp float64
 }
 
-func newB(name string, times int) *B {
-	return &B{
+func newB(name string, times int, opts ...FunctionalOption) *B {
+	b := &B{
 		T: T{
 			name: name,
 		},
 		N: times,
 	}
+
+	for _, opt := range opts {
+		opt.Apply(&b.T)
+	}
+
+	return b
 }
 
-func (b *B) Run(name string, fn BenchmarkFunc) BenchmarkResult {
-	return b.RunTimes(name, fn, 1)
+func (b *B) Run(name string, fn BenchmarkFunc, opts ...FunctionalOption) BenchmarkResult {
+	return b.RunTimes(name, fn, 1, opts...)
 }
 
-func (b *B) RunTimes(name string, fn BenchmarkFunc, times int) BenchmarkResult {
+func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
 	b2 := &B{
 		T: T{
 			name:   joinName(b.name, name),
 			indent: b.indent + 1,
+			writer: b.writer,
 		},
 		N: times,
 	}

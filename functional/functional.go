@@ -40,10 +40,10 @@ func RunWithName(ctx context.Context, name string, fn TestFunc, opts ...Function
 
 // Run a suite of tests as a unit.
 // Generates summary when finished.
-func RunSuite(ctx context.Context, suiteName string, tests []TestFunc) bool {
+func RunSuite(ctx context.Context, suiteName string, tests []TestFunc, opts ...FunctionalOption) bool {
 	result := map[bool]int{true: 0, false: 0}
 	numTests := len(tests)
-	t := newT(suiteName)
+	t := newT(suiteName, opts...)
 	suiteStartTime := time.Now()
 
 	t.invoke(ctx, func(t *T) {
@@ -71,16 +71,16 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc) bool {
 }
 
 // Run a benchmark test.  Test named after function name.
-func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int) BenchmarkResult {
+func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
 	name := funcName(fn)
-	b := newB(name, times)
+	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
 	return b.result()
 }
 
 // Run a benchmark test with user-provided name.
-func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFunc, times int) BenchmarkResult {
-	b := newB(name, times)
+func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
+	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
 	return b.result()
 }
@@ -88,10 +88,10 @@ func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFun
 // Run a suite of benchmark tests as a unit.
 // Run each benchmark n times.
 // Generates summary when finished.
-func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, tests []BenchmarkFunc) bool {
+func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, tests []BenchmarkFunc, opts ...FunctionalOption) bool {
 	result := map[bool]int{true: 0, false: 0}
 	numTests := len(tests)
-	b := newB(suiteName, 1)
+	b := newB(suiteName, 1, opts...)
 	suiteStartTime := time.Now()
 
 	b.invoke(ctx, func(b *B) {
