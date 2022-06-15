@@ -70,6 +70,7 @@ func (t *T) Run(name string, fn TestFunc) bool {
 	t2 := &T{
 		name:   joinName(t.name, name),
 		indent: t.indent + 1,
+		writer: t.writer,
 	}
 
 	t2.invoke(t.ctx, fn)
