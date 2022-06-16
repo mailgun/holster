@@ -12,6 +12,7 @@ type withWriterOption struct {
 
 func (o *withWriterOption) Apply(t *T) {
 	t.writer = o.writer
+	t.errWriter = o.writer
 }
 
 // WithWriter sets log output writer.

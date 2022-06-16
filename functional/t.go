@@ -33,12 +33,13 @@ import (
 
 // Functional test context.
 type T struct {
-	name     string
-	ctx      context.Context
-	deadline time.Time
-	pass     bool
-	indent   int
-	writer   io.Writer
+	name      string
+	ctx       context.Context
+	deadline  time.Time
+	pass      bool
+	indent    int
+	writer    io.Writer
+	errWriter io.Writer
 }
 
 // Functional test code.
@@ -51,8 +52,9 @@ var (
 
 func newT(name string, opts ...FunctionalOption) *T {
 	t := &T{
-		name:   name,
-		writer: os.Stdout,
+		name:      name,
+		writer:    os.Stdout,
+		errWriter: os.Stderr,
 	}
 
 	for _, opt := range opts {
@@ -68,9 +70,10 @@ func (t *T) Name() string {
 
 func (t *T) Run(name string, fn TestFunc) bool {
 	t2 := &T{
-		name:   joinName(t.name, name),
-		indent: t.indent + 1,
-		writer: t.writer,
+		name:      joinName(t.name, name),
+		indent:    t.indent + 1,
+		writer:    t.writer,
+		errWriter: t.errWriter,
 	}
 
 	t2.invoke(t.ctx, fn)
@@ -89,8 +92,13 @@ func (t *T) Deadline() (time.Time, error) {
 	return t.deadline, nil
 }
 
+func (t *T) Error(args ...interface{}) {
+	fmt.Fprintln(t.errWriter, args...)
+	t.pass = false
+}
+
 func (t *T) Errorf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	fmt.Fprintf(t.errWriter, format+"\n", args...)
 	t.pass = false
 }
 
@@ -125,10 +133,9 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 			if err := recover(); err != nil {
 				errMsg := fmt.Sprintf("%v", err)
 				if errMsg != "" {
-					log.WithField("test", t.name).Error(errMsg)
-					debug.PrintStack()
+					t.Error(errMsg)
 				}
-				t.pass = false
+				t.Error(debug.Stack())
 			}
 		}()
 
