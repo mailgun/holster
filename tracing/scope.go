@@ -109,7 +109,7 @@ func getCallerSpanName(skip int) (string, string) {
 }
 
 func getFileTag(skip int) string {
-	_, file, line, ok := runtime.Caller(1)
+	_, file, line, ok := runtime.Caller(skip)
 
 	// Determine source file and line number.
 	if !ok {

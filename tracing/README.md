@@ -17,7 +17,7 @@ web UI to query for traces and view the waterfall graph.
 OpenTelemetry is distributed, which allows services to pass the trace ids to
 disparate remote services.  The remote service may generate child spans that
 will be visible on the same waterfall graph.  This requires that all services
-send traces to the same Jaeger server.
+send traces to the same Jaeger Server.
 
 ## Why OpenTelemetry?
 It is the latest standard for distributed tracing clients.
@@ -28,12 +28,9 @@ OpenTelemetry supersedes its now deprecated predecessor,
 It no longer requires implementation specific client modules, such as Jaeger
 client.  The provided OpenTelemetry SDK includes a client for Jaeger.
 
-## Why Jaeger Tracing server?
-Easy to setup.  Powerful and easy to use web UI.  Open source.
-
-Traces are sent as UDP packets.  This minimizes burden on client to not
-need to maintain an open socket or rely on server response time.  If tracing is
-not needed, the packets sent by the client will be simply discarded by the OS.
+## Why Jaeger Tracing Server?
+Easy to setup.  Powerful and easy to use web UI.  Open source.  Scalable using
+Elasticsearch.
 
 ## Getting Started
 [opentelemetry.io](https://opentelemetry.io)
@@ -44,28 +41,53 @@ OpenTelemetry dev reference:
 See unit tests for usage examples.
 
 ### Configuration
-Configuration via environment variables:
-[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
-Such as:
-```
-OTEL_SERVICE_NAME=myapp
-OTEL_EXPORTER_JAEGER_AGENT_HOST=<hostname|ip>
-```
+In ideal conditions where you wish to send traces to localhost on 6831/udp, no
+configuration is necessary.
 
-The service name appears in the Jaeger "Service" dropdown.  If unset, default
-is `unknown_service:<executable-filename>`.
+Configuration reference via environment variables:
+[https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
+
+#### Export via UDP
+By default, Jaeger exports to a Jaeger Agent on localhost port 6831/udp.  The
+host and port can be changed by setting environment variable
+`OTEL_EXPORTER_JAEGER_AGENT_HOST` to the "host:port" of the agent.
+
+It's important to ensure UDP traces are sent on the loopback interface (aka
+localhost).  UDP datagrams are limited in size to the MTU of the interface and
+the payload cannot be split into multiple datagrams.  The loopback interface
+MTU is large, typically 65000 or higher.  Network interface MTU is typically
+much lower at 1500.  OpenTelemetry's Jaeger client is sometimes unable to limit
+its payload to fit in a 1500 byte datagram and will drop those packets.  This
+causes traces that are mangled or missing detail.
+
+#### Export via HTTP
+If it's not possible to install a Jaeger Agent on localhost, the client can
+instead export directly to the Jaeger Collector of the Jaeger Server on HTTP
+port 14268.
+
+Enable HTTP exporter with configuration:
+```
+OTEL_EXPORTER_JAEGER_PROTOCOL=http/thift.binary
+OTEL_EXPORTER_JAEGER_ENDPOINT=http://<jaeger-server>:14268/api/traces
+```
 
 #### Probabilistic Sampling
-By default, all traces are sampled.
+By default, all traces are sampled.  If the tracing volume is burdening the
+application, network, or Jaeger Server, then sampling can be used to
+selectively drop some of the traces.
 
-In production, it may be ideal to limit this stream of trace data by sampling based on a percentage probability.  To enable, set environment variables:
+In production, it may be ideal to set sampling based on a percentage
+probability.  The probability can be set in Jaeger Server configuration or
+locally.
+
+To enable locally, set environment variables:
 
 ```
 OTEL_TRACES_SAMPLER=traceidratio
-OTEL_TRACES_SAMPLER_ARG=<percentage-between-0-and-100>
+OTEL_TRACES_SAMPLER_ARG=<value-between-0-and-1>
 ```
 
-Previously in OpenTracing, this was configured in environment variables `JAEGER_SAMPLER_TYPE=probabilitistic` and `JAEGER_SAMPLER_PARAM` to the probability between 0 and 1.0.
+Where 1 is always sample every trace and 0 is do not sample anything.
 
 ### Initialization
 The OpenTelemetry client must be initialized to read configuration and prepare
@@ -80,11 +102,10 @@ repo.
 import "github.com/mailgun/holster/v4/tracing"
 
 ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
-tracing.SetDefaultTracer(tracer)
 
 // ...
 
-tracing.CloseTracing(context.Background())
+err = tracing.CloseTracing(context.Background())
 ```
 
 ### Tracer Lifecycle
@@ -110,15 +131,20 @@ OpenTelemetry is configured by environment variables and supplemental resource
 settings.  Some of these resources also map to environment variables.
 
 #### Service Name
-As an alternative to configuring service name with environment variable
-`OTEL_SERVICE_NAME`, it may be provided as a resource.  The resource setting
-takes precedent over the environment variable.
+The service name appears in the Jaeger "Service" dropdown.  If unset, default
+is `unknown_service:<executable-filename>`.
+
+Service name may be set in configuration by environment variable
+`OTEL_SERVICE_NAME`.
+
+As an alternative to environment variable, it may be provided as a resource.
+The resource setting takes precedent over the environment variable.
 
 ```go
 import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 )
 
 res, err := resource.Merge(
@@ -131,9 +157,6 @@ res, err := resource.Merge(
 )
 ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
 ```
-
-If neither resource nor environment variable are provided, the default service
-name is `unknown_service:<executable-filename>`.
 
 ### Manual Tracing
 Basic instrumentation.  Traces function duration as a span and captures logrus logs.
@@ -223,10 +246,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func MyFunc(ctx context.Context) (err error) {
+func MyFunc(ctx context.Context) (reterr error) {
 	ctx = tracing.StartScope(ctx)
 	defer func() {
-		tracing.EndScope(ctx, err)
+		tracing.EndScope(ctx, reterr)
 	}()
 
 	logrus.WithContext(ctx).Info("This message also logged to trace")
