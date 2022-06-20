@@ -3,6 +3,7 @@ package functional
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -28,7 +29,9 @@ type BenchmarkResult struct {
 func newB(name string, times int, opts ...FunctionalOption) *B {
 	b := &B{
 		T: T{
-			name: name,
+			name:      name,
+			writer:    os.Stdout,
+			errWriter: os.Stderr,
 		},
 		N: times,
 	}
@@ -47,9 +50,10 @@ func (b *B) Run(name string, fn BenchmarkFunc, opts ...FunctionalOption) Benchma
 func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
 	b2 := &B{
 		T: T{
-			name:   joinName(b.name, name),
-			indent: b.indent + 1,
-			writer: b.writer,
+			name:      joinName(b.name, name),
+			indent:    b.indent + 1,
+			writer:    b.writer,
+			errWriter: b.errWriter,
 		},
 		N: times,
 	}
