@@ -40,6 +40,7 @@ type T struct {
 	indent    int
 	writer    io.Writer
 	errWriter io.Writer
+	args      []string
 }
 
 // Functional test code.
@@ -112,6 +113,10 @@ func (t *T) Log(message ...interface{}) {
 
 func (t *T) Logf(format string, args ...interface{}) {
 	fmt.Fprintf(t.writer, format+"\n", args...)
+}
+
+func (t *T) Args() []string {
+	return t.args
 }
 
 func (t *T) invoke(ctx context.Context, fn TestFunc) {

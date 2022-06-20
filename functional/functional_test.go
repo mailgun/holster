@@ -1,6 +1,8 @@
 package functional_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -46,6 +48,26 @@ func TestFunctional(t *testing.T) {
 				pass := functional.Run(ctx, testFunc)
 				assert.False(t, pass)
 			})
+		})
+
+		t.Run("WithWriter()", func(t *testing.T) {
+			testFunc := func(ft *functional.T) {
+				ft.Log("Foobar")
+			}
+			var buf bytes.Buffer
+			twriter := bufio.NewWriter(&buf)
+			pass := functional.Run(ctx, testFunc, functional.WithWriter(twriter))
+			assert.True(t, pass)
+			assert.Contains(t, "Foobar", buf.String())
+		})
+
+		t.Run("WithArgs()", func(t *testing.T) {
+			args := []string{"A", "B", "C"}
+			testFunc := func(ft *functional.T) {
+				assert.Equal(t, args, ft.Args())
+			}
+			pass := functional.Run(ctx, testFunc, functional.WithArgs(args...))
+			assert.True(t, pass)
 		})
 	})
 
@@ -111,8 +133,8 @@ func TestFunctional(t *testing.T) {
 			for _, testCase := range testCases {
 				t.Run(testCase.Name, func(t *testing.T) {
 					var counter int
-					benchmarkFunc := func(b *functional.B) {
-						for i := 0; i < b.N; i++ {
+					benchmarkFunc := func(fb *functional.B) {
+						for i := 0; i < fb.N; i++ {
 							counter++
 							time.Sleep(testCase.Delay)
 						}
@@ -125,18 +147,38 @@ func TestFunctional(t *testing.T) {
 			}
 		})
 
-		t.Run("Benchmark fails", func(t *testing.T) {
-			testFunc := func(ft *functional.T) {
-				ft.FailNow()
+		t.Run("WithWriter()", func(t *testing.T) {
+			testFunc := func(fb *functional.B) {
+				fb.Log("Foobar")
 			}
-			pass := functional.Run(ctx, testFunc)
-			assert.False(t, pass)
+			var buf bytes.Buffer
+			bwriter := bufio.NewWriter(&buf)
+			result := functional.RunBenchmarkTimes(ctx, testFunc, 1, functional.WithWriter(bwriter))
+			assert.True(t, result.Pass)
+			assert.Contains(t, "Foobar", buf.String())
+		})
+
+		t.Run("WithArgs()", func(t *testing.T) {
+			args := []string{"A", "B", "C"}
+			testFunc := func(fb *functional.B) {
+				assert.Equal(t, args, fb.Args())
+			}
+			result := functional.RunBenchmarkTimes(ctx, testFunc, 1, functional.WithArgs(args...))
+			assert.True(t, result.Pass)
+		})
+
+		t.Run("Benchmark fails", func(t *testing.T) {
+			testFunc := func(fb *functional.B) {
+				fb.FailNow()
+			}
+			result := functional.RunBenchmarkTimes(ctx, testFunc, 1)
+			assert.False(t, result.Pass)
 		})
 
 		t.Run("Nested benchmark", func(t *testing.T) {
 			t.Run("Passes", func(t *testing.T) {
-				benchFunc := func(b *functional.B) {
-					b.Run("Subtest 1", func(_ *functional.B) {
+				benchFunc := func(fb *functional.B) {
+					fb.Run("Subtest 1", func(_ *functional.B) {
 					})
 				}
 				result := functional.RunBenchmarkTimes(ctx, benchFunc, 1)
@@ -144,8 +186,8 @@ func TestFunctional(t *testing.T) {
 			})
 
 			t.Run("Fails", func(t *testing.T) {
-				benchFunc := func(b *functional.B) {
-					b.Run("Subtest 1", func(b *functional.B) {
+				benchFunc := func(fb *functional.B) {
+					fb.Run("Subtest 1", func(b *functional.B) {
 						b.FailNow()
 					})
 				}
@@ -160,11 +202,11 @@ func TestFunctional(t *testing.T) {
 
 		t.Run("Happy path", func(t *testing.T) {
 			var counter int
-			testFunc1 := func(b *functional.B) {
-				counter += b.N
+			testFunc1 := func(fb *functional.B) {
+				counter += fb.N
 			}
-			testFunc2 := func(b *functional.B) {
-				counter += b.N
+			testFunc2 := func(fb *functional.B) {
+				counter += fb.N
 			}
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
@@ -174,12 +216,12 @@ func TestFunctional(t *testing.T) {
 
 		t.Run("Partial failure", func(t *testing.T) {
 			var counter int
-			testFunc1 := func(b *functional.B) {
-				counter += b.N
+			testFunc1 := func(fb *functional.B) {
+				counter += fb.N
 			}
-			testFunc2 := func(b *functional.B) {
-				counter += b.N
-				b.FailNow()
+			testFunc2 := func(fb *functional.B) {
+				counter += fb.N
+				fb.FailNow()
 			}
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
@@ -189,13 +231,13 @@ func TestFunctional(t *testing.T) {
 
 		t.Run("Complete failure", func(t *testing.T) {
 			var counter int
-			testFunc1 := func(b *functional.B) {
-				counter += b.N
-				b.FailNow()
+			testFunc1 := func(fb *functional.B) {
+				counter += fb.N
+				fb.FailNow()
 			}
-			testFunc2 := func(b *functional.B) {
-				counter += b.N
-				b.FailNow()
+			testFunc2 := func(fb *functional.B) {
+				counter += fb.N
+				fb.FailNow()
 			}
 			tests := []functional.BenchmarkFunc{testFunc1, testFunc2}
 			pass := functional.RunBenchmarkSuiteTimes(ctx, "Foobar suite", times, tests)
