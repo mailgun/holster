@@ -67,7 +67,7 @@ port 14268.
 
 Enable HTTP exporter with configuration:
 ```
-OTEL_EXPORTER_JAEGER_PROTOCOL=http/thift.binary
+OTEL_EXPORTER_JAEGER_PROTOCOL=http/thrift.binary
 OTEL_EXPORTER_JAEGER_ENDPOINT=http://<jaeger-server>:14268/api/traces
 ```
 
