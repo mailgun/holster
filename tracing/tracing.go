@@ -25,6 +25,7 @@ var logLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
+var log = logrus.WithField("category", "tracing")
 var globalMutex sync.RWMutex
 var defaultTracer trace.Tracer
 
@@ -146,13 +147,19 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	var endpointOption jaeger.EndpointOption
 
 	// Otel Jaeger client doesn't seem to implement the spec for
-	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.
+	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
 	switch os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL") {
-	case "http/thift.binary":
+	case "http/thrift.binary":
+		log.WithFields(logrus.Fields{
+			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
+		}).Info("Initializing Jaeger client for http/thrift.binary")
 		endpointOption = jaeger.WithCollectorEndpoint()
 
 	default:
-		// Default protocol "udp/thift.binary".
+		log.WithFields(logrus.Fields{
+			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
+			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
+		}).Info("Initializing Jaeger client for udp/thrift.binary")
 		endpointOption = jaeger.WithAgentEndpoint()
 	}
 
