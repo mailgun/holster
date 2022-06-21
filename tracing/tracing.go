@@ -152,14 +152,14 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	case "http/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
-		}).Info("Initializing Jaeger client for http/thrift.binary")
+		}).Info("Initializing Jaeger exporter via http/thrift.binary")
 		endpointOption = jaeger.WithCollectorEndpoint()
 
 	default:
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Info("Initializing Jaeger client for udp/thrift.binary")
+		}).Info("Initializing Jaeger exporter via udp/thrift.binary")
 		endpointOption = jaeger.WithAgentEndpoint()
 	}
 
