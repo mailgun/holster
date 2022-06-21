@@ -50,7 +50,7 @@ Configuration reference via environment variables:
 #### Export via UDP
 By default, Jaeger exports to a Jaeger Agent on localhost port 6831/udp.  The
 host and port can be changed by setting environment variables
-`OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`.
+`OTEL_EXPORTER_JAEGER_AGENT_HOST`, `OTEL_EXPORTER_JAEGER_AGENT_PORT`.
 
 It's important to ensure UDP traces are sent on the loopback interface (aka
 localhost).  UDP datagrams are limited in size to the MTU of the interface and
@@ -298,6 +298,22 @@ details.
 ### Other Instrumentation Options
 See: [https://opentelemetry.io/registry/?language=go&component=instrumentation](https://opentelemetry.io/registry/?language=go&component=instrumentation)
 
+#### gRPC Client
+Client's trace ids are propagated to the server.  A span will be created for
+the client call and another one for the server side.
+
+```go
+import (
+	"google.golang.org/grpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+)
+
+conn, err := grpc.Dial(server,
+	grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+)
+```
+
 #### gRPC Server
 ```go
 import (
@@ -308,18 +324,5 @@ import (
 grpcSrv := grpc.NewServer(
 	grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
-)
-```
-
-#### gRPC Client
-```go
-import (
-	"google.golang.org/grpc"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-)
-
-conn, err := grpc.Dial(server,
-	grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-	grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
 )
 ```
