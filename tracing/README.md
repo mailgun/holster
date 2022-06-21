@@ -49,8 +49,8 @@ Configuration reference via environment variables:
 
 #### Export via UDP
 By default, Jaeger exports to a Jaeger Agent on localhost port 6831/udp.  The
-host and port can be changed by setting environment variable
-`OTEL_EXPORTER_JAEGER_AGENT_HOST` to the "host:port" of the agent.
+host and port can be changed by setting environment variables
+`OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`.
 
 It's important to ensure UDP traces are sent on the loopback interface (aka
 localhost).  UDP datagrams are limited in size to the MTU of the interface and
