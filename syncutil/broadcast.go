@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Mailgun Technologies Inc
+Copyright 2022 Mailgun Technologies Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ type Broadcaster interface {
 	WaitChan(string) chan struct{}
 	Wait(string)
 	Broadcast()
+	Has(string) bool
+	Remove(string)
 	Done()
 }
 
@@ -30,16 +32,30 @@ type Broadcaster interface {
 // will eventually block until the goroutines can catch up. This ensures goroutines will
 // receive at least one event per broadcast() call.
 type broadcast struct {
-	clients map[string]chan struct{}
-	done    chan struct{}
-	mutex   sync.Mutex
+	clients     map[string]chan struct{}
+	done        chan struct{}
+	mutex       sync.Mutex
+	channelSize int
 }
 
-func NewBroadcaster() Broadcaster {
-	return &broadcast{
-		clients: make(map[string]chan struct{}),
-		done:    make(chan struct{}),
+type BroadcasterOption interface {
+	Apply(*broadcast)
+}
+
+const DefaultChannelSize = 10000
+
+func NewBroadcaster(opts ...BroadcasterOption) Broadcaster {
+	br := &broadcast{
+		clients:     make(map[string]chan struct{}),
+		done:        make(chan struct{}),
+		channelSize: DefaultChannelSize,
 	}
+
+	for _, opt := range opts {
+		opt.Apply(br)
+	}
+
+	return br
 }
 
 // Notify all Waiting goroutines
@@ -61,7 +77,7 @@ func (b *broadcast) Wait(name string) {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, 10000)
+		b.clients[name] = make(chan struct{}, b.channelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
@@ -80,9 +96,37 @@ func (b *broadcast) WaitChan(name string) chan struct{} {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, 10000)
+		b.clients[name] = make(chan struct{}, b.channelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
 	return channel
+}
+
+// Has checks if a client name is registered.
+func (b *broadcast) Has(name string) bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	_, exists := b.clients[name]
+	return exists
+}
+
+// Remove client name previously registered by Wait/WaitChan.
+func (b *broadcast) Remove(name string) {
+	b.mutex.Lock()
+	delete(b.clients, name)
+	b.mutex.Unlock()
+}
+
+type withChannelSizeOption struct {
+	channelSize int
+}
+
+// WithChannelSize sets the client's broadcast channel size.
+func WithChannelSize(channelSize int) BroadcasterOption {
+	return &withChannelSizeOption{channelSize: channelSize}
+}
+
+func (o *withChannelSizeOption) Apply(b *broadcast) {
+	b.channelSize = o.channelSize
 }
