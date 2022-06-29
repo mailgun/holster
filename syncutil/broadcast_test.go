@@ -159,4 +159,12 @@ func TestBroadcaster(t *testing.T) {
 			assert.Len(t, ch2, 1)
 		})
 	})
+
+	t.Run("WithChannelSize()", func(t *testing.T) {
+		const expectedChannelSize = 0xc0ffee
+		broadcaster := syncutil.NewBroadcaster(syncutil.WithChannelSize(expectedChannelSize))
+		ch := broadcaster.WaitChan("Foobar")
+		size := cap(ch)
+		assert.Equal(t, expectedChannelSize, size)
+	})
 }

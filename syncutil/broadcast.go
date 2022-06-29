@@ -32,18 +32,30 @@ type Broadcaster interface {
 // will eventually block until the goroutines can catch up. This ensures goroutines will
 // receive at least one event per broadcast() call.
 type broadcast struct {
-	clients map[string]chan struct{}
-	done    chan struct{}
-	mutex   sync.Mutex
+	clients     map[string]chan struct{}
+	done        chan struct{}
+	mutex       sync.Mutex
+	channelSize int
 }
 
-const broadcastChannelSize = 10000
+type BroadcasterOption interface {
+	Apply(*broadcast)
+}
 
-func NewBroadcaster() Broadcaster {
-	return &broadcast{
-		clients: make(map[string]chan struct{}),
-		done:    make(chan struct{}),
+const defaultBroadcastChannelSize = 10000
+
+func NewBroadcaster(opts ...BroadcasterOption) Broadcaster {
+	br := &broadcast{
+		clients:     make(map[string]chan struct{}),
+		done:        make(chan struct{}),
+		channelSize: defaultBroadcastChannelSize,
 	}
+
+	for _, opt := range opts {
+		opt.Apply(br)
+	}
+
+	return br
 }
 
 // Notify all Waiting goroutines
@@ -65,7 +77,7 @@ func (b *broadcast) Wait(name string) {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, broadcastChannelSize)
+		b.clients[name] = make(chan struct{}, b.channelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
@@ -84,7 +96,7 @@ func (b *broadcast) WaitChan(name string) chan struct{} {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, broadcastChannelSize)
+		b.clients[name] = make(chan struct{}, b.channelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
@@ -104,4 +116,17 @@ func (b *broadcast) Remove(name string) {
 	b.mutex.Lock()
 	delete(b.clients, name)
 	b.mutex.Unlock()
+}
+
+type withChannelSizeOption struct {
+	channelSize int
+}
+
+// WithChannelSize sets the client's broadcast channel size.
+func WithChannelSize(channelSize int) BroadcasterOption {
+	return &withChannelSizeOption{channelSize: channelSize}
+}
+
+func (o *withChannelSizeOption) Apply(b *broadcast) {
+	b.channelSize = o.channelSize
 }
