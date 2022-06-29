@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Mailgun Technologies Inc
+Copyright 2022 Mailgun Technologies Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ type Broadcaster interface {
 	WaitChan(string) chan struct{}
 	Wait(string)
 	Broadcast()
+	Has(string) bool
+	Remove(string)
 	Done()
 }
 
@@ -34,6 +36,8 @@ type broadcast struct {
 	done    chan struct{}
 	mutex   sync.Mutex
 }
+
+const broadcastChannelSize = 10000
 
 func NewBroadcaster() Broadcaster {
 	return &broadcast{
@@ -61,7 +65,7 @@ func (b *broadcast) Wait(name string) {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, 10000)
+		b.clients[name] = make(chan struct{}, broadcastChannelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
@@ -80,9 +84,24 @@ func (b *broadcast) WaitChan(name string) chan struct{} {
 	b.mutex.Lock()
 	channel, ok := b.clients[name]
 	if !ok {
-		b.clients[name] = make(chan struct{}, 10000)
+		b.clients[name] = make(chan struct{}, broadcastChannelSize)
 		channel = b.clients[name]
 	}
 	b.mutex.Unlock()
 	return channel
+}
+
+// Has checks if a client name is registered.
+func (b *broadcast) Has(name string) bool {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	_, exists := b.clients[name]
+	return exists
+}
+
+// Remove client name previously registered by Wait/WaitChan.
+func (b *broadcast) Remove(name string) {
+	b.mutex.Lock()
+	delete(b.clients, name)
+	b.mutex.Unlock()
 }
