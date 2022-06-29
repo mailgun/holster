@@ -42,13 +42,13 @@ type BroadcasterOption interface {
 	Apply(*broadcast)
 }
 
-const defaultBroadcastChannelSize = 10000
+const DefaultChannelSize = 10000
 
 func NewBroadcaster(opts ...BroadcasterOption) Broadcaster {
 	br := &broadcast{
 		clients:     make(map[string]chan struct{}),
 		done:        make(chan struct{}),
-		channelSize: defaultBroadcastChannelSize,
+		channelSize: DefaultChannelSize,
 	}
 
 	for _, opt := range opts {
