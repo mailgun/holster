@@ -12,7 +12,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -78,6 +80,31 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	return tracerCtx, tracer, err
+}
+
+// NewResource creates a resource with sensible defaults.
+// Replaces common use case of verbose usage.
+func NewResource(serviceName, version string, resources ...*resource.Resource) (*resource.Resource, error) {
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(version),
+		),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in resource.Merge")
+	}
+
+	for i, res2 := range resources {
+		res, err = resource.Merge(res, res2)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error in resource.Merge on resources index %d", i)
+		}
+	}
+
+	return res, nil
 }
 
 // NewTracer instantiates a new `Tracer` object with a custom library name.
