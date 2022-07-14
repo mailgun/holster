@@ -147,14 +147,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 )
 
-res, err := resource.Merge(
-	resource.Default(),
-	resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceNameKey.String("My service"),
-		semconv.ServiceVersionKey.String("v1.0.0"),
-	),
-)
+res, err := tracing.NewResource("My service", "v1.0.0")
 ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
 ```
 
