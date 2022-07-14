@@ -2,19 +2,17 @@
 `go test`-like functional testing framework.
 
 ## Why use `functional`?
-`functional` is used when you want to rapidly develop code in the format of a
-unit test or benchmark test using existing testing tools, but run it outside of
-the `go test` environment.  This is handy for use cases needing data inspection
-and having low tolerance for errors.
+`functional` is suggested when you want to rapidly develop code in the format
+of a unit test or benchmark test using existing testing tools, but run it
+outside of the `go test` environment.  This is handy for use cases needing data
+inspection and having low tolerance for errors.
 
 `go test` doesn't support running tests programmatically from compiled code; it
-requires the source code, which won't be available in production.
-
-The original intended use case is to implement tests to run as a background job
-within the Silo job framework in the package `github.com/mailgun/silo`.
+requires the source code, which won't/shouldn't be available in production.
 
 One such use case: runtime health check.  An admin may remotely invoke a health
-check job and watch it run.
+check job and watch it run.  `functional` can manage the health check logic
+once the RPC request is received.
 
 Tools like Testify may be used for assertions and mocking.
 
@@ -54,86 +52,5 @@ import (
 func myTest1(t *functional.T) {
 	retval := DoSomething()
 	require.Equal(t, "OK", retval)
-}
-```
-
-## Run in a Silo Job
-Jobs can be run natively (in-process) or can be writen in a separate executable
-and called by a job.
-
-### In-process Execution
-Run the functional test inside a Silo job in-process.
-
-```go
-import (
-	"context"
-	"time"
-
-	"github.com/mailgun/holster/v4/functional"
-   "github.com/mailgun/silo"
-	"github.com/stretchr/testify/require"
-)
-
-ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
-defer cancel()
-myAction := new(MyAction)
-myJob := silo.NewEZJob(myAction)
-runner := silo.NewRunner(1000)
-taskId, err := runner.Run(ctx, myJob)
-
-// ...
-
-type MyAction struct{}
-
-func (a *MyAction) Run(ctx context.Context, writer io.Writer) error {
-	tests := []functional.TestFunc{myTest1}
-	functional.RunSuite(ctx, "My suite", tests)
-	return nil
-}
-
-func (a *MyAction) Status(status silo.Status) {
-}
-```
-
-### Out-of-process Execution
-Run the same test in a separate process.  This has the advantage of protection
-to ensure any faulty tests would not bring down the parent process.  Also,
-using `ExecJob` type will capture all STDOUT/STDERR as job output, whereas a
-native job only captures what is sent to its `writer`..
-
-```go
-import (
-	"context"
-	"time"
-
-	"github.com/mailgun/silo"
-	"github.com/sirupsen/logrus"
-)
-
-ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
-defer cancel()
-myHandler := new(MyHandler)
-myJob := silo.NewExecJob(myHandler, "mytest1")
-runner := silo.NewRunner(1000)
-taskId, err := runner.Run(ctx, myJob)
-
-// ...
-
-type MyHandler struct{}
-
-func (h *MyHandler) Done(exitCode int) {
-	logrus.Infof("Exit code: %d", exitCode)
-}
-```
-
-Compile the test code to executable file `mytest1`:
-```go
-import (
-	"github.com/mailgun/holster/v4/functional"
-)
-
-func main() {
-	tests := []functional.TestFunc{myTest1}
-	functional.RunSuite(ctx, "My suite", tests)
 }
 ```
