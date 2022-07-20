@@ -145,7 +145,7 @@ func CloseTracing(ctx context.Context) error {
 	}
 
 	SetDefaultTracer(nil)
-	ctx, cancel := context.WithTimeout(ctx, 5 * time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	err := tp.Shutdown(ctx)
@@ -173,20 +173,37 @@ func TracerFromContext(ctx context.Context) trace.Tracer {
 func makeJaegerExporter() (*jaeger.Exporter, error) {
 	var endpointOption jaeger.EndpointOption
 
+	protocol := os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL")
+	if protocol == "" {
+		protocol = "udp/thift.compact"
+	}
+
 	// Otel Jaeger client doesn't seem to implement the spec for
 	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
-	switch os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL") {
+	switch protocol {
 	case "http/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
-		}).Info("Initializing Jaeger exporter via http/thrift.binary")
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithCollectorEndpoint()
 
-	default:
+	case "udp/thift.binary":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Info("Initializing Jaeger exporter via udp/thrift.binary")
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
+		endpointOption = jaeger.WithAgentEndpoint()
+
+	case "udp/thift.compact":
+		log.WithFields(logrus.Fields{
+			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
+			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
+		endpointOption = jaeger.WithAgentEndpoint()
+
+	default:
+		log.WithField("OTEL_EXPORTER_JAEGER_PROTOCOL", protocol).
+			Error("Unknown OpenTelemetry protocol configured")
 		endpointOption = jaeger.WithAgentEndpoint()
 	}
 
