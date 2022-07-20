@@ -180,25 +180,25 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 
 	// Otel Jaeger client doesn't seem to implement the spec for
 	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
-	switch os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL") {
+	switch protocol {
 	case "http/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
-		}).Info("Initializing Jaeger exporter via http/thrift.binary")
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithCollectorEndpoint()
 
 	case "udp/thift.binary":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Info("Initializing Jaeger exporter via udp/thrift.compact")
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	case "udp/thift.compact":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Info("Initializing Jaeger exporter via udp/thrift.compact")
+		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	default:
