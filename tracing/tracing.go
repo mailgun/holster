@@ -175,7 +175,7 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 
 	protocol := os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL")
 	if protocol == "" {
-		protocol = "udp/thift.compact"
+		protocol = "udp/thrift.compact"
 	}
 
 	// Otel Jaeger client doesn't seem to implement the spec for
@@ -187,14 +187,14 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithCollectorEndpoint()
 
-	case "udp/thift.binary":
+	case "udp/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
 		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
 		endpointOption = jaeger.WithAgentEndpoint()
 
-	case "udp/thift.compact":
+	case "udp/thrift.compact":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
