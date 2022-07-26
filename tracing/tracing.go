@@ -3,19 +3,24 @@ package tracing
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/mailgun/holster/v4/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
+	"google.golang.org/grpc/credentials"
 )
 
 // Context Values key for embedding `Tracer` object.
@@ -39,14 +44,26 @@ var defaultTracer trace.Tracer
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
 func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
-	exp, err := makeJaegerExporter()
-	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
+	var opts2 []sdktrace.TracerProviderOption
+
+	if anyHasPrefix("OTEL_EXPORTER_HONEYCOMB", os.Environ()) {
+		exp, err := makeHoneyCombExporter(ctx)
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
+		}
+		opts2 = []sdktrace.TracerProviderOption{
+			sdktrace.WithBatcher(exp),
+		}
+	} else {
+		exp, err := makeJaegerExporter()
+		if err != nil {
+			return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
+		}
+		opts2 = []sdktrace.TracerProviderOption{
+			sdktrace.WithBatcher(exp),
+		}
 	}
 
-	opts2 := []sdktrace.TracerProviderOption{
-		sdktrace.WithBatcher(exp),
-	}
 	opts2 = append(opts2, opts...)
 
 	tp := sdktrace.NewTracerProvider(opts2...)
@@ -213,4 +230,37 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	}
 
 	return exp, nil
+}
+
+func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
+
+	endPoint := os.Getenv("OTEL_EXPORTER_HONEYCOMB_ENDPOINT")
+	if endPoint == "" {
+		endPoint = "api.honeycomb.io:443"
+	}
+
+	apiKey := os.Getenv("OTEL_EXPORTER_HONEYCOMB_APIKEY")
+	if apiKey == "" {
+		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_APIKEY' cannot be empty")
+	}
+
+	opts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(endPoint),
+		otlptracegrpc.WithHeaders(map[string]string{
+			"x-honeycomb-team": apiKey,
+		}),
+		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+	}
+
+	client := otlptracegrpc.NewClient(opts...)
+	return otlptrace.New(ctx, client)
+}
+
+func anyHasPrefix(prefix string, items []string) bool {
+	for _, i := range items {
+		if strings.HasPrefix(i, prefix) {
+			return true
+		}
+	}
+	return false
 }
