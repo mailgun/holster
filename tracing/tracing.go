@@ -46,24 +46,31 @@ var defaultTracer trace.Tracer
 func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
 	var opts2 []sdktrace.TracerProviderOption
 
-	if anyHasPrefix("OTEL_EXPORTER_HONEYCOMB", os.Environ()) {
-		exp, err := makeHoneyCombExporter(ctx)
-		if err != nil {
-			return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
-		}
-		opts2 = []sdktrace.TracerProviderOption{
-			sdktrace.WithBatcher(exp),
-		}
-	} else {
-		exp, err := makeJaegerExporter()
-		if err != nil {
-			return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
-		}
-		opts2 = []sdktrace.TracerProviderOption{
-			sdktrace.WithBatcher(exp),
+	exporters := os.Getenv("OTEL_EXPORTERS")
+	for _, e := range strings.Split(exporters, ",") {
+		switch e {
+		case "honeycomb":
+			exp, err := makeHoneyCombExporter(ctx)
+			if err != nil {
+				return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
+			}
+			opts2 = []sdktrace.TracerProviderOption{
+				sdktrace.WithBatcher(exp),
+			}
+		case "jaeger":
+			fallthrough
+		default:
+			exp, err := makeJaegerExporter()
+			if err != nil {
+				return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
+			}
+			opts2 = []sdktrace.TracerProviderOption{
+				sdktrace.WithBatcher(exp),
+			}
 		}
 	}
 
+	// Combine the exporter opts and the user provided opts
 	opts2 = append(opts2, opts...)
 
 	tp := sdktrace.NewTracerProvider(opts2...)

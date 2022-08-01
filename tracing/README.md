@@ -319,3 +319,19 @@ grpcSrv := grpc.NewServer(
 	grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
 )
 ```
+
+### Config Options
+Possible environment config exporter config options when using `tracking.InitTracing()`.
+
+#### Jaeger
+* `OTEL_EXPORTER_JAEGER_PROTOCOL`
+* `OTEL_EXPORTER_JAEGER_ENDPOINT`
+* `OTEL_EXPORTER_JAEGER_AGENT_HOST`
+* `OTEL_EXPORTER_JAEGER_AGENT_PORT`
+
+#### HoneyComb
+* `OTEL_EXPORTER_HONEYCOMB_ENDPOINT`
+* `OTEL_EXPORTER_HONEYCOMB_APIKEY`
+
+Other environment config options recognized by OTEL
+libraries are defined [here](https://opentelemetry.io/docs/reference/specification/sdk-environment-variables/)
