@@ -321,7 +321,7 @@ grpcSrv := grpc.NewServer(
 ```
 
 ### Config Options
-Possible environment config exporter config options when using `tracking.InitTracing()`.
+Possible environment config exporter config options when using `tracing.InitTracing()`.
 
 #### Jaeger
 * `OTEL_EXPORTER_JAEGER_PROTOCOL`
@@ -329,9 +329,15 @@ Possible environment config exporter config options when using `tracking.InitTra
 * `OTEL_EXPORTER_JAEGER_AGENT_HOST`
 * `OTEL_EXPORTER_JAEGER_AGENT_PORT`
 
+#### OTEL_EXPORTER_JAEGER_PROTOCOL
+  Possible values:
+* `udp/thrift.compact` (default): Export traces via UDP datagrams.  Best used when Jaeger Agent is accessible via loopback interface.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6831`.
+* `udp/thrift.binary`: Alternative protocol to the more commonly used `udp/thrift.compact`.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6832`.
+* `http/thrift.compact`: Export traces via HTTP packets.  Best used when Jaeger Agent cannot be deployed or is inaccessible via loopback interface.  This setting sends traces directly to Jaeger's collector port.  May also provide `OTEL_EXPORTER_JAEGER_ENDPOINT`, which defaults to `http://localhost:14268/api/traces`.
+
 #### HoneyComb
-* `OTEL_EXPORTER_HONEYCOMB_ENDPOINT`
+* `OTEL_EXPORTER_HONEYCOMB_ENDPOINT` - Defaults to `api.honeycomb.io:443`
 * `OTEL_EXPORTER_HONEYCOMB_APIKEY`
 
-Other environment config options recognized by OTEL
+Other environment config options recognized by OTel
 libraries are defined [here](https://opentelemetry.io/docs/reference/specification/sdk-environment-variables/)

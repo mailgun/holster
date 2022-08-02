@@ -262,12 +262,3 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	client := otlptracegrpc.NewClient(opts...)
 	return otlptrace.New(ctx, client)
 }
-
-func anyHasPrefix(prefix string, items []string) bool {
-	for _, i := range items {
-		if strings.HasPrefix(i, prefix) {
-			return true
-		}
-	}
-	return false
-}
