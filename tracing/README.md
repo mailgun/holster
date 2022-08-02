@@ -337,7 +337,7 @@ Possible environment config exporter config options when using `tracing.InitTrac
 
 #### HoneyComb
 * `OTEL_EXPORTER_HONEYCOMB_ENDPOINT` - Defaults to `api.honeycomb.io:443`
-* `OTEL_EXPORTER_HONEYCOMB_APIKEY`
+* `OTEL_EXPORTER_HONEYCOMB_API_KEY`
 
 Other environment config options recognized by OTel
 libraries are defined [here](https://opentelemetry.io/docs/reference/specification/sdk-environment-variables/)
