@@ -246,9 +246,9 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 		endPoint = "api.honeycomb.io:443"
 	}
 
-	apiKey := os.Getenv("OTEL_EXPORTER_HONEYCOMB_APIKEY")
+	apiKey := os.Getenv("OTEL_EXPORTER_HONEYCOMB_API_KEY")
 	if apiKey == "" {
-		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_APIKEY' cannot be empty")
+		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_API_KEY' cannot be empty")
 	}
 
 	opts := []otlptracegrpc.Option{
