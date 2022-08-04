@@ -240,7 +240,6 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 }
 
 func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-
 	endPoint := os.Getenv("OTEL_EXPORTER_HONEYCOMB_ENDPOINT")
 	if endPoint == "" {
 		endPoint = "api.honeycomb.io:443"
@@ -250,6 +249,11 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	if apiKey == "" {
 		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_API_KEY' cannot be empty")
 	}
+
+	log.WithFields(logrus.Fields{
+		"apiKey": apiKey,
+		"endpoint": endPoint,
+	}).Info("Initializing Honeycomb exporter")
 
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endPoint),
