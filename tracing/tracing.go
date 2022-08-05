@@ -44,6 +44,13 @@ var defaultTracer trace.Tracer
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
 func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
+	level := logrus.GetLevel()
+	return InitTracingWithLevel(ctx, libraryName, level, opts...)
+}
+
+// InitTracingWithLevel initializes a global OpenTelemetry tracer provider
+// singleton and sets tracing level.
+func InitTracingWithLevel(ctx context.Context, libraryName string, level logrus.Level, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
 	var opts2 []sdktrace.TracerProviderOption
 
 	exporters := os.Getenv("OTEL_EXPORTERS")
@@ -79,10 +86,9 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 	// Setup logrus instrumentation.
 	// Using logrus.WithContext() will mirror log to embedded span.
 	// Using WithFields() also converts to log attributes.
-	logLevel := logrus.GetLevel()
 	useLevels := []logrus.Level{}
 	for _, l := range logLevels {
-		if l <= logLevel {
+		if l <= level {
 			useLevels = append(useLevels, l)
 		}
 	}
@@ -251,7 +257,7 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	}
 
 	log.WithFields(logrus.Fields{
-		"apiKey": apiKey,
+		"apiKey":   apiKey,
 		"endpoint": endPoint,
 	}).Info("Initializing Honeycomb exporter")
 
