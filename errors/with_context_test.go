@@ -44,7 +44,7 @@ func TestContext(t *testing.T) {
 	assert.True(t, strings.Contains(out, `key1=value1`))
 }
 
-func TestWithStack(t *testing.T) {
+func TestContextWithStack(t *testing.T) {
 	err := errors.WithStack(io.EOF)
 
 	var files []string
@@ -56,15 +56,15 @@ func TestWithStack(t *testing.T) {
 		}
 	}
 	assert.True(t, linq.From(files).Contains("with_context_test.go"))
-	assert.True(t, linq.From(funcs).Contains("TestWithStack"), funcs)
+	assert.True(t, linq.From(funcs).Contains("TestContextWithStack"), funcs)
 }
 
-func TestWrapfNil(t *testing.T) {
+func TestContextWrapfNil(t *testing.T) {
 	got := errors.WithContext{"some": "context"}.Wrapf(nil, "no error")
 	assert.Nil(t, got)
 }
 
-func TestWrapNil(t *testing.T) {
+func TestContextWrapNil(t *testing.T) {
 	got := errors.WithContext{"some": "context"}.Wrap(nil, "no error")
 	assert.Nil(t, got)
 }

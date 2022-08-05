@@ -429,8 +429,8 @@ type TypedError struct {
 func NewWithType(msg, cls, typ string) *TypedError {
 	return &TypedError{
 		error: New(msg),
-		cls: cls,
-		typ: typ,
+		cls:   cls,
+		typ:   typ,
 	}
 }
 
@@ -441,8 +441,8 @@ func NewWithType(msg, cls, typ string) *TypedError {
 func WrapWithType(err error, cls, typ string) *TypedError {
 	return &TypedError{
 		error: err,
-		cls: cls,
-		typ: typ,
+		cls:   cls,
+		typ:   typ,
 	}
 }
 
