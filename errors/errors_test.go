@@ -6,6 +6,8 @@ import (
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {
@@ -222,4 +224,24 @@ func TestErrorEquality(t *testing.T) {
 			_ = vals[i] == vals[j] // mustn't panic
 		}
 	}
+}
+
+func TestTypedError(t *testing.T) {
+	const ErrClass = "FoobarClass"
+	const ErrType = "FoobarType"
+
+	t.Run("NewWithType()", func(t *testing.T) {
+		err := NewWithType("Foobar", ErrClass, ErrType)
+		assert.Equal(t, "Foobar", err.Error())
+		assert.Equal(t, ErrClass, err.Class())
+		assert.Equal(t, ErrType, err.Type())
+	})
+
+	t.Run("WrapWithType()", func(t *testing.T) {
+		err := New("Foobar")
+		err2 := WrapWithType(err, ErrClass, ErrType)
+		assert.Equal(t, "Foobar", err2.Error())
+		assert.Equal(t, ErrClass, err2.Class())
+		assert.Equal(t, ErrType, err2.Type())
+	})
 }
