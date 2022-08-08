@@ -9,7 +9,7 @@ import (
 // Filter processor implements sdktrace.SpanProcessor to filter spans.
 // Filter by span log level attribute.
 // Set attribute `log.level=<n>`, where `n` is RFC5424 log level number 0-7.
-type filterProcessor struct {
+type FilterProcessor struct {
 	next  sdktrace.SpanProcessor
 	level int64
 }
@@ -18,18 +18,18 @@ const LogLevelKey = "log.level"
 
 // NewFilterProcessor creates a SpanProcessor that filters by span log level
 // attribute `log.level`.
-func NewFilterProcessor(level int64, next sdktrace.SpanProcessor) *filterProcessor {
-	return &filterProcessor{
+func NewFilterProcessor(level int64, next sdktrace.SpanProcessor) *FilterProcessor {
+	return &FilterProcessor{
 		next:  next,
 		level: int64(level),
 	}
 }
 
-func (p *filterProcessor) OnStart(parent context.Context, s sdktrace.ReadWriteSpan) {
+func (p *FilterProcessor) OnStart(parent context.Context, s sdktrace.ReadWriteSpan) {
 	p.next.OnStart(parent, s)
 }
 
-func (p *filterProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
+func (p *FilterProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
 	// Parse log level from span attributes.
 	for _, attr := range s.Attributes() {
 		if string(attr.Key) == LogLevelKey {
@@ -46,10 +46,10 @@ func (p *filterProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
 	p.next.OnEnd(s)
 }
 
-func (p *filterProcessor) Shutdown(ctx context.Context) error {
+func (p *FilterProcessor) Shutdown(ctx context.Context) error {
 	return p.next.Shutdown(ctx)
 }
 
-func (p *filterProcessor) ForceFlush(ctx context.Context) error {
+func (p *FilterProcessor) ForceFlush(ctx context.Context) error {
 	return p.next.ForceFlush(ctx)
 }
