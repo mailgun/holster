@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestDebugTracing(t *testing.T) {
+func TestLogLevel(t *testing.T) {
 	ctx := context.Background()
 	res, err := tracing.NewResource("foobar", "1.0")
 	require.NoError(t, err)
@@ -342,6 +342,250 @@ func TestDebugTracing(t *testing.T) {
 			// Create an info span.
 			ctx2 := tracing.StartNamedScopeError(ctx, "Foobar")
 			tracing.EndScope(ctx2, nil)
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+	})
+
+	t.Run("ScopeX()", func(t *testing.T) {
+		t.Run("ScopeDebug()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.DebugLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create a debug span.
+			_ = tracing.ScopeDebug(ctx, func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("ScopeInfo()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.ScopeInfo(ctx, func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("ScopeWarn()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.WarnLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.ScopeWarn(ctx, func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("ScopeError()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.ErrorLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.ScopeError(ctx, func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+	})
+
+	t.Run("NamedScopeX()", func(t *testing.T) {
+		t.Run("NamedScopeDebug()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.DebugLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create a debug span.
+			_ = tracing.NamedScopeDebug(ctx, "Foobar", func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("NamedScopeInfo()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.NamedScopeInfo(ctx, "Foobar", func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("NamedScopeWarn()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.WarnLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.NamedScopeWarn(ctx, "Foobar", func(_ context.Context) error {
+				return nil
+			})
+
+			err = tracing.CloseTracing(context.Background())
+			require.NoError(t, err)
+
+			// Verify.
+			mockProcessor.AssertExpectations(t)
+		})
+
+		t.Run("NamedScopeError()", func(t *testing.T) {
+			// Mock OTel exporter.
+			mockProcessor := new(MockSpanProcessor)
+			mockProcessor.On("OnStart", mock.Anything, mock.Anything).Once()
+			mockProcessor.On("OnEnd", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s := args.Get(0).(sdktrace.ReadOnlySpan)
+					assertHasLogLevel(t, int64(logrus.ErrorLevel), s)
+				})
+			mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
+
+			processor := tracing.NewFilterProcessor(int64(logrus.DebugLevel), mockProcessor)
+			_, _, err := tracing.InitTracing(ctx, "foobar",
+				sdktrace.WithResource(res),
+				sdktrace.WithSpanProcessor(processor),
+			)
+			require.NoError(t, err)
+
+			// Create an info span.
+			_ = tracing.NamedScopeError(ctx, "Foobar", func(_ context.Context) error {
+				return nil
+			})
 
 			err = tracing.CloseTracing(context.Background())
 			require.NoError(t, err)

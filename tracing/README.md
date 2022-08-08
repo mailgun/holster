@@ -305,7 +305,7 @@ defer tracing.EndScope(ctx2, nil)
 ```
 
 ```go
-err := tracing.ScopeDebug(ctx, func(ctx context.Context) {
+err := tracing.ScopeDebug(ctx, func(ctx context.Context) error {
     // ...
 
     return nil
