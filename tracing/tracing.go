@@ -44,40 +44,42 @@ var defaultTracer trace.Tracer
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
 func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
-	level := logrus.GetLevel()
+	level := int64(logrus.GetLevel())
 	return InitTracingWithLevel(ctx, libraryName, level, opts...)
 }
 
 // InitTracingWithLevel initializes a global OpenTelemetry tracer provider
 // singleton and sets tracing level.
-func InitTracingWithLevel(ctx context.Context, libraryName string, level logrus.Level, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
+// `level` is RFC5424 log level number.
+func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
+	// Setup exporter.
+	var err error
 	var opts2 []sdktrace.TracerProviderOption
+	exportersEnv := os.Getenv("OTEL_EXPORTERS")
 
-	exporters := os.Getenv("OTEL_EXPORTERS")
-	for _, e := range strings.Split(exporters, ",") {
+	for _, e := range strings.Split(exportersEnv, ",") {
 		switch e {
 		case "honeycomb":
-			exp, err := makeHoneyCombExporter(ctx)
+			exporter, err := makeHoneyCombExporter(ctx)
 			if err != nil {
 				return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
 			}
-			opts2 = []sdktrace.TracerProviderOption{
-				sdktrace.WithBatcher(exp),
-			}
+			opts2 = append(opts2, sdktrace.WithBatcher(exporter))
+		case "none":
+			// No exporter.  Used with unit tests.
+			break
 		case "jaeger":
 			fallthrough
 		default:
-			exp, err := makeJaegerExporter()
+			exporter, err := makeJaegerExporter()
 			if err != nil {
 				return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
 			}
-			opts2 = []sdktrace.TracerProviderOption{
-				sdktrace.WithBatcher(exp),
-			}
+			opts2 = append(opts2, sdktrace.WithBatcher(exporter))
 		}
 	}
 
-	// Combine the exporter opts and the user provided opts
+	// Combine the default opts and the user provided opts
 	opts2 = append(opts2, opts...)
 
 	tp := sdktrace.NewTracerProvider(opts2...)
@@ -88,7 +90,7 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level logrus.
 	// Using WithFields() also converts to log attributes.
 	useLevels := []logrus.Level{}
 	for _, l := range logLevels {
-		if l <= level {
+		if int64(l) <= level {
 			useLevels = append(useLevels, l)
 		}
 	}

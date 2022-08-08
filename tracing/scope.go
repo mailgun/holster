@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -29,10 +30,86 @@ func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Cont
 	return startSpan(ctx, spanName, fileTag, opts...)
 }
 
+// Start a scope with span named after fully qualified caller function with
+// debug log level.
+func StartScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	spanName, fileTag := getCallerSpanName(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
+	return spanCtx
+}
+
+// Start a scope with span named after fully qualified caller function with
+// info log level.
+func StartScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	spanName, fileTag := getCallerSpanName(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
+	return spanCtx
+}
+
+// Start a scope with span named after fully qualified caller function with
+// warning log level.
+func StartScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	spanName, fileTag := getCallerSpanName(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
+	return spanCtx
+}
+
+// Start a scope with span named after fully qualified caller function with
+// error log level.
+func StartScopeError(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	spanName, fileTag := getCallerSpanName(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
+	return spanCtx
+}
+
 // Start a scope with user-provided span name.
 func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	fileTag := getFileTag(2)
 	return startSpan(ctx, spanName, fileTag, opts...)
+}
+
+// Start a scope with user-provided span name with debug log level.
+func StartNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	fileTag := getFileTag(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
+	return spanCtx
+}
+
+// Start a scope with user-provided span name with info log level.
+func StartNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	fileTag := getFileTag(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
+	return spanCtx
+}
+
+// Start a scope with user-provided span name with warning log level.
+func StartNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	fileTag := getFileTag(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
+	return spanCtx
+}
+
+// Start a scope with user-provided span name with error log level.
+func StartNamedScopeError(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	fileTag := getFileTag(2)
+	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
+	span := trace.SpanFromContext(spanCtx)
+	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
+	return spanCtx
 }
 
 // End scope created by `StartScope()`/`StartNamedScope()`.
