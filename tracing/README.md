@@ -108,6 +108,28 @@ ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
 err = tracing.CloseTracing(context.Background())
 ```
 
+### Log Level
+Log level may be applied to traces to filter spans having a minimum log
+severity.  Spans that do not meed the minimum severity are simply dropped and
+not exported.
+
+Log level is passed in `tracing.InitTracingWithLevel()` as a numeric
+[RFC5424](https://www.rfc-editor.org/rfc/rfc5424) log level (0-7).
+
+As a convenience, use log level constants from Logrus, like so:
+
+```go
+import "github.com/sirupsen/logrus"
+
+_, _, err := tracing.InitTracingWithLevel(ctx, "my library name", int64(logrus.DebugLevel))
+```
+
+When using `tracing.InitTracing()`, the level will be the global level set in
+Logrus.
+
+See [Log Level in Scope](#log-level-in-scope) for details on creating spans
+with assigned log level.
+
 ### Tracer Lifecycle
 The common use case is to call `InitTracing()` to build a single default tracer
 that the application uses througout its lifetime, then call `CloseTracing()` on
@@ -273,6 +295,23 @@ func MyFunc(ctx context.Context) error {
 }
 ```
 
+#### Log Level in Scope
+Log level can be applied to individual spans using variants of
+`Scope()`/`StartScope()` to set debug, info, warn, or error levels:
+
+```go
+ctx2 := tracing.StartScopeDebug(ctx)
+defer tracing.EndScope(ctx2, nil)
+```
+
+```go
+err := tracing.ScopeDebug(ctx, func(ctx context.Context) {
+    // ...
+
+    return nil
+})
+```
+
 ## Instrumentation
 ### Logrus
 Logrus is configured by `InitTracing()` to mirror log messages to the active trace, if exists.
@@ -329,7 +368,7 @@ Possible environment config exporter config options when using `tracing.InitTrac
 * `OTEL_EXPORTER_JAEGER_AGENT_HOST`
 * `OTEL_EXPORTER_JAEGER_AGENT_PORT`
 
-#### OTEL_EXPORTER_JAEGER_PROTOCOL
+#### `OTEL_EXPORTER_JAEGER_PROTOCOL`
   Possible values:
 * `udp/thrift.compact` (default): Export traces via UDP datagrams.  Best used when Jaeger Agent is accessible via loopback interface.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6831`.
 * `udp/thrift.binary`: Alternative protocol to the more commonly used `udp/thrift.compact`.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6832`.
