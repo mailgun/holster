@@ -26,90 +26,76 @@ type ScopeAction func(ctx context.Context) error
 
 // Start a scope with span named after fully qualified caller function.
 func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.InfoLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	return startSpan(ctx, spanName, fileTag, opts...)
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // debug log level.
 func StartScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.DebugLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // info log level.
 func StartScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.InfoLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // warning log level.
 func StartScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.WarnLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // error log level.
 func StartScopeError(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.ErrorLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with user-provided span name.
 func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.InfoLevel)
 	fileTag := getFileTag(2)
-	return startSpan(ctx, spanName, fileTag, opts...)
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with user-provided span name with debug log level.
 func StartNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.DebugLevel)
 	fileTag := getFileTag(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with user-provided span name with info log level.
 func StartNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.InfoLevel)
 	fileTag := getFileTag(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with user-provided span name with warning log level.
 func StartNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.WarnLevel)
 	fileTag := getFileTag(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // Start a scope with user-provided span name with error log level.
 func StartNamedScopeError(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
+	level := int64(logrus.ErrorLevel)
 	fileTag := getFileTag(2)
-	spanCtx := startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(spanCtx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
-	return spanCtx
+	return startSpan(ctx, spanName, fileTag, level, opts...)
 }
 
 // End scope created by `StartScope()`/`StartNamedScope()`.
@@ -130,8 +116,9 @@ func EndScope(ctx context.Context, err error) {
 // function.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.InfoLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -141,10 +128,9 @@ func Scope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOptio
 // function.  Scope tagged with log level debug.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func ScopeDebug(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.DebugLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -154,10 +140,9 @@ func ScopeDebug(ctx context.Context, action ScopeAction, opts ...trace.SpanStart
 // function.  Scope tagged with log level info.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func ScopeInfo(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.InfoLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -167,10 +152,9 @@ func ScopeInfo(ctx context.Context, action ScopeAction, opts ...trace.SpanStartO
 // function.  Scope tagged with log level warning.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func ScopeWarn(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.WarnLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -180,10 +164,9 @@ func ScopeWarn(ctx context.Context, action ScopeAction, opts ...trace.SpanStartO
 // function.  Scope tagged with log level error.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func ScopeError(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.ErrorLevel)
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -192,8 +175,9 @@ func ScopeError(ctx context.Context, action ScopeAction, opts ...trace.SpanStart
 // NamedScope calls action function within a tracing span.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.InfoLevel)
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -203,10 +187,9 @@ func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts .
 // with log level debug.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func NamedScopeDebug(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.DebugLevel)
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.DebugLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -216,10 +199,9 @@ func NamedScopeDebug(ctx context.Context, spanName string, action ScopeAction, o
 // with log level info.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func NamedScopeInfo(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.InfoLevel)
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.InfoLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -229,10 +211,9 @@ func NamedScopeInfo(ctx context.Context, spanName string, action ScopeAction, op
 // with log level warning.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func NamedScopeWarn(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.WarnLevel)
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.WarnLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -242,24 +223,18 @@ func NamedScopeWarn(ctx context.Context, spanName string, action ScopeAction, op
 // with log level error.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func NamedScopeError(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
+	level := int64(logrus.ErrorLevel)
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, opts...)
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.Int64(LogLevelKey, int64(logrus.ErrorLevel)))
+	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
 }
 
-func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.SpanStartOption) context.Context {
-	// Initialize span.
-	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
-	if !ok {
-		// No tracer embedded.  Fall back to default tracer.
-		tracer = GetDefaultTracer()
-	}
-	// Else, omit tracing.
+func startSpan(ctx context.Context, spanName, fileTag string, level int64, opts ...trace.SpanStartOption) context.Context {
+	tracer := GetDefaultTracer()
 	if tracer == nil {
+		log.Warn("Tracer not initialized")
 		return ctx
 	}
 
@@ -267,7 +242,13 @@ func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.Span
 		attribute.String("file", fileTag),
 	))
 
-	ctx, _ = tracer.Start(ctx, spanName, opts...)
+	opts2 := []trace.SpanStartOption{
+		trace.WithAttributes(attribute.Int64(LogLevelKey, level)),
+	}
+	opts2 = append(opts2, opts...)
+	// Embed log level parameter as context value.
+	ctx = context.WithValue(ctx, levelKey, level)
+	ctx, _ = tracer.Start(ctx, spanName, opts2...)
 	return ctx
 }
 

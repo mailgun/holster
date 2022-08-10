@@ -58,31 +58,34 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 	exportersEnv := os.Getenv("OTEL_EXPORTERS")
 
 	for _, e := range strings.Split(exportersEnv, ",") {
+		var exporter sdktrace.SpanExporter
+
 		switch e {
 		case "honeycomb":
-			exporter, err := makeHoneyCombExporter(ctx)
+			exporter, err = makeHoneyCombExporter(ctx)
 			if err != nil {
 				return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
 			}
-			opts2 = append(opts2, sdktrace.WithBatcher(exporter))
 		case "none":
 			// No exporter.  Used with unit tests.
-			break
+			continue
 		case "jaeger":
 			fallthrough
 		default:
-			exporter, err := makeJaegerExporter()
+			exporter, err = makeJaegerExporter()
 			if err != nil {
 				return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
 			}
-			opts2 = append(opts2, sdktrace.WithBatcher(exporter))
 		}
+
+		opts2 = append(opts2, sdktrace.WithBatcher(exporter))
 	}
 
 	// Combine the default opts and the user provided opts
 	opts2 = append(opts2, opts...)
 
-	tp := sdktrace.NewTracerProvider(opts2...)
+	tp := NewLevelTracerProvider(level, opts2...)
+	logrus.Info("Calling otel.SetTracerProvider()...")
 	otel.SetTracerProvider(tp)
 
 	// Setup logrus instrumentation.
@@ -104,9 +107,7 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 		return ctx, nil, errors.Wrap(err, "error in NewTracer")
 	}
 
-	if GetDefaultTracer() == nil {
-		SetDefaultTracer(tracer)
-	}
+	SetDefaultTracer(tracer)
 
 	// Required for trace propagation between services.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
@@ -144,7 +145,7 @@ func NewResource(serviceName, version string, resources ...*resource.Resource) (
 // Library name is set in span attribute `otel.library.name`.
 // This is typically the relevant package name.
 func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
-	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	tp, ok := otel.GetTracerProvider().(*LevelTracerProvider)
 	if !ok {
 		return nil, nil, errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
@@ -171,7 +172,7 @@ func SetDefaultTracer(tracer trace.Tracer) {
 // CloseTracing closes the global OpenTelemetry tracer provider.
 // This allows queued up traces to be flushed.
 func CloseTracing(ctx context.Context) error {
-	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	tp, ok := otel.GetTracerProvider().(*LevelTracerProvider)
 	if !ok {
 		return errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
@@ -259,7 +260,6 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	}
 
 	log.WithFields(logrus.Fields{
-		"apiKey":   apiKey,
 		"endpoint": endPoint,
 	}).Info("Initializing Honeycomb exporter")
 
