@@ -78,7 +78,11 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 			}
 		}
 
-		opts2 = append(opts2, sdktrace.WithBatcher(exporter))
+		exportProcessor := sdktrace.NewBatchSpanProcessor(exporter)
+
+		// Capture Prometheus metrics.
+		metricProcessor := NewMetricSpanProcessor(exportProcessor)
+		opts2 = append(opts2, sdktrace.WithSpanProcessor(metricProcessor))
 	}
 
 	// Combine the default opts and the user provided opts
