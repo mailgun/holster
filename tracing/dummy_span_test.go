@@ -241,6 +241,7 @@ func levelFromReadOnlySpan(s sdktrace.ReadOnlySpan) (int64, bool) {
 func setupMockTracerProvider(t *testing.T, level int64, mockProcessor *MockSpanProcessor) {
 	t.Setenv("OTEL_EXPORTERS", "none")
 	ctx := context.Background()
-	_, _, err := tracing.InitTracingWithLevel(ctx, "foobar", level, sdktrace.WithSpanProcessor(mockProcessor))
+	opt := tracing.WithTracerProviderOption(sdktrace.WithSpanProcessor(mockProcessor))
+	_, _, err := tracing.InitTracingWithLevel(ctx, "foobar", level, opt)
 	require.NoError(t, err)
 }

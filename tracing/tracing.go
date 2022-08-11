@@ -26,6 +26,11 @@ import (
 // Context Values key for embedding `Tracer` object.
 type tracerKey struct{}
 
+type initState struct {
+	opts  []sdktrace.TracerProviderOption
+	level int64
+}
+
 var logLevels = []logrus.Level{
 	logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
 	logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
@@ -37,24 +42,19 @@ var globalMutex sync.RWMutex
 var defaultTracer trace.Tracer
 
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
-// Call once before using functions in this package.
-// Embeds `Tracer` object in returned context.
+// Call to initialize before using functions in this package.
 // Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
-func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
-	level := int64(logrus.GetLevel())
-	return InitTracingWithLevel(ctx, libraryName, level, opts...)
-}
-
-// InitTracingWithLevel initializes a global OpenTelemetry tracer provider
-// singleton and sets tracing level.
-// `level` is RFC5424 log level number.
-func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
+// Prometheus metrics are accessible by registering the metrics at
+// `tracing.Metrics`.
+func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption) (context.Context, trace.Tracer, error) {
 	// Setup exporter.
 	var err error
-	var opts2 []sdktrace.TracerProviderOption
+	state := &initState{
+		level: int64(logrus.GetLevel()),
+	}
 	exportersEnv := os.Getenv("OTEL_EXPORTERS")
 
 	for _, e := range strings.Split(exportersEnv, ",") {
@@ -82,12 +82,15 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 
 		// Capture Prometheus metrics.
 		metricProcessor := NewMetricSpanProcessor(exportProcessor)
-		opts2 = append(opts2, sdktrace.WithSpanProcessor(metricProcessor))
+		state.opts = append(state.opts, sdktrace.WithSpanProcessor(metricProcessor))
 	}
 
-	// Combine the default opts and the user provided opts
-	opts2 = append(opts2, opts...)
-	tp := NewLevelTracerProvider(level, opts2...)
+	// Apply options.
+	for _, opt := range opts {
+		opt.apply(state)
+	}
+
+	tp := NewLevelTracerProvider(state.level, state.opts...)
 	otel.SetTracerProvider(tp)
 
 	// Setup logrus instrumentation.
@@ -95,7 +98,7 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 	// Using WithFields() also converts to log attributes.
 	useLevels := []logrus.Level{}
 	for _, l := range logLevels {
-		if int64(l) <= level {
+		if int64(l) <= state.level {
 			useLevels = append(useLevels, l)
 		}
 	}
@@ -115,6 +118,14 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	return tracerCtx, tracer, err
+}
+
+// InitTracingWithLevel initializes a global OpenTelemetry tracer provider
+// singleton and sets tracing level.
+// `level` is RFC5424 numeric log level (0-7).
+func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, opts ...TracingOption) (context.Context, trace.Tracer, error) {
+	opts2 := append(opts, WithLevel(level))
+	return InitTracing(ctx, libraryName, opts2...)
 }
 
 // NewResource creates a resource with sensible defaults.

@@ -47,7 +47,8 @@ func TestTracing(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			ctx, tracer, err := tracing.InitTracing(ctx, "TestTracing", sdktrace.WithResource(res))
+			opt := tracing.WithTracerProviderOption(sdktrace.WithResource(res))
+			ctx, tracer, err := tracing.InitTracing(ctx, "TestTracing", opt)
 			require.NotNil(t, ctx)
 			require.NotNil(t, tracer)
 			require.NoError(t, err)
