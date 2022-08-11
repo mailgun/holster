@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -23,6 +24,11 @@ import (
 )
 
 type ScopeAction func(ctx context.Context) error
+
+const (
+	ErrorClassKey = "error.class"
+	ErrorTypeKey  = "error.type"
+)
 
 // Start a scope with span named after fully qualified caller function.
 func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
@@ -107,6 +113,13 @@ func EndScope(ctx context.Context, err error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+
+		if typedErr, ok := err.(*errors.TypedError); ok {
+			span.SetAttributes(
+				attribute.String(ErrorClassKey, typedErr.Class()),
+				attribute.String(ErrorTypeKey, typedErr.Type()),
+			)
+		}
 	}
 
 	span.End()
