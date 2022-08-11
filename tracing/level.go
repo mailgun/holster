@@ -53,6 +53,9 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 	// Check log level.
 	if ctxLevel, ok := ctx.Value(logLevelCtxKey).(int64); ok {
 		if ctxLevel > t.level {
+			// Prevent log level parameter from propagating to child spans.
+			ctx = context.WithValue(ctx, logLevelCtxKey, nil)
+
 			return newDummySpan(ctx)
 		}
 	}

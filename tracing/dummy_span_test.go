@@ -73,7 +73,7 @@ func TestDummySpan(t *testing.T) {
 		// Mock OTel exporter.
 		mockProcessor := new(MockSpanProcessor)
 		matchFirstSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
-			return s.Name() == t.Name()
+			return s.Name() == "Level 1"
 		})
 		matchLeafSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
 			return s.Name() == "Leaf"
@@ -103,7 +103,7 @@ func TestDummySpan(t *testing.T) {
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
-		ctx1 := tracing.StartNamedScopeInfo(ctx, t.Name())
+		ctx1 := tracing.StartNamedScopeInfo(ctx, "Level 1")
 		ctx2 := tracing.StartNamedScopeDebug(ctx1, "Level 2 dropped", withErrorAttr)
 		ctx3 := tracing.StartNamedScopeInfo(ctx2, "Leaf")
 		tracing.EndScope(ctx3, nil)
@@ -123,7 +123,7 @@ func TestDummySpan(t *testing.T) {
 		// Mock OTel exporter.
 		mockProcessor := new(MockSpanProcessor)
 		matchFirstSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
-			return s.Name() == t.Name()
+			return s.Name() == "Level 1"
 		})
 		mockProcessor.On("OnStart", mock.Anything, matchFirstSpan).Once()
 		mockProcessor.On("OnEnd", matchFirstSpan).
@@ -139,7 +139,7 @@ func TestDummySpan(t *testing.T) {
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
-		ctx1 := tracing.StartNamedScopeInfo(ctx, t.Name())
+		ctx1 := tracing.StartNamedScopeInfo(ctx, "Level 1")
 		ctx2 := tracing.StartNamedScopeDebug(ctx1, "Level 2 dropped", withErrorAttr)
 		ctx3 := tracing.StartNamedScopeDebug(ctx2, "Level 3 dropped", withErrorAttr)
 		ctx4 := tracing.StartNamedScopeDebug(ctx3, "leaf dropped", withErrorAttr)
@@ -159,7 +159,7 @@ func TestDummySpan(t *testing.T) {
 		// Mock OTel exporter.
 		mockProcessor := new(MockSpanProcessor)
 		matchFirstSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
-			return s.Name() == t.Name()
+			return s.Name() == "Level 1"
 		})
 		matchLeafSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
 			return s.Name() == "Leaf"
@@ -189,7 +189,7 @@ func TestDummySpan(t *testing.T) {
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
-		ctx1 := tracing.StartNamedScopeInfo(ctx, t.Name())
+		ctx1 := tracing.StartNamedScopeInfo(ctx, "Level 1")
 		ctx2 := tracing.StartNamedScopeDebug(ctx1, "Level 2 dropped", withErrorAttr)
 		ctx3 := tracing.StartNamedScopeDebug(ctx2, "Level 3 dropped", withErrorAttr)
 		ctx4 := tracing.StartNamedScopeDebug(ctx3, "Level 4 dropped", withErrorAttr)
