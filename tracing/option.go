@@ -24,6 +24,22 @@ func (o *TracerProviderTracingOption) apply(state *initState) {
 	state.opts = append(state.opts, o.opts...)
 }
 
+type ResourceOption struct {
+	res sdktrace.Resource
+}
+
+// WithResource is convenience function for common use case of passing a
+// Resource object as TracerProviderOption.
+func WithResource(res sdktrace.Resource) {
+	return &ResourceOption{
+		res: res,
+	}
+}
+
+func (o *ResourceOption) apply(state *initState) {
+	state.opts = append(state.opts, sdktrace.WithResource(res))
+}
+
 type LevelTracingOption struct {
 	level int64
 }

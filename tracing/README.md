@@ -185,14 +185,8 @@ As an alternative to environment variable, it may be provided as a resource.
 The resource setting takes precedent over the environment variable.
 
 ```go
-import (
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
-)
-
 res, err := tracing.NewResource("My service", "v1.0.0")
-ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
+ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", tracing.WithResource(res))
 ```
 
 ### Manual Tracing
