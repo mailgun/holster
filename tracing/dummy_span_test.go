@@ -69,7 +69,7 @@ func TestDummySpan(t *testing.T) {
 		mockProcessor.AssertExpectations(t)
 	})
 
-	t.Run("Nested scope 3 levels with interleaved dropped span", func(t *testing.T) {
+	t.Run("Nested scopes with interleaved dropped span", func(t *testing.T) {
 		// Mock OTel exporter.
 		mockProcessor := new(MockSpanProcessor)
 		matchFirstSpan := mock.MatchedBy(func(s sdktrace.ReadOnlySpan) bool {
