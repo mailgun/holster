@@ -130,6 +130,28 @@ Logrus.
 See [Log Level in Scope](#log-level-in-scope) for details on creating spans
 with assigned log level.
 
+#### Log Level Filtering
+Just like with common log frameworks, scope will filter spans that are a lower
+severity than threshold provided to `InitTracingWithLevel()`.
+
+If scopes are nested and one in the middle is dropped, the hierarchy will be
+preserved.
+
+e.g. If `InitTracingWithLevel()` is passed a log level of "Info", we expect
+"Debug" scopes to be dropped:
+```
+# Input:
+Info Level 1 -> Debug Level 2 -> Info Level 3
+
+# Exports spans in form:
+Info Level 1 -> Info Level 3
+```
+
+Log level filtering is critical for high volume applications where debug
+tracing would generate significantly more data that isn't sustainable or
+helpful for normal operations.  But developers will have the option to
+selectively enable debug tracing for troubleshooting.
+
 ### Tracer Lifecycle
 The common use case is to call `InitTracing()` to build a single default tracer
 that the application uses througout its lifetime, then call `CloseTracing()` on
@@ -295,7 +317,7 @@ func MyFunc(ctx context.Context) error {
 }
 ```
 
-#### Log Level in Scope
+#### Scope Log Level
 Log level can be applied to individual spans using variants of
 `Scope()`/`StartScope()` to set debug, info, warn, or error levels:
 
@@ -311,6 +333,12 @@ err := tracing.ScopeDebug(ctx, func(ctx context.Context) error {
     return nil
 })
 ```
+
+#### Scope Log Level Filtering
+Just like with common log frameworks, scope will filter spans that are a lower
+severity than threshold provided to `InitTracingWithLevel()`.
+
+
 
 ## Instrumentation
 ### Logrus

@@ -83,9 +83,7 @@ func InitTracingWithLevel(ctx context.Context, libraryName string, level int64, 
 
 	// Combine the default opts and the user provided opts
 	opts2 = append(opts2, opts...)
-
 	tp := NewLevelTracerProvider(level, opts2...)
-	logrus.Info("Calling otel.SetTracerProvider()...")
 	otel.SetTracerProvider(tp)
 
 	// Setup logrus instrumentation.

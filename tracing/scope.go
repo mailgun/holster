@@ -247,7 +247,7 @@ func startSpan(ctx context.Context, spanName, fileTag string, level int64, opts 
 	}
 	opts2 = append(opts2, opts...)
 	// Embed log level parameter as context value.
-	ctx = context.WithValue(ctx, levelKey, level)
+	ctx = context.WithValue(ctx, logLevelCtxKey, level)
 	ctx, _ = tracer.Start(ctx, spanName, opts2...)
 	return ctx
 }
