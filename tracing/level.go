@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -51,15 +52,21 @@ func (tp *LevelTracerProvider) Tracer(libraryName string, opts ...trace.TracerOp
 
 func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	// Check log level.
-	if ctxLevel, ok := ctx.Value(logLevelCtxKey).(int64); ok {
-		if ctxLevel > t.level {
-			// Prevent log level parameter from propagating to child spans.
-			ctx = context.WithValue(ctx, logLevelCtxKey, nil)
+	ctxLevel, hasLevel := ctx.Value(logLevelCtxKey).(int64)
+	if hasLevel {
+		// Prevent log level parameter from propagating to child spans.
+		ctx = context.WithValue(ctx, logLevelCtxKey, nil)
 
+		if ctxLevel > t.level {
 			return newDummySpan(ctx)
 		}
+	} else {
+		ctxLevel = int64(logrus.InfoLevel)
 	}
 
 	// Pass-through.
-	return t.Tracer.Start(ctx, spanName, opts...)
+	spanCtx, span := t.Tracer.Start(ctx, spanName, opts...)
+	span.SetAttributes(attribute.Int64(LogLevelKey, ctxLevel))
+
+	return spanCtx, span
 }
