@@ -119,6 +119,53 @@ err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
 err = tracing.CloseTracing(ctx)
 ```
 
+### Log Level
+Log level may be applied to traces to filter spans having a minimum log
+severity.  Spans that do not meed the minimum severity are simply dropped and
+not exported.
+
+Log level is passed with option `tracing.WithLevel()` as a numeric
+[RFC5424](https://www.rfc-editor.org/rfc/rfc5424) log level (0-7).
+
+As a convenience, you may use log level constants from Logrus, like so:
+
+```go
+import (
+	"github.com/mailgun/holster/v4/tracing"
+	"github.com/sirupsen/logrus"
+)
+
+level := int64(logrus.DebugLevel)
+err := tracing.InitTracing(ctx, "my library name", tracing.WithLevel(level))
+```
+
+If `WithLevel()` is omitted, the level will be the global level set in Logrus.
+
+See [Scope Log Level](#scope-log-level) for details on creating spans
+with an assigned log level.
+
+#### Log Level Filtering
+Just like with common log frameworks, scope will filter spans that are a lower
+severity than threshold provided using `WithLevel()`.
+
+If scopes are nested and one in the middle is dropped, the hierarchy will be
+preserved.
+
+e.g. If `WithLevel()` is passed a log level of "Info", we expect
+"Debug" scopes to be dropped:
+```
+# Input:
+Info Level 1 -> Debug Level 2 -> Info Level 3
+
+# Exports spans in form:
+Info Level 1 -> Info Level 3
+```
+
+Log level filtering is critical for high volume applications where debug
+tracing would generate significantly more data that isn't sustainable or
+helpful for normal operations.  But developers will have the option to
+selectively enable debug tracing for troubleshooting.
+
 ### Tracer Lifecycle
 The common use case is to call `InitTracing()` to build a single default tracer
 that the application uses througout its lifetime, then call `CloseTracing()` on
@@ -284,6 +331,28 @@ func MyFunc(ctx context.Context) error {
 	})
 }
 ```
+
+#### Scope Log Level
+Log level can be applied to individual spans using variants of
+`Scope()`/`StartScope()` to set debug, info, warn, or error levels:
+
+```go
+ctx2 := tracing.StartScopeDebug(ctx)
+defer tracing.EndScope(ctx2, nil)
+```
+
+```go
+err := tracing.ScopeDebug(ctx, func(ctx context.Context) error {
+    // ...
+
+    return nil
+})
+```
+
+#### Scope Log Level Filtering
+Just like with common log frameworks, scope will filter spans that are a lower
+severity than threshold provided using `WithLevel()`.
+
 
 ## Instrumentation
 ### Logrus

@@ -85,7 +85,7 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 		opt.apply(state)
 	}
 
-	tp := sdktrace.NewTracerProvider(state.opts...)
+	tp := NewLevelTracerProvider(state.level, state.opts...)
 	otel.SetTracerProvider(tp)
 	globalLibraryName = libraryName
 
@@ -137,7 +137,7 @@ func NewResource(serviceName, version string, resources ...*resource.Resource) (
 // CloseTracing closes the global OpenTelemetry tracer provider.
 // This allows queued up traces to be flushed.
 func CloseTracing(ctx context.Context) error {
-	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	tp, ok := otel.GetTracerProvider().(*LevelTracerProvider)
 	if !ok {
 		return errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
