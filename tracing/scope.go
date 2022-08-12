@@ -73,22 +73,11 @@ func NamedScope(ctx context.Context, spanName string, action ScopeAction, opts .
 }
 
 func startSpan(ctx context.Context, spanName, fileTag string, opts ...trace.SpanStartOption) context.Context {
-	// Initialize span.
-	tracer, ok := ctx.Value(tracerKey{}).(trace.Tracer)
-	if !ok {
-		// No tracer embedded.  Fall back to default tracer.
-		tracer = GetDefaultTracer()
-	}
-	// Else, omit tracing.
-	if tracer == nil {
-		return ctx
-	}
-
 	opts = append(opts, trace.WithAttributes(
 		attribute.String("file", fileTag),
 	))
 
-	ctx, _ = tracer.Start(ctx, spanName, opts...)
+	ctx, _ = Tracer().Start(ctx, spanName, opts...)
 	return ctx
 }
 

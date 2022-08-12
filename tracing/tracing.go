@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -14,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/mailgun/holster/v4/errors"
@@ -26,6 +25,11 @@ import (
 // Context Values key for embedding `Tracer` object.
 type tracerKey struct{}
 
+type initState struct {
+	opts  []sdktrace.TracerProviderOption
+	level int64
+}
+
 var logLevels = []logrus.Level{
 	logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
 	logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
@@ -33,56 +37,64 @@ var logLevels = []logrus.Level{
 }
 
 var log = logrus.WithField("category", "tracing")
-var globalMutex sync.RWMutex
-var defaultTracer trace.Tracer
+var globalLibraryName string
 
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
-// Call once before using functions in this package.
-// Embeds `Tracer` object in returned context.
+// Call to initialize before using functions in this package.
 // Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 // Call after initializing logrus.
 // libraryName is typically the application's module name.
-func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.TracerProviderOption) (context.Context, trace.Tracer, error) {
-	var opts2 []sdktrace.TracerProviderOption
+// Prometheus metrics are accessible by registering the metrics at
+// `tracing.Metrics`.
+func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption) error {
+	// Setup exporter.
+	var err error
+	state := &initState{
+		level: int64(logrus.GetLevel()),
+	}
+	exportersEnv := os.Getenv("OTEL_EXPORTERS")
 
-	exporters := os.Getenv("OTEL_EXPORTERS")
-	for _, e := range strings.Split(exporters, ",") {
+	for _, e := range strings.Split(exportersEnv, ",") {
+		var exporter sdktrace.SpanExporter
+
 		switch e {
 		case "honeycomb":
-			exp, err := makeHoneyCombExporter(ctx)
+			exporter, err = makeHoneyCombExporter(ctx)
 			if err != nil {
-				return ctx, nil, errors.Wrap(err, "error in makeHoneyCombExporter")
+				return errors.Wrap(err, "error in makeHoneyCombExporter")
 			}
-			opts2 = []sdktrace.TracerProviderOption{
-				sdktrace.WithBatcher(exp),
-			}
+		case "none":
+			// No exporter.  Used with unit tests.
+			continue
 		case "jaeger":
 			fallthrough
 		default:
-			exp, err := makeJaegerExporter()
+			exporter, err = makeJaegerExporter()
 			if err != nil {
-				return ctx, nil, errors.Wrap(err, "error in makeJaegerExporter")
-			}
-			opts2 = []sdktrace.TracerProviderOption{
-				sdktrace.WithBatcher(exp),
+				return errors.Wrap(err, "error in makeJaegerExporter")
 			}
 		}
+
+		exportProcessor := sdktrace.NewBatchSpanProcessor(exporter)
+		state.opts = append(state.opts, sdktrace.WithSpanProcessor(exportProcessor))
 	}
 
-	// Combine the exporter opts and the user provided opts
-	opts2 = append(opts2, opts...)
+	// Apply options.
+	for _, opt := range opts {
+		opt.apply(state)
+	}
 
-	tp := sdktrace.NewTracerProvider(opts2...)
+	tp := sdktrace.NewTracerProvider(state.opts...)
 	otel.SetTracerProvider(tp)
+	globalLibraryName = libraryName
 
 	// Setup logrus instrumentation.
 	// Using logrus.WithContext() will mirror log to embedded span.
 	// Using WithFields() also converts to log attributes.
-	logLevel := logrus.GetLevel()
 	useLevels := []logrus.Level{}
 	for _, l := range logLevels {
-		if l <= logLevel {
+		if l <= logrus.Level(state.level) {
 			useLevels = append(useLevels, l)
 		}
 	}
@@ -91,19 +103,10 @@ func InitTracing(ctx context.Context, libraryName string, opts ...sdktrace.Trace
 		otellogrus.WithLevels(useLevels...),
 	))
 
-	tracerCtx, tracer, err := NewTracer(ctx, libraryName)
-	if err != nil {
-		return ctx, nil, errors.Wrap(err, "error in NewTracer")
-	}
-
-	if GetDefaultTracer() == nil {
-		SetDefaultTracer(tracer)
-	}
-
 	// Required for trace propagation between services.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	return tracerCtx, tracer, err
+	return err
 }
 
 // NewResource creates a resource with sensible defaults.
@@ -131,35 +134,6 @@ func NewResource(serviceName, version string, resources ...*resource.Resource) (
 	return res, nil
 }
 
-// NewTracer instantiates a new `Tracer` object with a custom library name.
-// Must call `InitTracing()` first.
-// Library name is set in span attribute `otel.library.name`.
-// This is typically the relevant package name.
-func NewTracer(ctx context.Context, libraryName string) (context.Context, trace.Tracer, error) {
-	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
-	if !ok {
-		return nil, nil, errors.New("OpenTelemetry global tracer provider has not been initialized")
-	}
-
-	tracer := tp.Tracer(libraryName)
-	ctx = ContextWithTracer(ctx, tracer)
-	return ctx, tracer, nil
-}
-
-// GetDefaultTracer gets the global tracer used as a default by this package.
-func GetDefaultTracer() trace.Tracer {
-	globalMutex.RLock()
-	defer globalMutex.RUnlock()
-	return defaultTracer
-}
-
-// SetDefaultTracer sets the global tracer used as a default by this package.
-func SetDefaultTracer(tracer trace.Tracer) {
-	globalMutex.Lock()
-	defer globalMutex.Unlock()
-	defaultTracer = tracer
-}
-
 // CloseTracing closes the global OpenTelemetry tracer provider.
 // This allows queued up traces to be flushed.
 func CloseTracing(ctx context.Context) error {
@@ -168,7 +142,6 @@ func CloseTracing(ctx context.Context) error {
 		return errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
 
-	SetDefaultTracer(nil)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -180,18 +153,9 @@ func CloseTracing(ctx context.Context) error {
 	return nil
 }
 
-// ContextWithTracer creates a context with a tracer object embedded.
-// This value is used by scope functions or use TracerFromContext() to retrieve
-// it.
-func ContextWithTracer(ctx context.Context, tracer trace.Tracer) context.Context {
-	return context.WithValue(ctx, tracerKey{}, tracer)
-}
-
-// TracerFromContext gets embedded `Tracer` from context.
-// Returns nil if not found.
-func TracerFromContext(ctx context.Context) trace.Tracer {
-	tracer, _ := ctx.Value(tracerKey{}).(trace.Tracer)
-	return tracer
+// Tracer returns a tracer object.
+func Tracer(opts ...trace.TracerOption) trace.Tracer {
+	return otel.Tracer(globalLibraryName, opts...)
 }
 
 func makeJaegerExporter() (*jaeger.Exporter, error) {
@@ -227,7 +191,7 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 
 	default:
 		log.WithField("OTEL_EXPORTER_JAEGER_PROTOCOL", protocol).
-			Error("Unknown OpenTelemetry protocol configured")
+			Error("Unknown Jaeger protocol configured")
 		endpointOption = jaeger.WithAgentEndpoint()
 	}
 
@@ -240,7 +204,6 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 }
 
 func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-
 	endPoint := os.Getenv("OTEL_EXPORTER_HONEYCOMB_ENDPOINT")
 	if endPoint == "" {
 		endPoint = "api.honeycomb.io:443"
@@ -250,6 +213,10 @@ func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	if apiKey == "" {
 		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_API_KEY' cannot be empty")
 	}
+
+	log.WithFields(logrus.Fields{
+		"endpoint": endPoint,
+	}).Info("Initializing Honeycomb exporter")
 
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endPoint),

@@ -10,9 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -22,9 +19,7 @@ func TestTracing(t *testing.T) {
 
 	t.Run("InitTracing()", func(t *testing.T) {
 		t.Run("Happy path", func(t *testing.T) {
-			ctx, tracer, err := tracing.InitTracing(ctx, "TestTracing")
-			require.NotNil(t, ctx)
-			require.NotNil(t, tracer)
+			err := tracing.InitTracing(ctx, "TestTracing")
 			require.NoError(t, err)
 
 			err = tracing.CloseTracing(ctx)
@@ -37,19 +32,10 @@ func TestTracing(t *testing.T) {
 			// If neither provided, default service name is
 			// "unknown_service:<executable-filename>".
 			// See: https://opentelemetry.io/docs/instrumentation/go/getting-started/#creating-a-resource
-			res, err := resource.Merge(
-				resource.Default(),
-				resource.NewWithAttributes(
-					semconv.SchemaURL,
-					semconv.ServiceNameKey.String("Foobar service"),
-					semconv.ServiceVersionKey.String("v1.0.0"),
-				),
-			)
+			res, err := tracing.NewResource("Foobar service", "v1.0.0")
 			require.NoError(t, err)
 
-			ctx, tracer, err := tracing.InitTracing(ctx, "TestTracing", sdktrace.WithResource(res))
-			require.NotNil(t, ctx)
-			require.NotNil(t, tracer)
+			err = tracing.InitTracing(ctx, "TestTracing", tracing.WithResource(res))
 			require.NoError(t, err)
 
 			err = tracing.CloseTracing(ctx)
@@ -58,12 +44,13 @@ func TestTracing(t *testing.T) {
 	})
 
 	t.Run("Manual tracing", func(t *testing.T) {
-		ctx, tracer, err := tracing.InitTracing(ctx, "TestTracing")
+		err := tracing.InitTracing(ctx, "TestTracing")
 		require.NoError(t, err)
 		defer func() {
 			err := tracing.CloseTracing(ctx)
 			require.NoError(t, err)
 		}()
+		tracer := tracing.Tracer()
 
 		t.Run("Simple traces", func(t *testing.T) {
 			ctx, span := tracer.Start(ctx, t.Name())
@@ -110,7 +97,7 @@ func TestTracing(t *testing.T) {
 	})
 
 	t.Run("Scope()", func(t *testing.T) {
-		ctx, _, err := tracing.InitTracing(ctx, "TestTracing")
+		err := tracing.InitTracing(ctx, "TestTracing")
 		require.NoError(t, err)
 		defer func() {
 			err := tracing.CloseTracing(ctx)
@@ -162,18 +149,6 @@ func TestTracing(t *testing.T) {
 					attribute.String("foobar_string", "Hello world."),
 					attribute.Int("foobar_number", 12345),
 				)
-				return nil
-			})
-
-			require.NoError(t, err)
-		})
-
-		t.Run("Custom library name", func(t *testing.T) {
-			const libraryName = "Foobar library"
-			ctx, _, err := tracing.NewTracer(ctx, libraryName)
-			require.NoError(t, err)
-
-			err = tracing.NamedScope(ctx, t.Name(), func(ctx context.Context) error {
 				return nil
 			})
 
