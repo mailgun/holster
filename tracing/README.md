@@ -47,7 +47,18 @@ configuration is necessary.
 Configuration reference via environment variables:
 [https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
 
-#### Export via UDP
+#### Exporter
+Traces export to Jaeger by default.  Other exporters are available by setting
+environment variable `OTEL_EXPORTERS` with one or more of:
+
+* `jaeger`: [Jaeger Tracing](https://jaegertracing.io)
+* `honeycomb`: [Honeycomb](https://honeycomb.io)
+* `none`: Disable export.
+
+Usually, you'd only need one exporter.  If not, more than one may be selected
+by delimiting with comma.
+
+#### Jaeger Export via UDP
 By default, Jaeger exports to a Jaeger Agent on localhost port 6831/udp.  The
 host and port can be changed by setting environment variables
 `OTEL_EXPORTER_JAEGER_AGENT_HOST`, `OTEL_EXPORTER_JAEGER_AGENT_PORT`.
@@ -60,7 +71,7 @@ much lower at 1500.  OpenTelemetry's Jaeger client is sometimes unable to limit
 its payload to fit in a 1500 byte datagram and will drop those packets.  This
 causes traces that are mangled or missing detail.
 
-#### Export via HTTP
+#### Jaeger Export via HTTP
 If it's not possible to install a Jaeger Agent on localhost, the client can
 instead export directly to the Jaeger Collector of the Jaeger Server on HTTP
 port 14268.
@@ -101,11 +112,11 @@ repo.
 ```go
 import "github.com/mailgun/holster/v4/tracing"
 
-ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
+err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
 
 // ...
 
-err = tracing.CloseTracing(context.Background())
+err = tracing.CloseTracing(ctx)
 ```
 
 ### Tracer Lifecycle
@@ -141,14 +152,10 @@ As an alternative to environment variable, it may be provided as a resource.
 The resource setting takes precedent over the environment variable.
 
 ```go
-import (
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
-)
+import "github.com/mailgun/holster/v4/tracing"
 
 res, err := tracing.NewResource("My service", "v1.0.0")
-ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", sdktrace.WithResource(res))
+ctx, tracer, err := tracing.InitTracing(ctx, "github.com/myrepo/myservice", tracing.WithResource(res))
 ```
 
 ### Manual Tracing
@@ -162,7 +169,7 @@ import (
 )
 
 func MyFunc(ctx context.Context) error {
-	tracer := tracing.TracerFromContext(ctx)
+	tracer := tracing.Tracer()
 	ctx, span := tracer.Start(ctx, "Span name")
 	defer span.End()
 
@@ -213,6 +220,11 @@ event on the span.
 ```go
 err := errors.New("My error message")
 span.RecordError(err)
+
+// Can also add attribute metadata.
+span.RecordError(err, trace.WithAttributes(
+	attribute.String("foobar", "value"),
+))
 ```
 
 ### Scope Tracing
@@ -329,7 +341,7 @@ Possible environment config exporter config options when using `tracing.InitTrac
 * `OTEL_EXPORTER_JAEGER_AGENT_HOST`
 * `OTEL_EXPORTER_JAEGER_AGENT_PORT`
 
-#### OTEL_EXPORTER_JAEGER_PROTOCOL
+#### `OTEL_EXPORTER_JAEGER_PROTOCOL`
   Possible values:
 * `udp/thrift.compact` (default): Export traces via UDP datagrams.  Best used when Jaeger Agent is accessible via loopback interface.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6831`.
 * `udp/thrift.binary`: Alternative protocol to the more commonly used `udp/thrift.compact`.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6832`.

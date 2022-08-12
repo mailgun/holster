@@ -1,3 +1,7 @@
-.PHONY: build
-build:
-	go build -v -o jobs-cli ./cmd/jobs-cli
+.PHONY: lint
+lint:
+	go vet ./...
+
+.PHONY: test
+test:
+	go test -v -race -p 1 ./...
