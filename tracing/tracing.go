@@ -77,7 +77,10 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 		}
 
 		exportProcessor := sdktrace.NewBatchSpanProcessor(exporter)
-		state.opts = append(state.opts, sdktrace.WithSpanProcessor(exportProcessor))
+
+		// Capture Prometheus metrics.
+		metricProcessor := NewMetricSpanProcessor(exportProcessor)
+		state.opts = append(state.opts, sdktrace.WithSpanProcessor(metricProcessor))
 	}
 
 	// Apply options.
