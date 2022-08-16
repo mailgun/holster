@@ -89,13 +89,13 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 	spanCtx, span := t.Tracer.Start(ctx, spanName, opts...)
 	span.SetAttributes(
 		attribute.Int64(LogLevelNumKey, int64(ctxLevel)),
-		attribute.String(LogLevelKey, logLevelStr(ctxLevel)),
+		attribute.String(LogLevelKey, logLevelName(ctxLevel)),
 	)
 
 	return spanCtx, span
 }
 
-func logLevelStr(level Level) string {
+func logLevelName(level Level) string {
 	if level >= 0 && level <= 6 {
 		return logLevelNames[level]
 	}
