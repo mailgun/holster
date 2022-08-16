@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/mailgun/holster/v4/tracing"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ func TestDummySpan(t *testing.T) {
 		mockProcessor := new(MockSpanProcessor)
 		mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
 
-		level := int64(logrus.InfoLevel)
+		level := tracing.InfoLevel
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
@@ -49,11 +48,11 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 			})
 		mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
 
-		level := int64(logrus.InfoLevel)
+		level := tracing.InfoLevel
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
@@ -86,7 +85,7 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 				firstSpan = s
 			})
 		mockProcessor.On("OnEnd", matchLeafSpan).
@@ -94,12 +93,12 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 				leafSpan = s
 			})
 		mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
 
-		level := int64(logrus.InfoLevel)
+		level := tracing.InfoLevel
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
@@ -131,11 +130,11 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 			})
 		mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
 
-		level := int64(logrus.InfoLevel)
+		level := tracing.InfoLevel
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
@@ -172,7 +171,7 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 				firstSpan = s
 			})
 		mockProcessor.On("OnEnd", matchLeafSpan).
@@ -180,12 +179,12 @@ func TestDummySpan(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				s := args.Get(0).(sdktrace.ReadOnlySpan)
 				assertReadOnlySpanNoError(t, s)
-				assertHasLogLevel(t, int64(logrus.InfoLevel), s)
+				assertHasLogLevel(t, tracing.InfoLevel, s)
 				leafSpan = s
 			})
 		mockProcessor.On("Shutdown", mock.Anything).Once().Return(nil)
 
-		level := int64(logrus.InfoLevel)
+		level := tracing.InfoLevel
 		setupMockTracerProvider(t, level, mockProcessor)
 
 		// Call code.
@@ -210,7 +209,7 @@ func TestDummySpan(t *testing.T) {
 	})
 }
 
-func assertHasLogLevel(t *testing.T, expectedLogLevel int64, s sdktrace.ReadOnlySpan) {
+func assertHasLogLevel(t *testing.T, expectedLogLevel tracing.Level, s sdktrace.ReadOnlySpan) {
 	level, ok := levelFromReadOnlySpan(s)
 	if !ok {
 		t.Error("Error: Expected span log level to be defined")
@@ -228,17 +227,17 @@ func assertReadOnlySpanNoError(t *testing.T, s sdktrace.ReadOnlySpan) {
 	}
 }
 
-func levelFromReadOnlySpan(s sdktrace.ReadOnlySpan) (int64, bool) {
+func levelFromReadOnlySpan(s sdktrace.ReadOnlySpan) (tracing.Level, bool) {
 	for _, attr := range s.Attributes() {
-		if string(attr.Key) == tracing.LogLevelKey {
-			return attr.Value.AsInt64(), true
+		if string(attr.Key) == tracing.LogLevelNumKey {
+			return tracing.Level(attr.Value.AsInt64()), true
 		}
 	}
 
-	return 0, false
+	return tracing.Level(0), false
 }
 
-func setupMockTracerProvider(t *testing.T, level int64, mockProcessor *MockSpanProcessor) {
+func setupMockTracerProvider(t *testing.T, level tracing.Level, mockProcessor *MockSpanProcessor) {
 	t.Setenv("OTEL_EXPORTERS", "none")
 	ctx := context.Background()
 	opts := []tracing.TracingOption{

@@ -27,7 +27,7 @@ type tracerKey struct{}
 
 type initState struct {
 	opts  []sdktrace.TracerProviderOption
-	level int64
+	level Level
 }
 
 var logLevels = []logrus.Level{
@@ -51,7 +51,7 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 	// Setup exporter.
 	var err error
 	state := &initState{
-		level: int64(logrus.GetLevel()),
+		level: Level(logrus.GetLevel()),
 	}
 	exportersEnv := os.Getenv("OTEL_EXPORTERS")
 
