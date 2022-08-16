@@ -42,13 +42,11 @@ func (o *ResourceOption) apply(state *initState) {
 }
 
 type LevelTracingOption struct {
-	level int64
+	level Level
 }
 
 // WithLevel passes a log level to InitTracing.
-// `level` is RFC5424 numeric log level (0-7).
-// For convenience, use logrus constants, such as: `int64(logrus.InfoLevel)`
-func WithLevel(level int64) *LevelTracingOption {
+func WithLevel(level Level) *LevelTracingOption {
 	return &LevelTracingOption{
 		level: level,
 	}

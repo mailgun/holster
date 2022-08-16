@@ -125,17 +125,14 @@ severity.  Spans that do not meed the minimum severity are simply dropped and
 not exported.
 
 Log level is passed with option `tracing.WithLevel()` as a numeric
-[RFC5424](https://www.rfc-editor.org/rfc/rfc5424) log level (0-7).
+log level (0-6): Panic, Fatal, Error, Warning, Info, Debug, Trace.
 
-As a convenience, you may use log level constants from Logrus, like so:
+As a convenience, use constants, such as `tracing.DebugLevel`:
 
 ```go
-import (
-	"github.com/mailgun/holster/v4/tracing"
-	"github.com/sirupsen/logrus"
-)
+import "github.com/mailgun/holster/v4/tracing"
 
-level := int64(logrus.DebugLevel)
+level := tracing.DebugLevel
 err := tracing.InitTracing(ctx, "my library name", tracing.WithLevel(level))
 ```
 
