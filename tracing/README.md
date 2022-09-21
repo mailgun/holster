@@ -1,4 +1,4 @@
-# Distributed Tracing Using OpenTelemetry and Jaeger
+# Distributed Tracing Using OpenTelemetry
 ## What is OpenTelemetry?
 From [opentelemetry.io](https://opentelemetry.io):
 
@@ -11,8 +11,8 @@ It's comprised of nested spans that are rendered as a waterfall graph.  Each
 span indicates start/end timings and optionally other developer specified
 metadata and logging output.
 
-Jaeger Tracing is the tool used to receive OpenTelemetry trace data.  Use its
-web UI to query for traces and view the waterfall graph.
+Jaeger Tracing is a common tool used to receive OpenTelemetry trace data.  Use
+its web UI to query for traces and view the waterfall graph.
 
 OpenTelemetry is distributed, which allows services to pass the trace ids to
 disparate remote services.  The remote service may generate child spans that
@@ -49,18 +49,26 @@ Configuration reference via environment variables:
 
 #### Exporter
 Traces export to Jaeger by default.  Other exporters are available by setting
-environment variable `OTEL_EXPORTERS` with one or more of:
+environment variable `OTEL_TRACES_EXPORTER` with one or more of:
 
+* `otlp`: [OTLP: OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md)
 * `jaeger`: [Jaeger Tracing](https://jaegertracing.io)
-* `honeycomb`: [Honeycomb](https://honeycomb.io)
 * `none`: Disable export.
 
 Usually, you'd only need one exporter.  If not, more than one may be selected
 by delimiting with comma.
 
-#### Jaeger Export via UDP
-By default, Jaeger exports to a Jaeger Agent on localhost port 6831/udp.  The
-host and port can be changed by setting environment variables
+#### OTLP Exporter
+By default, OTLP exporter exports to an [OpenTelemetry
+Collector](https://opentelemetry.io/docs/collector/) on localhost on gRPC port
+4317.  The host and port can be changed by setting environment variable
+`OTEL_EXPORTER_OTLP_ENDPOINT` like `https://collector:4317`.
+
+See more: [OTLP configuration](#OTLP)
+
+#### Jaeger Exporter via UDP
+By default, Jaeger exporter exports to a Jaeger Agent on localhost port
+6831/udp.  The host and port can be changed by setting environment variables
 `OTEL_EXPORTER_JAEGER_AGENT_HOST`, `OTEL_EXPORTER_JAEGER_AGENT_PORT`.
 
 It's important to ensure UDP traces are sent on the loopback interface (aka
@@ -71,7 +79,7 @@ much lower at 1500.  OpenTelemetry's Jaeger client is sometimes unable to limit
 its payload to fit in a 1500 byte datagram and will drop those packets.  This
 causes traces that are mangled or missing detail.
 
-#### Jaeger Export via HTTP
+#### Jaeger Exporter via HTTP
 If it's not possible to install a Jaeger Agent on localhost, the client can
 instead export directly to the Jaeger Collector of the Jaeger Server on HTTP
 port 14268.
@@ -399,7 +407,27 @@ grpcSrv := grpc.NewServer(
 ```
 
 ### Config Options
-Possible environment config exporter config options when using `tracing.InitTracing()`.
+Possible environment config exporter config options when using
+`tracing.InitTracing()`.
+
+#### OTLP
+* `OTEL_EXPORTER_OTLP_PROTOCOL`
+   * May be one of: `grpc`, `http/protobuf`.
+* `OTEL_EXPORTER_OTLP_ENDPOINT`
+   * Set to URL like `http://collector:<port>` or `https://collector:<port>`.
+   * Port for `grpc` protocol is 4317, `http/protobuf` is 4318.
+   * If protocol is `grpc`, URL scheme `http` indicates insecure TLS
+     connection, `https` indicates secure even though connection is over gRPC
+     protocol, not HTTP(S).
+* `OTEL_EXPORTER_OTLP_CERTIFICATE`, `OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE`,
+  `OTEL_EXPORTER_OTLP_CLIENT_KEY`
+   * If protocol is `grpc` or using HTTPS endpoint, set TLS certificate files.
+* `OTEL_EXPORTER_OTLP_HEADERS`
+   * Optional headers passed to collector in format:
+     `key=value,key2=value2,...`.
+
+See also [OTLP configuration
+reference](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md).
 
 #### Jaeger
 * `OTEL_EXPORTER_JAEGER_PROTOCOL`
@@ -407,18 +435,19 @@ Possible environment config exporter config options when using `tracing.InitTrac
 * `OTEL_EXPORTER_JAEGER_AGENT_HOST`
 * `OTEL_EXPORTER_JAEGER_AGENT_PORT`
 
-#### `OTEL_EXPORTER_JAEGER_PROTOCOL`
+##### `OTEL_EXPORTER_JAEGER_PROTOCOL`
   Possible values:
 * `udp/thrift.compact` (default): Export traces via UDP datagrams.  Best used when Jaeger Agent is accessible via loopback interface.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6831`.
 * `udp/thrift.binary`: Alternative protocol to the more commonly used `udp/thrift.compact`.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6832`.
 * `http/thrift.compact`: Export traces via HTTP packets.  Best used when Jaeger Agent cannot be deployed or is inaccessible via loopback interface.  This setting sends traces directly to Jaeger's collector port.  May also provide `OTEL_EXPORTER_JAEGER_ENDPOINT`, which defaults to `http://localhost:14268/api/traces`.
 
-#### HoneyComb
-* `OTEL_EXPORTER_HONEYCOMB_ENDPOINT` - Defaults to `api.honeycomb.io:443`
-* `OTEL_EXPORTER_HONEYCOMB_API_KEY`
-
-Other environment config options recognized by OTel
-libraries are defined [here](https://opentelemetry.io/docs/reference/specification/sdk-environment-variables/)
+#### Honeycomb
+[Honeycomb](https://honeycomb.io) consumes OTLP traces and requires an API key header:
+```
+OTEL_EXPORTER_OTLP_PROTOCOL=otlp
+OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io
+OTEL_EXPORTER_OTLP_HEADERS=x-honeycomb-team=<api-key>
+```
 
 
 ## Prometheus Metrics

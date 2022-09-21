@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -19,7 +20,6 @@ import (
 	"github.com/mailgun/holster/v4/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
-	"google.golang.org/grpc/credentials"
 )
 
 // Context Values key for embedding `Tracer` object.
@@ -53,26 +53,26 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 	state := &initState{
 		level: Level(logrus.GetLevel()),
 	}
-	exportersEnv := os.Getenv("OTEL_EXPORTERS")
+	exportersEnv := os.Getenv("OTEL_TRACES_EXPORTER")
 
 	for _, e := range strings.Split(exportersEnv, ",") {
 		var exporter sdktrace.SpanExporter
 
 		switch e {
-		case "honeycomb":
-			exporter, err = makeHoneyCombExporter(ctx)
-			if err != nil {
-				return errors.Wrap(err, "error in makeHoneyCombExporter")
-			}
 		case "none":
 			// No exporter.  Used with unit tests.
 			continue
 		case "jaeger":
-			fallthrough
-		default:
 			exporter, err = makeJaegerExporter()
 			if err != nil {
 				return errors.Wrap(err, "error in makeJaegerExporter")
+			}
+		case "otlp":
+			fallthrough
+		default:
+			exporter, err = makeOtlpExporter(ctx)
+			if err != nil {
+				return errors.Wrap(err, "error in makeOtlpExporter")
 			}
 		}
 
@@ -161,35 +161,74 @@ func Tracer(opts ...trace.TracerOption) trace.Tracer {
 	return otel.Tracer(globalLibraryName, opts...)
 }
 
-func makeJaegerExporter() (*jaeger.Exporter, error) {
-	var endpointOption jaeger.EndpointOption
-
-	protocol := os.Getenv("OTEL_EXPORTER_JAEGER_PROTOCOL")
-	if protocol == "" {
-		protocol = "udp/thrift.compact"
+func getenvOrDefault(def string, names ...string) string {
+	for _, name := range names {
+		value := os.Getenv(name)
+		if value != "" {
+			return value
+		}
 	}
 
-	// Otel Jaeger client doesn't seem to implement the spec for
-	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
+	return def
+}
+
+func makeOtlpExporter(ctx context.Context) (*otlptrace.Exporter, error) {
+	protocol := getenvOrDefault("grpc", "OTEL_EXPORTER_OTLP_PROTOCOL", "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL")
+	var client otlptrace.Client
+
+	// OTel Jaeger client doesn't seem to implement the spec for
+	// OTEL_EXPORTER_OTLP_PROTOCOL selection.  So we must.
+	// NewClient will parse supported env var configuration.
 	switch protocol {
+	case "grpc":
+		client = otlptracegrpc.NewClient()
+	case "http/protobuf":
+		client = otlptracehttp.NewClient()
+	default:
+		log.WithField("OTEL_EXPORTER_OTLP_PROTOCOL", protocol).
+			Error("Unknown OTLP protocol configured")
+		protocol = "grpc"
+		client = otlptracegrpc.NewClient()
+	}
+
+	log.WithFields(logrus.Fields{
+		"protocol": protocol,
+		"endpoint": getenvOrDefault("", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+	}).Info("Initializing OTLP exporter")
+
+	return otlptrace.New(ctx, client)
+}
+
+func makeJaegerExporter() (*jaeger.Exporter, error) {
+	var endpointOption jaeger.EndpointOption
+	protocol := getenvOrDefault("udp/thrift.compact", "OTEL_EXPORTER_JAEGER_PROTOCOL")
+
+	// OTel Jaeger client doesn't seem to implement the spec for
+	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
+	// Jaeger endpoint option will parse supported env var configuration.
+	switch protocol {
+	// TODO: Support for "grpc" protocol. https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#jaeger-exporter
 	case "http/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
-		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
+			"protocol": protocol,
+		}).Info("Initializing Jaeger exporter")
 		endpointOption = jaeger.WithCollectorEndpoint()
 
 	case "udp/thrift.binary":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
+			"protocol":  protocol,
+		}).Info("Initializing Jaeger exporter")
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	case "udp/thrift.compact":
 		log.WithFields(logrus.Fields{
 			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
 			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-		}).Infof("Initializing Jaeger exporter via protocol %s", protocol)
+			"protocol":  protocol,
+		}).Info("Initializing Jaeger exporter")
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	default:
@@ -204,31 +243,4 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	}
 
 	return exp, nil
-}
-
-func makeHoneyCombExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-	endPoint := os.Getenv("OTEL_EXPORTER_HONEYCOMB_ENDPOINT")
-	if endPoint == "" {
-		endPoint = "api.honeycomb.io:443"
-	}
-
-	apiKey := os.Getenv("OTEL_EXPORTER_HONEYCOMB_API_KEY")
-	if apiKey == "" {
-		return nil, errors.New("env 'OTEL_EXPORTER_HONEYCOMB_API_KEY' cannot be empty")
-	}
-
-	log.WithFields(logrus.Fields{
-		"endpoint": endPoint,
-	}).Info("Initializing Honeycomb exporter")
-
-	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(endPoint),
-		otlptracegrpc.WithHeaders(map[string]string{
-			"x-honeycomb-team": apiKey,
-		}),
-		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
-	}
-
-	client := otlptracegrpc.NewClient(opts...)
-	return otlptrace.New(ctx, client)
 }
