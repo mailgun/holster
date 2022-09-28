@@ -86,7 +86,8 @@ func TestProxy(t *testing.T) {
 	assert.Contains(t, err.Error(), "recvfrom: connection refused")
 
 	// Start the proxy again
-	p.Start()
+	err = p.Start()
+	require.NoError(t, err)
 
 	// Should get a response
 	_, err = conn.Send([]byte("World"))

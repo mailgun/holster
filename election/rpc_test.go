@@ -196,7 +196,8 @@ func TestHTTPServer(t *testing.T) {
 		}
 		out, err := json.Marshal(resp)
 		require.NoError(t, err)
-		w.Write(out)
+		_, err = w.Write(out)
+		require.NoError(t, err)
 	}))
 	defer ts.Close()
 

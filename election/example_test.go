@@ -16,6 +16,7 @@ import (
 	"github.com/mailgun/holster/v4/election"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *election.RPCResponse) error {
@@ -46,13 +47,14 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	return nil
 }
 
-func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request) {
+func newHandler(t *testing.T, node election.Node) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dec := json.NewDecoder(r.Body)
 		var req election.RPCRequest
 		if err := dec.Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			_, err = w.Write([]byte(err.Error()))
+			require.NoError(t, err)
 		}
 		var resp election.RPCResponse
 		node.ReceiveRPC(req, &resp)
@@ -60,7 +62,8 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(resp); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+			_, err = w.Write([]byte(err.Error()))
+			require.NoError(t, err)
 		}
 	}
 }
@@ -86,7 +89,10 @@ func SimpleExample(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer node1.Stop(context.Background())
+	defer func() {
+		err := node1.Stop(context.Background())
+		require.NoError(t, err)
+	}()
 
 	node2, err := election.NewNode(election.Config{
 		Peers:    []string{"localhost:7080", "localhost:7081"},
@@ -99,13 +105,13 @@ func SimpleExample(t *testing.T) {
 
 	go func() {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/rpc", newHandler(node1))
+		mux.HandleFunc("/rpc", newHandler(t, node1))
 		log.Fatal(http.ListenAndServe(":7080", mux))
 	}()
 
 	go func() {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/rpc", newHandler(node2))
+		mux.HandleFunc("/rpc", newHandler(t, node2))
 		log.Fatal(http.ListenAndServe(":7081", mux))
 	}()
 
@@ -120,15 +126,19 @@ func SimpleExample(t *testing.T) {
 
 	// Now that both http handlers are listening for requests we
 	// can safely start the election.
-	node1.Start(context.Background())
-	node2.Start(context.Background())
+	err  = node1.Start(context.Background())
+	require.NoError(t, err)
+	err = node2.Start(context.Background())
+	require.NoError(t, err)
 
 	// Wait here for signals to clean up our mess
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	for range c {
-		node1.Stop(context.Background())
-		node2.Stop(context.Background())
+		err = node1.Stop(context.Background())
+		require.NoError(t, err)
+		err = node2.Stop(context.Background())
+		require.NoError(t, err)
 		os.Exit(0)
 	}
 }

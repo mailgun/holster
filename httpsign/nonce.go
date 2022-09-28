@@ -34,7 +34,8 @@ func (n *nonceCache) inCache(nonce string) bool {
 	}
 
 	// it's not, so let's put it in the cache
-	n.cache.Set(nonce, "", n.cacheTTL)
+	// TODO: Handle error
+	_ = n.cache.Set(nonce, "", n.cacheTTL)
 
 	return false
 }
