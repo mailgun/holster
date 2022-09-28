@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mailgun/holster/v4/discovery"
 	"github.com/mailgun/holster/v4/election"
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/sirupsen/logrus"
 )
 

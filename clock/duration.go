@@ -3,7 +3,7 @@ package clock
 import (
 	"encoding/json"
 
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 )
 
 type DurationJSON struct {

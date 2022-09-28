@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/syncutil"
-	"github.com/pkg/errors"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/retry"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
