@@ -47,7 +47,8 @@ func TestUntilPass(t *testing.T) {
 	defer ts.Close()
 
 	// Start the async process that produces a value on the server
-	http.PostForm(ts.URL, url.Values{"value": []string{"batch job completed"}})
+	_, err := http.PostForm(ts.URL, url.Values{"value": []string{"batch job completed"}})
+	require.NoError(t, err)
 
 	// Keep running this until the batch job completes or attempts are exhausted
 	testutil.UntilPass(t, 10, time.Millisecond*100, func(t testutil.TestingT) {

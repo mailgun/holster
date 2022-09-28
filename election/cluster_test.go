@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"testing"
 
 	"github.com/mailgun/holster/v4/election"
 	"github.com/mailgun/holster/v4/setter"
+	"github.com/stretchr/testify/require"
 )
 
 type ChangePair struct {
@@ -18,6 +20,7 @@ type ChangePair struct {
 type TestCluster struct {
 	Nodes      map[string]*ClusterNode
 	OnChangeCh chan ChangePair
+	t          *testing.T
 	errors     map[string]error
 	lock       sync.Mutex
 }
@@ -28,9 +31,10 @@ type ClusterNode struct {
 	SendRPC func(from string, to string, req election.RPCRequest, resp *election.RPCResponse) error
 }
 
-func NewTestCluster() *TestCluster {
+func NewTestCluster(t *testing.T) *TestCluster {
 	return &TestCluster{
 		Nodes:      make(map[string]*ClusterNode),
+		t:          t,
 		errors:     make(map[string]error),
 		OnChangeCh: make(chan ChangePair, 500),
 	}
@@ -62,7 +66,8 @@ func (c *TestCluster) SpawnNode(name string, conf *election.Config) error {
 	}
 	// Add the node to our list of nodes
 	c.Add(name, n)
-	n.Node.Start(context.Background())
+	err = n.Node.Start(context.Background())
+	require.NoError(c.t, err)
 	return nil
 }
 
@@ -96,7 +101,8 @@ func (c *TestCluster) updatePeers() {
 
 	// Update our list of known peers
 	for _, v := range c.Nodes {
-		v.Node.SetPeers(context.Background(), peers)
+		err := v.Node.SetPeers(context.Background(), peers)
+		require.NoError(c.t, err)
 	}
 }
 
@@ -175,6 +181,7 @@ func (c *TestCluster) sendRPC(from string, to string, req election.RPCRequest, r
 
 func (c *TestCluster) Close() {
 	for _, v := range c.Nodes {
-		v.Node.Stop(context.Background())
+		err := v.Node.Stop(context.Background())
+		require.NoError(c.t, err)
 	}
 }

@@ -43,7 +43,10 @@ func TestGetSRVAddresses(t *testing.T) {
 		Port:    2319,
 	}, api.ServiceRegisterOpts{ReplaceExistingChecks: true})
 	require.NoError(t, err)
-	defer client.Agent().ServiceDeregister("123-2319")
+	defer func() {
+		err := client.Agent().ServiceDeregister("123-2319")
+		require.NoError(t, err)
+	}()
 
 	addresses, err := discovery.GetSRVAddresses("mll.scout.service.consul", "")
 	require.NoError(t, err)

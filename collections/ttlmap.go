@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -92,7 +92,8 @@ func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
 
 	mapEl, expired := m.get(key)
 	if mapEl == nil || expired {
-		m.set(key, value, expiryTime)
+		// TODO: Handle error
+		_ = m.set(key, value, expiryTime)
 		return value, nil
 	}
 
@@ -102,7 +103,8 @@ func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
 	}
 
 	currentValue += value
-	m.set(key, currentValue, expiryTime)
+	// TODO: Handle error
+	_ = m.set(key, currentValue, expiryTime)
 	return currentValue, nil
 }
 
