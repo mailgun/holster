@@ -3,7 +3,8 @@ package errors_test
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
+	pkgerrors "github.com/pkg/errors"
 )
 
 func ExampleNew() {
@@ -174,7 +175,7 @@ func ExampleErrorf_extended() {
 
 func Example_stackTrace() {
 	type stackTracer interface {
-		StackTrace() errors.StackTrace
+		StackTrace() pkgerrors.StackTrace
 	}
 
 	err, ok := errors.Cause(fn()).(stackTracer)

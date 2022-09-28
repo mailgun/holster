@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/consul/api"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/setter"
-	"github.com/pkg/errors"
 )
 
 // EnvHasConsulConfig returns true if there are items in the local environment

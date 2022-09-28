@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/election"
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
