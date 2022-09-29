@@ -311,20 +311,14 @@ func Cause(err error) error {
 func ToMap(err error) map[string]interface{} {
 	var result map[string]interface{}
 
-	// Add context if provided
-	child, ok := err.(HasContext)
-	if !ok {
-		return result
+	if child, ok := err.(HasContext); ok {
+		// Append the context map to our results
+		result = make(map[string]interface{})
+		for key, value := range child.Context() {
+			result[key] = value
+		}
 	}
 
-	if result == nil {
-		return child.Context()
-	}
-
-	// Append the context map to our results
-	for key, value := range child.Context() {
-		result[key] = value
-	}
 	return result
 }
 

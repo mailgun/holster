@@ -11,7 +11,7 @@ linters:
     - goimports
     - gosec
     - gosimple
-    # - govet
+    - govet
     # - noctx
     # - nolintlint
     # - ineffassign # Mandatory. Do not disable.

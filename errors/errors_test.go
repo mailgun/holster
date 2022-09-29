@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -100,9 +101,7 @@ func TestCause(t *testing.T) {
 
 	for i, tt := range tests {
 		got := Cause(tt.err)
-		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("test %d: got %#v, want %#v", i+1, got, tt.want)
-		}
+		require.ErrorIsf(t, tt.want, got, "test %d: got %#v, want %#v", i+1, got, tt.want)
 	}
 }
 
