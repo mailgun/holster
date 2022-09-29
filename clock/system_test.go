@@ -66,7 +66,7 @@ func TestTimerStop(t *testing.T) {
 
 	// Then
 	assert.Equal(t, true, active)
-	time.Sleep(100)
+	time.Sleep(100 * time.Nanosecond)
 	select {
 	case <-timer.C():
 		assert.Fail(t, "Timer should not have fired")
