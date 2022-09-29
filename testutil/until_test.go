@@ -1,4 +1,5 @@
 // #nosec
+// nolint: noctx
 package testutil_test
 
 import (
