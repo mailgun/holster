@@ -14,7 +14,7 @@ linters:
     - govet
     # - noctx
     - nolintlint
-    # - ineffassign # Mandatory. Do not disable.
+    - ineffassign # Mandatory. Do not disable.
     # - staticcheck # Mandatory. Do not disable.
     # - stylecheck
     # - typecheck

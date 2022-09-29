@@ -224,6 +224,7 @@ func TestHTTPServer(t *testing.T) {
 	// Unmarshall the response
 	var rpcResp election.RPCResponse
 	b, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	err = json.Unmarshal(b, &rpcResp)
 	require.NoError(t, err)
 
@@ -244,6 +245,7 @@ func TestHTTPServer(t *testing.T) {
 
 	// Unmarshall the response
 	b, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	err = json.Unmarshal(b, &rpcResp)
 	require.NoError(t, err)
 

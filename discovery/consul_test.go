@@ -39,6 +39,7 @@ func TestConsulSinglePeer(t *testing.T) {
 			onUpdateCh <- peers
 		},
 	})
+	require.NoError(t, err)
 	// printCatalog(t, catalog, client)
 
 	e := <-onUpdateCh

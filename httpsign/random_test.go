@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var _ = fmt.Printf // for testing
@@ -68,6 +70,7 @@ func TestSeededRNG(t *testing.T) {
 
 	// Test HexDigest().
 	g1, err := rng.hexDigest(4)
+	assert.NoError(t, err)
 	if w := "fa12f92a"; g1 != w {
 		t.Errorf("&SeededRNG{Seed: 0}.Bytes(4) = %v, want %v", g1, w)
 	}

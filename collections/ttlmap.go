@@ -140,7 +140,6 @@ func (m *TTLMap) set(key string, value interface{}, expiryTime int) {
 	heapEl.Value = mapEl
 	m.elements[key] = mapEl
 	m.expiryTimes.Push(heapEl)
-	return
 }
 
 func (m *TTLMap) lockNGet(key string) (value interface{}, mapEl *mapElement, expired bool) {

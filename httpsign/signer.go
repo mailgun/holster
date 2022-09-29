@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/mailgun/holster/v4/clock"
 )
@@ -102,20 +101,21 @@ func New(config *Config) (*Signer, error) {
 		config.SignatureVersionHeaderName = XMailgunSignatureVersion
 	}
 
-	// setup metrics service
-	if config.EmitStats {
-		// get hostname of box
-		hostname, err := os.Hostname()
-		if err != nil {
-			return nil, fmt.Errorf("failed to obtain hostname: %v", err)
-		}
-
-		// build lemma prefix
-		prefix := "lemma." + strings.ReplaceAll(hostname, ".", "_")
-		if config.StatsdPrefix != "" {
-			prefix += "." + config.StatsdPrefix
-		}
-	}
+	// Commented out this code because it does effectively nothing.
+	// // setup metrics service
+	// if config.EmitStats {
+	// 	// get hostname of box
+	// 	hostname, err := os.Hostname()
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to obtain hostname: %v", err)
+	// 	}
+	//
+	// 	// build lemma prefix
+	// 	prefix := "lemma." + strings.ReplaceAll(hostname, ".", "_")
+	// 	if config.StatsdPrefix != "" {
+	// 		prefix += "." + config.StatsdPrefix
+	// 	}
+	// }
 
 	// Read in key from KeyPath or if not given, try getting them from KeyBytes.
 	var keyBytes []byte
@@ -186,10 +186,6 @@ func (s *Signer) SignRequestWithKey(r *http.Request, secretKey []byte) error {
 	r.Header.Set(s.config.TimestampHeaderName, timestamp)
 	r.Header.Set(s.config.SignatureHeaderName, signature)
 	r.Header.Set(s.config.SignatureVersionHeaderName, "2")
-
-	// set the body bytes we read in to nil to hint to the gc to pick it up
-	bodyBytes = nil
-
 	return nil
 }
 
@@ -251,9 +247,6 @@ func (s *Signer) VerifyRequestWithKey(r *http.Request, secretKey []byte) (err er
 	if inCache {
 		return fmt.Errorf("nonce already in cache: %v", nonce)
 	}
-
-	// set the body bytes we read in to nil to hint to the gc to pick it up
-	bodyBytes = nil
 
 	return nil
 }
