@@ -109,13 +109,23 @@ func SimpleExample(t *testing.T) {
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/rpc", newHandler(t, node1))
-		log.Fatal(http.ListenAndServe(":7080", mux))
+		server := &http.Server{
+			Addr:              ":7080",
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		log.Fatal(server.ListenAndServe())
 	}()
 
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/rpc", newHandler(t, node2))
-		log.Fatal(http.ListenAndServe(":7081", mux))
+		server := &http.Server{
+			Addr:              ":7081",
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		log.Fatal(server.ListenAndServe())
 	}()
 
 	// Wait for each of the http listeners to start fielding requests
