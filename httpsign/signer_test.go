@@ -1,6 +1,7 @@
 package httpsign
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,7 @@ var (
 )
 
 func TestSignRequest(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -61,7 +63,7 @@ func TestSignRequest(t *testing.T) {
 		}
 
 		body := strings.NewReader(tt.inRequestBody)
-		request, err := http.NewRequest(tt.inHttpVerb, tt.inRequestUri, body)
+		request, err := http.NewRequestWithContext(ctx, tt.inHttpVerb, tt.inRequestUri, body)
 		if err != nil {
 			t.Errorf("[%v] Got unexpected error from http.NewRequest: %v", i, err)
 		}
@@ -100,6 +102,7 @@ func TestSignRequest(t *testing.T) {
 }
 
 func TestAuthenticateRequest(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -133,7 +136,7 @@ func TestAuthenticateRequest(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Got unexpected error from http.NewRequest: %v", err)
 	}
@@ -155,6 +158,7 @@ func TestAuthenticateRequest(t *testing.T) {
 }
 
 func TestAuthenticateRequestWithHeaders(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -188,7 +192,7 @@ func TestAuthenticateRequestWithHeaders(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Got unexpected error from http.NewRequest: %v", err)
 	}
@@ -211,6 +215,7 @@ func TestAuthenticateRequestWithHeaders(t *testing.T) {
 }
 
 func TestAuthenticateRequestWithKey(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -244,7 +249,7 @@ func TestAuthenticateRequestWithKey(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Got unexpected error from http.NewRequest: %v", err)
 	}
@@ -266,6 +271,7 @@ func TestAuthenticateRequestWithKey(t *testing.T) {
 }
 
 func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -299,7 +305,7 @@ func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Got unexpected error from http.NewRequest: %v", err)
 	}
@@ -321,6 +327,7 @@ func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
 }
 
 func TestAuthenticateRequestForged(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -354,7 +361,7 @@ func TestAuthenticateRequestForged(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 	}
@@ -375,6 +382,7 @@ func TestAuthenticateRequestForged(t *testing.T) {
 }
 
 func TestAuthenticateRequestMissingHeaders(t *testing.T) {
+	ctx := context.Background()
 	clock.Freeze(clock.Unix(1330837567, 0))
 	defer clock.Unfreeze()
 	randomPrv = &fakeRandom{}
@@ -408,7 +416,7 @@ func TestAuthenticateRequestMissingHeaders(t *testing.T) {
 
 	// setup request to test with
 	body := strings.NewReader(`{"hello": "world"}`)
-	request, err := http.NewRequest("POST", ts.URL, body)
+	request, err := http.NewRequestWithContext(ctx, "POST", ts.URL, body)
 	if err != nil {
 		t.Errorf("Got unexpected error from http.NewRequest: %v", err)
 	}

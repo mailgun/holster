@@ -2,6 +2,7 @@ package election_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -172,6 +173,7 @@ func TestRPCResponse(t *testing.T) {
 }
 
 func TestHTTPServer(t *testing.T) {
+	ctx := context.Background()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var in election.RPCRequest
 
@@ -212,7 +214,7 @@ func TestHTTPServer(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send the request to the server
-	req, err := http.NewRequest(http.MethodPost, ts.URL, bytes.NewBuffer(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL, bytes.NewBuffer(b))
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
@@ -234,7 +236,7 @@ func TestHTTPServer(t *testing.T) {
 	assert.Equal(t, "node1", hb.From)
 
 	// Send an unknown rpc request to the server
-	req, err = http.NewRequest(http.MethodPost, ts.URL, bytes.NewBuffer([]byte(`{"rpc":"unknown"}`)))
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, ts.URL, bytes.NewBuffer([]byte(`{"rpc":"unknown"}`)))
 	require.NoError(t, err)
 	resp, err = http.DefaultClient.Do(req)
 	require.NoError(t, err)

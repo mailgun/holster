@@ -60,7 +60,7 @@ func (st *systemTime) NewTicker(d time.Duration) Ticker {
 }
 
 func (st *systemTime) Tick(d time.Duration) <-chan time.Time {
-	// nolint: staticcheck
+	//nolint: staticcheck // FIXME: SA1015: using time.Tick leaks the underlying ticker, consider using it only in endless functions, tests and the main package, and use time.NewTicker here
 	return time.Tick(d)
 }
 
