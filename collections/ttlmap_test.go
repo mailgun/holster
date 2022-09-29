@@ -166,10 +166,10 @@ func (s *TTLMapSuite) TestGetInvalidType() {
 	s.Require().NoError(err)
 
 	_, _, err = m.GetInt("a")
-	s.Require().EqualError(err, "Expected existing value to be integer, got string")
+	s.Require().EqualError(err, "expected existing value to be integer, got string")
 
 	_, err = m.Increment("a", 4, 1)
-	s.Require().EqualError(err, "Expected existing value to be integer, got string")
+	s.Require().EqualError(err, "expected existing value to be integer, got string")
 }
 
 func (s *TTLMapSuite) TestIncrementGetExpire() {

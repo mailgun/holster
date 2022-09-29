@@ -99,7 +99,7 @@ func (m *TTLMap) Increment(key string, value, ttlSeconds int) (retval int, reter
 
 	currentValue, ok := mapEl.value.(int)
 	if !ok {
-		return 0, fmt.Errorf("Expected existing value to be integer, got %T", mapEl.value)
+		return 0, fmt.Errorf("expected existing value to be integer, got %T", mapEl.value)
 	}
 
 	currentValue += value
@@ -115,7 +115,7 @@ func (m *TTLMap) GetInt(key string) (retval int, found bool, reterr error) {
 	}
 	value, ok := valueI.(int)
 	if !ok {
-		return 0, false, fmt.Errorf("Expected existing value to be integer, got %T", valueI)
+		return 0, false, fmt.Errorf("expected existing value to be integer, got %T", valueI)
 	}
 	return value, true, nil
 }
