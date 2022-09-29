@@ -109,10 +109,10 @@ func (s *TTLMapSuite) TestRemoveExpiredEdgeCase() {
 	err = m.Set("b", 2, 1)
 	s.Require().Equal(nil, err)
 
-	valI, exists := m.Get("a")
+	_, exists := m.Get("a")
 	s.Require().Equal(false, exists)
 
-	valI, exists = m.Get("b")
+	valI, exists := m.Get("b")
 	s.Require().Equal(true, exists)
 	s.Require().Equal(2, valI)
 
@@ -133,10 +133,10 @@ func (s *TTLMapSuite) TestRemoveOutOfCapacity() {
 	err = m.Set("c", 3, 10)
 	s.Require().Equal(nil, err)
 
-	valI, exists := m.Get("a")
+	_, exists := m.Get("a")
 	s.Require().Equal(false, exists)
 
-	valI, exists = m.Get("b")
+	valI, exists := m.Get("b")
 	s.Require().Equal(true, exists)
 	s.Require().Equal(2, valI)
 
@@ -227,7 +227,7 @@ func (s *TTLMapSuite) TestIncrementOutOfCapacity() {
 	s.Require().Equal(true, exists)
 	s.Require().Equal(4, val)
 
-	val, exists, err = m.GetInt("a")
+	_, exists, err = m.GetInt("a")
 
 	s.Require().Equal(nil, err)
 	s.Require().Equal(false, exists)
@@ -242,12 +242,12 @@ func (s *TTLMapSuite) TestIncrementRemovesExpired() {
 	clock.Advance(1 * clock.Second)
 	_, _ = m.Increment("c", 3, 3)
 
-	val, exists, err := m.GetInt("a")
+	_, exists, err := m.GetInt("a")
 
 	s.Require().Equal(nil, err)
 	s.Require().Equal(false, exists)
 
-	val, exists, err = m.GetInt("b")
+	val, exists, err := m.GetInt("b")
 	s.Require().Equal(nil, err)
 	s.Require().Equal(true, exists)
 	s.Require().Equal(2, val)
@@ -265,12 +265,12 @@ func (s *TTLMapSuite) TestIncrementRemovesLastUsed() {
 	_, _ = m.Increment("b", 2, 11)
 	_, _ = m.Increment("c", 3, 12)
 
-	val, exists, err := m.GetInt("a")
+	_, exists, err := m.GetInt("a")
 
 	s.Require().Equal(nil, err)
 	s.Require().Equal(false, exists)
 
-	val, exists, err = m.GetInt("b")
+	val, exists, err := m.GetInt("b")
 	s.Require().Equal(nil, err)
 	s.Require().Equal(true, exists)
 

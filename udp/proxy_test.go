@@ -33,7 +33,7 @@ func TestServerClient(t *testing.T) {
 	require.NoError(t, err)
 
 	b := make([]byte, 50)
-	n, _, err := conn.Recv(b, time.Second)
+	n, _, _ := conn.Recv(b, time.Second)
 
 	assert.Equal(t, "Hello, Thrawn", string(b[:n]))
 }
@@ -81,7 +81,7 @@ func TestProxy(t *testing.T) {
 	// Should not get a response from the upstream server
 	_, err = conn.Send([]byte("Not expecting a response"))
 	require.NoError(t, err)
-	n, _, err = conn.Recv(b, time.Second)
+	_, _, err = conn.Recv(b, time.Second)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "recvfrom: connection refused")
 
