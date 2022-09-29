@@ -2,25 +2,23 @@ package discovery_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/hashicorp/consul/api"
 	"github.com/mailgun/holster/v4/discovery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func printCatalog(t *testing.T, catalog string, client *api.Client) {
-	t.Helper()
-	fmt.Printf("============\n")
-	l, _, err := client.Health().Service(catalog, "", false, nil)
-	require.NoError(t, err)
-	for _, i := range l {
-		t.Logf("Service: %s", i.Service.ID)
-	}
-	fmt.Printf("======\n")
-}
+// func printCatalog(t *testing.T, catalog string, client *api.Client) {
+// 	t.Helper()
+// 	fmt.Printf("============\n")
+// 	l, _, err := client.Health().Service(catalog, "", false, nil)
+// 	require.NoError(t, err)
+// 	for _, i := range l {
+// 		t.Logf("Service: %s", i.Service.ID)
+// 	}
+// 	fmt.Printf("======\n")
+// }
 
 func TestConsulSinglePeer(t *testing.T) {
 	const catalog = "TestConsulSinglePeer"

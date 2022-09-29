@@ -4,7 +4,6 @@ package errors
 // Contains error class and type decoration.
 type TypedError struct {
 	error
-	msg string
 	cls string
 	typ string
 }
