@@ -1,8 +1,9 @@
 package anonymize
 
 import (
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type AnonymizeSuite struct {

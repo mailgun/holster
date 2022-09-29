@@ -8,7 +8,7 @@ linters:
     - depguard
     - errcheck # Mandatory. Do not disable.
     - gocritic
-    # - goimports
+    - goimports
     # - gosec
     # - gosimple
     # - govet
