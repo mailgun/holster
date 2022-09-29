@@ -13,7 +13,7 @@ func TestAnonymizeSuite(t *testing.T) {
 	suite.Run(t, new(AnonymizeSuite))
 }
 
-func (s *AnonymizeSuite) TestAnonymizeWithNoSecretsReturnsUnchangedString()  {
+func (s *AnonymizeSuite) TestAnonymizeWithNoSecretsReturnsUnchangedString() {
 	anonimized, err := Anonymize("Hello Dear User", "")
 	s.Nil(err)
 	s.Equal("Hello Dear User", anonimized)
@@ -22,21 +22,20 @@ func (s *AnonymizeSuite) TestAnonymizeWithNoSecretsReturnsUnchangedString()  {
 	s.Equal("Hello Dear User", anonimized)
 }
 
-
-func (s *AnonymizeSuite) TestAnonymizeWithNoSecretsInStringReturnsUnchangedString()  {
+func (s *AnonymizeSuite) TestAnonymizeWithNoSecretsInStringReturnsUnchangedString() {
 	anonimized, err := Anonymize("Hello Dear User", "John")
 	s.Nil(err)
 	s.Equal("Hello Dear User", anonimized)
 }
 
-func (s *AnonymizeSuite) TestAnonymizeEscapesSecrets()  {
+func (s *AnonymizeSuite) TestAnonymizeEscapesSecrets() {
 	anonimized, err := Anonymize(
 		"Hello Dear User", `\s`)
 	s.Nil(err)
 	s.Equal("Hello Dear User", anonimized)
 }
 
-func (s *AnonymizeSuite) TestAnonymizeSquashesAdjacentSecrets()  {
+func (s *AnonymizeSuite) TestAnonymizeSquashesAdjacentSecrets() {
 	anonimized, err := Anonymize(
 		"Hello Иван Иванов ivan ivanov foo.bar",
 		`"Иван Иванов" <ivan.ivanov@foo.bar>`)

@@ -111,9 +111,10 @@ func TestLookupError(t *testing.T) {
 // Shuffling only does not cross preference group boundaries.
 //
 // Preference groups are:
-//  1: mxa.definbox.com, mxe.definbox.com, mxi.definbox.com
-//  2: mxc.definbox.com
-//  3: mxb.definbox.com, mxd.definbox.com, mxf.definbox.com, mxg.definbox.com, mxh.definbox.com
+//
+//	1: mxa.definbox.com, mxe.definbox.com, mxi.definbox.com
+//	2: mxc.definbox.com
+//	3: mxb.definbox.com, mxd.definbox.com, mxf.definbox.com, mxg.definbox.com, mxh.definbox.com
 //
 // Warning: since the data set is pretty small subsequent shuffles can produce
 // the same result causing the test to fail.
