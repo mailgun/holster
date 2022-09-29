@@ -97,7 +97,7 @@ func (s *Session) start() {
 			}
 		case <-ticker.C:
 			// Ensure we are getting heartbeats regularly
-			if time.Now().Sub(s.lastKeepAlive) > s.ttl {
+			if time.Since(s.lastKeepAlive) > s.ttl {
 				// too long between heartbeats
 				s.keepAlive = nil
 			}

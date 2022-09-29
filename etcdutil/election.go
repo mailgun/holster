@@ -338,7 +338,7 @@ func (e *Election) watchCampaign(rev int64) error {
 			for _, event := range resp.Events {
 				if event.Type == etcd.EventTypeDelete || event.Type == etcd.EventTypePut {
 					// If the key is for our current leader
-					if bytes.Compare(event.Kv.Key, leaderKV.Key) == 0 {
+					if bytes.Equal(event.Kv.Key, leaderKV.Key) {
 						// Check our leadership status
 						resp, err := e.getLeader(e.ctx)
 						if err != nil {
@@ -352,7 +352,7 @@ func (e *Election) watchCampaign(rev int64) error {
 							return false
 						}
 						// Notify if leadership has changed
-						if bytes.Compare(resp.Key, leaderKV.Key) != 0 {
+						if !bytes.Equal(resp.Key, leaderKV.Key) {
 							leaderKV = resp
 							e.onLeaderChange(leaderKV)
 						}
