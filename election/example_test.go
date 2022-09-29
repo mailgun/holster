@@ -38,6 +38,9 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	if err != nil {
 		return errors.Wrap(err, "while sending http request")
 	}
+	defer func() {
+		_ = hp.Body.Close()
+	}()
 
 	// Decode the response from JSON
 	dec := json.NewDecoder(hp.Body)

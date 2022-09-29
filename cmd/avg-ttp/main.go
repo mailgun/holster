@@ -123,6 +123,9 @@ func RunQuery(ctx context.Context, endpoint string, q Query) (*TimeSeries, error
 	if err != nil {
 		return nil, fmt.Errorf("during http request: %w", err)
 	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf("got non 200 response code %s: %s", res.Status, readAll(res.Body))

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/clock"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -145,10 +146,14 @@ func TestAuthenticateRequest(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestAuthenticateRequestWithHeaders(t *testing.T) {
@@ -199,10 +204,14 @@ func TestAuthenticateRequestWithHeaders(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestAuthenticateRequestWithKey(t *testing.T) {
@@ -252,10 +261,14 @@ func TestAuthenticateRequestWithKey(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
@@ -305,10 +318,14 @@ func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestAuthenticateRequestForged(t *testing.T) {
@@ -357,10 +374,14 @@ func TestAuthenticateRequestForged(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestAuthenticateRequestMissingHeaders(t *testing.T) {
@@ -408,10 +429,14 @@ func TestAuthenticateRequestMissingHeaders(t *testing.T) {
 
 	// submit request
 	client := &http.Client{}
-	_, err = client.Do(request)
+	res, err := client.Do(request)
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 }
 
 func TestCheckTimestamp(t *testing.T) {

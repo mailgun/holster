@@ -5,9 +5,11 @@
 Package election is a generated protocol buffer package.
 
 It is generated from these files:
+
 	structs.proto
 
 It has these top-level messages:
+
 	ResetElectionReq
 	ResetElectionResp
 	ResignReq
