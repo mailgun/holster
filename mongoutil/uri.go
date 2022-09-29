@@ -75,7 +75,7 @@ func (c Config) URIWithOptions() string {
 	var buf bytes.Buffer
 
 	// If base URI was provided but no database specified
-	if len(baseURI) != 0 {
+	if baseURI != "" {
 		// if baseURI doesn't already end with a `/`
 		if !strings.HasSuffix(baseURI, "/") {
 			// Inspect the last character

@@ -136,7 +136,7 @@ func (c *TestCluster) ClearErrors() {
 }
 
 // Add a specific peer to peer error
-func (c *TestCluster) Disconnect(from string, to string, err error) {
+func (c *TestCluster) Disconnect(from, to string, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.errors[c.peerKey(from, to)] = err
@@ -154,7 +154,7 @@ func (c *TestCluster) DelNetworkError(peer string) {
 	delete(c.errors, peer)
 }
 
-func (c *TestCluster) sendRPC(from string, to string, req election.RPCRequest, resp *election.RPCResponse) error {
+func (c *TestCluster) sendRPC(from, to string, req election.RPCRequest, resp *election.RPCResponse) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

@@ -39,7 +39,7 @@ type ElectionEvent struct {
 	Err error
 }
 
-// Deprecated, use ElectionEvent instead
+// Deprecated: use ElectionEvent instead
 type Event = ElectionEvent
 
 type EventObserver func(ElectionEvent)
@@ -174,7 +174,7 @@ func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
 }
 
 func (e *Election) onSessionChange(leaseID etcd.LeaseID, err error) {
-	//log.Debugf("SessionChange: Lease ID: %v running: %t err: %v", leaseID, e.isRunning, err)
+	// log.Debugf("SessionChange: Lease ID: %v running: %t err: %v", leaseID, e.isRunning, err)
 
 	// If we lost our lease, concede the campaign and stop
 	if leaseID == NoLease {

@@ -329,7 +329,7 @@ func TestIsolatedLeader(t *testing.T) {
 	// Note: In the case where n1 is elected the new leader,
 	// n0 will know that n1 is the new leader sooner than later
 	// since connectivity from n0 to n1 was never interrupted.
-	//fmt.Printf("Cluster: %#v\n", c1.GetClusterStatus())
+	// fmt.Printf("Cluster: %#v\n", c1.GetClusterStatus())
 
 	// Should persist new leader once communication is restored
 	c1.ClearErrors()

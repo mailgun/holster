@@ -103,7 +103,7 @@ func SimpleExample(t *testing.T) {
 		SendRPC:  sendRPC,
 	})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	go func() {
@@ -120,11 +120,11 @@ func SimpleExample(t *testing.T) {
 
 	// Wait for each of the http listeners to start fielding requests
 	if err := election.WaitForConnect("localhost:7080", 3, time.Second); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	if err := election.WaitForConnect("localhost:7081", 3, time.Second); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Now that both http handlers are listening for requests we
@@ -142,6 +142,6 @@ func SimpleExample(t *testing.T) {
 		require.NoError(t, err)
 		err = node2.Stop(context.Background())
 		require.NoError(t, err)
-		os.Exit(0)
+		break
 	}
 }

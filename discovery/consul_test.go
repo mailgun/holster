@@ -26,10 +26,10 @@ func TestConsulSinglePeer(t *testing.T) {
 	const catalog = "TestConsulSinglePeer"
 	p := discovery.Peer{ID: "id-1", Metadata: []byte("address-0"), IsSelf: true}
 
-	//client, err := api.NewClient(api.DefaultConfig())
-	//require.NoError(t, err)
+	// client, err := api.NewClient(api.DefaultConfig())
+	// require.NoError(t, err)
 
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 
 	onUpdateCh := make(chan []discovery.Peer, 1)
 	cs, err := discovery.NewConsul(&discovery.ConsulConfig{
@@ -39,7 +39,7 @@ func TestConsulSinglePeer(t *testing.T) {
 			onUpdateCh <- peers
 		},
 	})
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 
 	e := <-onUpdateCh
 	assert.Equal(t, p, e[0])
@@ -47,7 +47,7 @@ func TestConsulSinglePeer(t *testing.T) {
 	err = cs.Close(context.Background())
 	require.NoError(t, err)
 
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 }
 
 func TestConsulMultiplePeers(t *testing.T) {
@@ -55,10 +55,10 @@ func TestConsulMultiplePeers(t *testing.T) {
 	p0 := discovery.Peer{ID: "id-0", Metadata: []byte("address-0"), IsSelf: true}
 	p1 := discovery.Peer{ID: "id-1", Metadata: []byte("address-1")}
 
-	//client, err := api.NewClient(api.DefaultConfig())
-	//require.NoError(t, err)
+	// client, err := api.NewClient(api.DefaultConfig())
+	// require.NoError(t, err)
 
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 
 	onUpdateCh := make(chan []discovery.Peer, 2)
 	cs0, err := discovery.NewConsul(&discovery.ConsulConfig{
@@ -74,7 +74,7 @@ func TestConsulMultiplePeers(t *testing.T) {
 	e := <-onUpdateCh
 	assert.Equal(t, e[0], p0)
 
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 
 	cs1, err := discovery.NewConsul(&discovery.ConsulConfig{
 		CatalogName: catalog,
@@ -86,5 +86,5 @@ func TestConsulMultiplePeers(t *testing.T) {
 	e = <-onUpdateCh
 	assert.Equal(t, []discovery.Peer{p0, p1}, e)
 
-	//printCatalog(t, catalog, client)
+	// printCatalog(t, catalog, client)
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -175,7 +175,7 @@ func TestHTTPServer(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var in election.RPCRequest
 
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.NoError(t, json.Unmarshal(b, &in))
 		var resp election.RPCResponse
@@ -223,7 +223,7 @@ func TestHTTPServer(t *testing.T) {
 
 	// Unmarshall the response
 	var rpcResp election.RPCResponse
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	err = json.Unmarshal(b, &rpcResp)
 	require.NoError(t, err)
 
@@ -243,7 +243,7 @@ func TestHTTPServer(t *testing.T) {
 	}()
 
 	// Unmarshall the response
-	b, err = ioutil.ReadAll(resp.Body)
+	b, err = io.ReadAll(resp.Body)
 	err = json.Unmarshal(b, &rpcResp)
 	require.NoError(t, err)
 

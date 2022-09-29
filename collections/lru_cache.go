@@ -75,8 +75,8 @@ func (c *LRUCache) Add(key Key, value interface{}) bool {
 }
 
 // Adds a value to the cache with a TTL
-func (c *LRUCache) AddWithTTL(key Key, value interface{}, TTL clock.Duration) bool {
-	expireAt := clock.Now().UTC().Add(TTL)
+func (c *LRUCache) AddWithTTL(key Key, value interface{}, ttl clock.Duration) bool {
+	expireAt := clock.Now().UTC().Add(ttl)
 	return c.addRecord(&CacheItem{
 		Key:      key,
 		Value:    value,

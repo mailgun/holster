@@ -90,7 +90,7 @@ func (c *ExpireCache) Get(key interface{}) (interface{}, bool) {
 }
 
 // Put the key, value and TTL in the cache
-func (c *ExpireCache) Add(key interface{}, value interface{}) {
+func (c *ExpireCache) Add(key, value interface{}) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -103,7 +103,7 @@ func (c *ExpireCache) Add(key interface{}, value interface{}) {
 }
 
 // Update the value in the cache without updating the TTL
-func (c *ExpireCache) Update(key interface{}, value interface{}) error {
+func (c *ExpireCache) Update(key, value interface{}) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

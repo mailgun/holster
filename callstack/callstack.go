@@ -67,14 +67,10 @@ type HasStackTrace interface {
 type CallStack []uintptr
 
 func (cs *CallStack) Format(st fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		switch {
-		case st.Flag('+'):
-			for _, pc := range *cs {
-				f := pkgerrors.Frame(pc)
-				_, _ = fmt.Fprintf(st, "\n%+v", f)
-			}
+	if verb == 'v' && st.Flag('+') {
+		for _, pc := range *cs {
+			f := pkgerrors.Frame(pc)
+			_, _ = fmt.Fprintf(st, "\n%+v", f)
 		}
 	}
 }

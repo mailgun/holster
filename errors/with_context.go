@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mailgun/holster/v4/callstack"
@@ -53,7 +54,7 @@ func (c WithContext) Error(msg string) error {
 	return &withContext{
 		stack:   callstack.New(1),
 		context: c,
-		cause:   fmt.Errorf(msg),
+		cause:   errors.New(msg),
 		msg:     "",
 	}
 }

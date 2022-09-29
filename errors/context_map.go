@@ -22,7 +22,7 @@ func (c *withContext) Cause() error {
 }
 
 func (c *withContext) Error() string {
-	if len(c.msg) == 0 {
+	if c.msg == "" {
 		return c.cause.Error()
 	}
 	return c.msg + ": " + c.cause.Error()
