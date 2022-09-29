@@ -129,7 +129,7 @@ func SimpleExample(t *testing.T) {
 
 	// Now that both http handlers are listening for requests we
 	// can safely start the election.
-	err  = node1.Start(context.Background())
+	err = node1.Start(context.Background())
 	require.NoError(t, err)
 	err = node2.Start(context.Background())
 	require.NoError(t, err)

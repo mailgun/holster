@@ -11,7 +11,7 @@ var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(`xxx(\sxxx)+`)
 
-//Anonymize replace secret information with xxx.
+// Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {

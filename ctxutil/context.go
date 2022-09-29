@@ -17,7 +17,7 @@ func WithDeadline(ctx context.Context, deadline time.Time) (context.Context, con
 	logrus.WithContext(ctx).
 		WithFields(logrus.Fields{
 			"deadline": deadline.Format(time.RFC3339),
-			"source": fmt.Sprintf("%s:%d", fn, line),
+			"source":   fmt.Sprintf("%s:%d", fn, line),
 		}).
 		Debug("Set context deadline")
 
@@ -33,7 +33,7 @@ func WithTimeout(ctx context.Context, timeout time.Duration) (context.Context, c
 	logrus.WithContext(ctx).
 		WithFields(logrus.Fields{
 			"deadline": deadline.Format(time.RFC3339),
-			"source": fmt.Sprintf("%s:%d", fn, line),
+			"source":   fmt.Sprintf("%s:%d", fn, line),
 		}).
 		Debug("Set context deadline")
 

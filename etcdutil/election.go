@@ -73,31 +73,30 @@ type ElectionConfig struct {
 
 // NewElection creates a new leader election and submits our candidate for leader.
 //
-//  client, _ := etcdutil.NewClient(nil)
+//	 client, _ := etcdutil.NewClient(nil)
 //
-//  // Start a leader election and attempt to become leader, only returns after
-//  // determining the current leader.
-//  election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
-//      Election: "presidental",
-//      Candidate: "donald",
-//		EventObserver: func(e etcdutil.ElectionEvent) {
-//		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
-//			if e.IsLeader {
-//				// Do thing as leader
-//			}
-//		},
-//      TTL: 5,
-//  })
+//	 // Start a leader election and attempt to become leader, only returns after
+//	 // determining the current leader.
+//	 election := etcdutil.NewElection(client, etcdutil.ElectionConfig{
+//	     Election: "presidental",
+//	     Candidate: "donald",
+//			EventObserver: func(e etcdutil.ElectionEvent) {
+//			  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
+//				if e.IsLeader {
+//					// Do thing as leader
+//				}
+//			},
+//	     TTL: 5,
+//	 })
 //
-//	// Returns true if we are leader (thread safe)
-//	if election.IsLeader() {
-//		// Do periodic thing
-//	}
+//		// Returns true if we are leader (thread safe)
+//		if election.IsLeader() {
+//			// Do periodic thing
+//		}
 //
-//  // Concede the election if leader and cancel our candidacy
-//  // for the election.
-//  election.Stop()
-//
+//	 // Concede the election if leader and cancel our candidacy
+//	 // for the election.
+//	 election.Stop()
 func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) (*Election, error) {
 	var initialElectionErr error
 	readyCh := make(chan struct{})
@@ -129,24 +128,23 @@ func NewElection(ctx context.Context, client *etcd.Client, conf ElectionConfig) 
 // leader. It does not wait for the election to complete. The caller must
 // provide an election event observer to monitor the election outcome.
 //
-//  client, _ := etcdutil.NewClient(nil)
+//	 client, _ := etcdutil.NewClient(nil)
 //
-//  // Start a leader election and returns immediately.
-//  election := etcdutil.NewElectionAsync(client, etcdutil.ElectionConfig{
-//      Election: "presidental",
-//      Candidate: "donald",
-//		EventObserver: func(e etcdutil.Event) {
-//		  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
-//			if e.IsLeader {
-//				// Do thing as leader
-//			}
-//		},
-//      TTL: 5,
-//  })
+//	 // Start a leader election and returns immediately.
+//	 election := etcdutil.NewElectionAsync(client, etcdutil.ElectionConfig{
+//	     Election: "presidental",
+//	     Candidate: "donald",
+//			EventObserver: func(e etcdutil.Event) {
+//			  	fmt.Printf("Leader Data: %t\n", e.LeaderData)
+//				if e.IsLeader {
+//					// Do thing as leader
+//				}
+//			},
+//	     TTL: 5,
+//	 })
 //
-//  // Cancels the election and concedes the election if we are leader.
-//  election.Stop()
-//
+//	 // Cancels the election and concedes the election if we are leader.
+//	 election.Stop()
 func NewElectionAsync(client *etcd.Client, conf ElectionConfig) *Election {
 	setter.SetDefault(&conf.Election, "null")
 	conf.Election = path.Join("/elections", conf.Election)

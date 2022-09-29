@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,17 +22,19 @@ import (
 // If 'dest' is empty or of zero value, assign the default value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
-//  var config struct {
-//		Verbose *bool
-//		Foo string
-//		Bar int
-//	}
-// 	holster.SetDefault(&config.Foo, "default")
-// 	holster.SetDefault(&config.Bar, 200)
+//
+//	 var config struct {
+//			Verbose *bool
+//			Foo string
+//			Bar int
+//		}
+//		holster.SetDefault(&config.Foo, "default")
+//		holster.SetDefault(&config.Bar, 200)
 //
 // Supply additional default values and SetDefault will
 // choose the first default that is not of zero value
-//  holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+//
+//	holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
 func SetDefault(dest interface{}, defaultValue ...interface{}) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
@@ -54,18 +56,19 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 // Assign the first value that is not empty or of zero value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
-//  var config struct {
-//		Verbose *bool
-//		Foo string
-//		Bar int
-//	}
 //
-//  loadFromFile(&config)
-//  argFoo = flag.String("foo", "", "foo via cli arg")
+//	 var config struct {
+//			Verbose *bool
+//			Foo string
+//			Bar int
+//		}
 //
-//  // Override the config file if 'foo' is provided via
-//  // the cli or defined in the environment.
-// 	holster.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
+//	 loadFromFile(&config)
+//	 argFoo = flag.String("foo", "", "foo via cli arg")
+//
+//	 // Override the config file if 'foo' is provided via
+//	 // the cli or defined in the environment.
+//		holster.SetOverride(&config.Foo, *argFoo, os.Env("FOO"))
 //
 // Supply additional values and SetOverride() will
 // choose the first value that is not of zero value. If all
@@ -87,15 +90,17 @@ func SetOverride(dest interface{}, values ...interface{}) {
 }
 
 // Returns true if 'value' is zero (the default golang value)
+//
 //	var thingy string
-// 	holster.IsZero(thingy) == true
+//	holster.IsZero(thingy) == true
 func IsZero(value interface{}) bool {
 	return IsZeroValue(reflect.ValueOf(value))
 }
 
 // Returns true if 'value' is zero (the default golang value)
+//
 //	var count int64
-// 	holster.IsZeroValue(reflect.ValueOf(count)) == true
+//	holster.IsZeroValue(reflect.ValueOf(count)) == true
 func IsZeroValue(value reflect.Value) bool {
 	switch value.Kind() {
 	case reflect.Array, reflect.String:

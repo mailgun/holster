@@ -284,9 +284,9 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 // An error value has a cause if it implements the following
 // interface:
 //
-//     type causer interface {
-//            Cause() error
-//     }
+//	type causer interface {
+//	       Cause() error
+//	}
 //
 // If the error does not implement Cause, the original error will
 // be returned. If the error is nil, nil will be returned without further
@@ -331,8 +331,7 @@ func ToMap(err error) map[string]interface{} {
 // Returns the context and stacktrace information for the underlying error as logrus.Fields{}
 // returns empty logrus.Fields{} if err has no context or no stacktrace
 //
-// 	logrus.WithFields(errors.ToLogrus(err)).WithField("tid", 1).Error(err)
-//
+//	logrus.WithFields(errors.ToLogrus(err)).WithField("tid", 1).Error(err)
 func ToLogrus(err error) logrus.Fields {
 	result := logrus.Fields{
 		"excValue": err.Error(),
@@ -372,7 +371,7 @@ type CauseError struct {
 // to create a concrete error type without losing context
 //
 //	// Our new concrete type encapsulates CauseError
-// 	type RetryError struct {
+//	type RetryError struct {
 //		errors.CauseError
 //	}
 //
@@ -386,7 +385,6 @@ type CauseError struct {
 //		_, ok := err.(*RetryError)
 //		return ok
 //	}
-//
 func NewCauseError(err error, depth ...int) *CauseError {
 	var stk *stack.CallStack
 	if len(depth) > 0 {
