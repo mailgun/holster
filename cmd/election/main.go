@@ -134,7 +134,12 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rpc", newHandler(node))
 	go func() {
-		logrus.Fatal(http.ListenAndServe(electionAddr, mux))
+		server := &http.Server{
+			Addr:              electionAddr,
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		logrus.Fatal(server.ListenAndServe())
 	}()
 
 	// Wait until the http server is up and can receive RPC requests

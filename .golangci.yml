@@ -9,7 +9,7 @@ linters:
     - errcheck # Mandatory. Do not disable.
     - gocritic
     - goimports
-    # - gosec
+    - gosec
     # - gosimple
     # - govet
     # - noctx

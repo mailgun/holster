@@ -1,3 +1,4 @@
+// #nosec
 package testutil_test
 
 import (
