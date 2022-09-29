@@ -2,7 +2,7 @@ package testutil_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -72,7 +72,7 @@ func TestUntilPass(t *testing.T) {
 			return
 		}
 
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		assert.Equal(t, "batch job completed\n", string(b))

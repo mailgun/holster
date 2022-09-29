@@ -94,7 +94,7 @@ func ParseInLocation(layout, value string, loc *Location) (Time, error) {
 	return time.ParseInLocation(layout, value, loc)
 }
 
-func Unix(sec int64, nsec int64) Time {
+func Unix(sec, nsec int64) Time {
 	return time.Unix(sec, nsec)
 }
 

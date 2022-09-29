@@ -7,7 +7,7 @@ linters:
     - bodyclose # https://github.com/timakin/bodyclose
     - depguard
     - errcheck # Mandatory. Do not disable.
-    # - gocritic
+    - gocritic
     # - goimports
     # - gosec
     # - gosimple
@@ -57,6 +57,8 @@ linters-settings:
       - whyNoLint # checked by nolintlint linter
       - hugeParam # TODO(vtopc): configure(80 bytes is probably not so much) and enable.
       - rangeValCopy # TODO(vtopc): configure(disable for tests) and enable.
+      - appendAssign
+      - commentedOutCode
 
   errcheck:
     # List of functions to exclude from checking, where each entry is a single function to exclude.

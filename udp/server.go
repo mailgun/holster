@@ -46,7 +46,7 @@ func NewServer(conf ServerConfig) (*Server, error) {
 				logrus.WithError(err).Error("ReadFrom() failed")
 				return
 			}
-			//fmt.Printf("packet-received: bytes=%d from=%s\n", n, addr.String())
+			// fmt.Printf("packet-received: bytes=%d from=%s\n", n, addr.String())
 			conf.Handler(conn, b[:n], addr)
 		}
 	}()

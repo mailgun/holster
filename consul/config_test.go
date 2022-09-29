@@ -1,7 +1,6 @@
 package consul_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hashicorp/consul/api"
@@ -11,16 +10,10 @@ import (
 )
 
 func TestNewClientTLS(t *testing.T) {
-	os.Setenv("CONSUL_HTTP_ADDR", "https://127.0.0.1:8501")
-	os.Setenv("CONSUL_CLIENT_CERT", "config/dc1-server-consul-0.pem")
-	os.Setenv("CONSUL_CLIENT_KEY", "config/dc1-server-consul-0-key.pem")
-	os.Setenv("CONSUL_CACERT", "config/consul-agent-ca.pem")
-	defer func() {
-		os.Setenv("CONSUL_HTTP_ADDR", "")
-		os.Setenv("CONSUL_CLIENT_CERT", "")
-		os.Setenv("CONSUL_CLIENT_KEY", "")
-		os.Setenv("CONSUL_CACERT", "")
-	}()
+	t.Setenv("CONSUL_HTTP_ADDR", "https://127.0.0.1:8501")
+	t.Setenv("CONSUL_CLIENT_CERT", "config/dc1-server-consul-0.pem")
+	t.Setenv("CONSUL_CLIENT_KEY", "config/dc1-server-consul-0-key.pem")
+	t.Setenv("CONSUL_CACERT", "config/consul-agent-ca.pem")
 
 	client, err := consul.NewClient(nil)
 	require.NoError(t, err)
@@ -52,21 +45,13 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestEnvHasConsulConfig(t *testing.T) {
-	os.Setenv("CONSUL_HTTP_ADDR", "127.0.0.1:8500")
-	defer func() {
-		os.Setenv("CONSUL_HTTP_ADDR", "")
-	}()
-
+	t.Setenv("CONSUL_HTTP_ADDR", "127.0.0.1:8500")
 	assert.True(t, consul.EnvHasConsulConfig())
 }
 
 func TestNewConfig(t *testing.T) {
-	os.Setenv("CONSUL_HTTP_AUTH", "username:password")
-	os.Setenv("CONSUL_HTTP_SSL_VERIFY", "true")
-	defer func() {
-		os.Setenv("CONSUL_HTTP_AUTH", "")
-		os.Setenv("CONSUL_HTTP_SSL_VERIFY", "")
-	}()
+	t.Setenv("CONSUL_HTTP_AUTH", "username:password")
+	t.Setenv("CONSUL_HTTP_SSL_VERIFY", "true")
 
 	cfg := api.DefaultConfig()
 	cfg, err := consul.NewConfig(cfg)

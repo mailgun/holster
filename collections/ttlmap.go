@@ -81,7 +81,7 @@ func (m *TTLMap) Get(key string) (interface{}, bool) {
 	return value, true
 }
 
-func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
+func (m *TTLMap) Increment(key string, value, ttlSeconds int) (retval int, reterr error) {
 	expiryTime, err := m.toEpochSeconds(ttlSeconds)
 	if err != nil {
 		return 0, err
@@ -108,7 +108,7 @@ func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
 	return currentValue, nil
 }
 
-func (m *TTLMap) GetInt(key string) (int, bool, error) {
+func (m *TTLMap) GetInt(key string) (retval int, found bool, reterr error) {
 	valueI, exists := m.Get(key)
 	if !exists {
 		return 0, false, nil

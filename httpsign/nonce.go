@@ -14,7 +14,7 @@ type nonceCache struct {
 }
 
 // Return a new nonceCache. Allows you to control cache capacity, ttl, as well as the TimeProvider.
-func newNonceCache(capacity int, cacheTTL int) (*nonceCache, error) {
+func newNonceCache(capacity, cacheTTL int) (*nonceCache, error) {
 	return &nonceCache{
 		cache:    collections.NewTTLMap(capacity),
 		cacheTTL: cacheTTL,

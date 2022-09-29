@@ -51,9 +51,9 @@ func (d DurationJSON) MarshalJSON() ([]byte, error) {
 
 func (d *DurationJSON) UnmarshalJSON(b []byte) error {
 	var v interface{}
-	var err error
 
-	if err = json.Unmarshal(b, &v); err != nil {
+	err := json.Unmarshal(b, &v)
+	if err != nil {
 		return err
 	}
 

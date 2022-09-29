@@ -3,7 +3,6 @@ package etcdutil
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -76,7 +75,7 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 		setter.SetDefault(&cfg.TLS, &tls.Config{})
 
 		var certPool *x509.CertPool = nil
-		if pemBytes, err := ioutil.ReadFile(tlsCAFile); err == nil {
+		if pemBytes, err := os.ReadFile(tlsCAFile); err == nil {
 			certPool = x509.NewCertPool()
 			certPool.AppendCertsFromPEM(pemBytes)
 		} else {

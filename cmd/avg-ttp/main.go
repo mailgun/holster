@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -44,6 +43,10 @@ type Query struct {
 }
 
 func main() {
+	os.Exit(runCmd())
+}
+
+func runCmd() int {
 	var start, end, endpoint, cos, pod, payload string
 	var err error
 
@@ -61,16 +64,16 @@ func main() {
 
 	if start == "" {
 		fmt.Printf("`-start` is required (See -h for usage)\n")
-		os.Exit(1)
+		return 1
 	}
 
 	if end == "" {
 		fmt.Printf("`-end` is required (See -h for usage)\n")
-		os.Exit(1)
+		return 1
 	}
 
 	q := Query{
-		Query: fmt.Sprintf(`max(querator_ttp_seconds{region=~"us-.*", pod="%s", payload="%s", cos="%s", quantile="0.95"})`, pod, payload, cos),
+		Query: fmt.Sprintf(`max(querator_ttp_seconds{region=~"us-.*", pod=%q, payload=%q, cos=%q, quantile="0.95"})`, pod, payload, cos),
 		Step:  "30m",
 	}
 
@@ -98,8 +101,8 @@ func main() {
 		total += f
 	}
 
-	//fmt.Printf("%#v\n", ts)
 	fmt.Printf("Total: %f Divided by: %d = Avg: %f seconds\n", total, len(*ts), total/float64(len(*ts)))
+	return 0
 }
 
 func RunQuery(ctx context.Context, endpoint string, q Query) (*TimeSeries, error) {
@@ -114,7 +117,7 @@ func RunQuery(ctx context.Context, endpoint string, q Query) (*TimeSeries, error
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("while preparing request: %w", err)
 	}
@@ -131,7 +134,6 @@ func RunQuery(ctx context.Context, endpoint string, q Query) (*TimeSeries, error
 		return nil, fmt.Errorf("got non 200 response code %s: %s", res.Status, readAll(res.Body))
 	}
 
-	//fmt.Printf("out: %s\n", readAll(res.Body))
 	var qResp QueryResponse
 	dec := json.NewDecoder(res.Body)
 	if err := dec.Decode(&qResp); err != nil {
@@ -151,6 +153,6 @@ func RunQuery(ctx context.Context, endpoint string, q Query) (*TimeSeries, error
 }
 
 func readAll(r io.ReadCloser) string {
-	b, _ := ioutil.ReadAll(r)
+	b, _ := io.ReadAll(r)
 	return string(b)
 }

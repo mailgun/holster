@@ -18,9 +18,9 @@ type HCLogAdapter struct {
 	args []interface{} // key/value pairs if this logger was created via With()
 }
 
-func NewHCLogAdapter(log logrus.FieldLogger, name string) *HCLogAdapter {
+func NewHCLogAdapter(logger logrus.FieldLogger, name string) *HCLogAdapter {
 	return &HCLogAdapter{
-		log:  log,
+		log:  logger,
 		name: name,
 	}
 }

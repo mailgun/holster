@@ -36,7 +36,7 @@ type Members interface {
 	// Removes our peer from the member list and closes all connections
 	Close(context.Context) error
 	// TODO: Updates the Peer metadata shared with peers
-	//UpdatePeer(context.Context, Peer) error
+	// UpdatePeer(context.Context, Peer) error
 }
 
 type MemberList struct {
@@ -245,7 +245,7 @@ func NewLogWriter(log logrus.FieldLogger) *io.PipeWriter {
 	return writer
 }
 
-func split(addr string) (string, int, error) {
+func split(addr string) (retHost string, retPort int, reterr error) {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return host, 0, errors.New(" expected format is `address:port`")
@@ -258,7 +258,7 @@ func split(addr string) (string, int, error) {
 	return host, intPort, nil
 }
 
-func splitAddress(addr string) (string, int, error) {
+func splitAddress(addr string) (retHost string, retPort int, reterr error) {
 	host, port, err := split(addr)
 	if err != nil {
 		return "", 0, err

@@ -11,7 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -111,7 +111,7 @@ func New(config *Config) (*Signer, error) {
 		}
 
 		// build lemma prefix
-		prefix := "lemma." + strings.Replace(hostname, ".", "_", -1)
+		prefix := "lemma." + strings.ReplaceAll(hostname, ".", "_")
 		if config.StatsdPrefix != "" {
 			prefix += "." + config.StatsdPrefix
 		}
@@ -137,7 +137,6 @@ func New(config *Config) (*Signer, error) {
 		return nil, err
 	}
 
-	// return service
 	return &Signer{
 		config:     config,
 		nonceCache: ncache,
@@ -287,24 +286,24 @@ func computeMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpReso
 	mac := hmac.New(sha256.New, secretKey)
 
 	// required parameters (timestamp, nonce, body)
-	mac.Write([]byte(fmt.Sprintf("%v|", len(timestamp))))
+	fmt.Fprintf(mac, "%v|", len(timestamp))
 	mac.Write([]byte(timestamp))
-	mac.Write([]byte(fmt.Sprintf("|%v|", len(nonce))))
+	fmt.Fprintf(mac, "|%v|", len(nonce))
 	mac.Write([]byte(nonce))
-	mac.Write([]byte(fmt.Sprintf("|%v|", len(body))))
+	fmt.Fprintf(mac, "|%v|", len(body))
 	mac.Write(body)
 
 	// optional parameters (httpVerb, httpResourceUri)
 	if signVerbAndUri {
-		mac.Write([]byte(fmt.Sprintf("|%v|", len(httpVerb))))
+		fmt.Fprintf(mac, "|%v|", len(httpVerb))
 		mac.Write([]byte(httpVerb))
-		mac.Write([]byte(fmt.Sprintf("|%v|", len(httpResourceUri))))
+		fmt.Fprintf(mac, "|%v|", len(httpResourceUri))
 		mac.Write([]byte(httpResourceUri))
 	}
 
 	// optional parameters (headers)
 	for _, headerValue := range headerValues {
-		mac.Write([]byte(fmt.Sprintf("|%v|", len(headerValue))))
+		fmt.Fprintf(mac, "|%v|", len(headerValue))
 		mac.Write([]byte(headerValue))
 	}
 
@@ -369,7 +368,7 @@ func readBody(r *http.Request) (b []byte, err error) {
 
 	// restore the body back to the request
 	b = buf.Bytes()
-	r.Body = ioutil.NopCloser(bytes.NewReader(b))
+	r.Body = io.NopCloser(bytes.NewReader(b))
 
 	return b, err
 }
@@ -393,7 +392,7 @@ func extractHeaderValues(r *http.Request, headerNames []string) ([]string, error
 
 func readKeyFromDisk(keypath string) ([]byte, error) {
 	// load key from disk
-	keyBytes, err := ioutil.ReadFile(keypath)
+	keyBytes, err := os.ReadFile(keypath)
 	if err != nil {
 		return nil, err
 	}
