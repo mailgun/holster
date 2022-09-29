@@ -46,15 +46,9 @@ func NewFanOut(size int) *FanOut {
 func (p *FanOut) start() {
 	p.wg.Add(1)
 	go func() {
-		for {
-			select {
-			case err, ok := <-p.errChan:
-				if !ok {
-					p.wg.Done()
-					return
-				}
-				p.errs = append(p.errs, err)
-			}
+		defer p.wg.Done()
+		for err := range p.errChan {
+			p.errs = append(p.errs, err)
 		}
 	}()
 }

@@ -10,7 +10,7 @@ linters:
     - gocritic
     - goimports
     - gosec
-    # - gosimple
+    - gosimple
     # - govet
     # - noctx
     # - nolintlint
