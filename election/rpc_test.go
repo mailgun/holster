@@ -216,6 +216,10 @@ func TestHTTPServer(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	// Unmarshall the response
 	var rpcResp election.RPCResponse
@@ -233,6 +237,10 @@ func TestHTTPServer(t *testing.T) {
 	require.NoError(t, err)
 	resp, err = http.DefaultClient.Do(req)
 	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	// Unmarshall the response
 	b, err = ioutil.ReadAll(resp.Body)
