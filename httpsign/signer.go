@@ -78,7 +78,7 @@ type Signer struct {
 func New(config *Config) (*Signer, error) {
 	// config is required!
 	if config == nil {
-		return nil, fmt.Errorf("config is required.")
+		return nil, fmt.Errorf("config is required")
 	}
 
 	// set defaults if not set
@@ -147,7 +147,7 @@ func New(config *Config) (*Signer, error) {
 // Signs a given HTTP request with signature, nonce, and timestamp.
 func (s *Signer) SignRequest(r *http.Request) error {
 	if s.secretKey == nil {
-		return fmt.Errorf("service not loaded with key.")
+		return fmt.Errorf("service not loaded with key")
 	}
 	return s.SignRequestWithKey(r, s.secretKey)
 }
@@ -192,7 +192,7 @@ func (s *Signer) SignRequestWithKey(r *http.Request, secretKey []byte) error {
 // VerifyRequest checks that an HTTP request was sent by an authorized sender.
 func (s *Signer) VerifyRequest(r *http.Request) error {
 	if s.secretKey == nil {
-		return fmt.Errorf("service not loaded with key.")
+		return fmt.Errorf("service not loaded with key")
 	}
 	return s.VerifyRequestWithKey(r, s.secretKey)
 }
@@ -275,7 +275,7 @@ func (s *Signer) checkTimestamp(timestampHeader string) (bool, error) {
 	return true, nil
 }
 
-func computeMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpResourceUri string,
+func computeMAC(secretKey []byte, signVerbAndURI bool, httpVerb string, httpResourceURI string,
 	timestamp string, nonce string, body []byte, headerValues []string) []byte {
 
 	// use hmac-sha256
@@ -290,11 +290,11 @@ func computeMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpReso
 	mac.Write(body)
 
 	// optional parameters (httpVerb, httpResourceUri)
-	if signVerbAndUri {
+	if signVerbAndURI {
 		fmt.Fprintf(mac, "|%v|", len(httpVerb))
 		mac.Write([]byte(httpVerb))
-		fmt.Fprintf(mac, "|%v|", len(httpResourceUri))
-		mac.Write([]byte(httpResourceUri))
+		fmt.Fprintf(mac, "|%v|", len(httpResourceURI))
+		mac.Write([]byte(httpResourceURI))
 	}
 
 	// optional parameters (headers)
@@ -306,7 +306,7 @@ func computeMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpReso
 	return mac.Sum(nil)
 }
 
-func checkMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpResourceUri string,
+func checkMAC(secretKey []byte, signVerbAndURI bool, httpVerb string, httpResourceURI string,
 	timestamp string, nonce string, body []byte, headerValues []string, signature string) (bool, error) {
 
 	// the hmac we get is a hexdigest (string representation of hex values)
@@ -317,7 +317,7 @@ func checkMAC(secretKey []byte, signVerbAndUri bool, httpVerb string, httpResour
 	}
 
 	// compute the hmac
-	computedMAC := computeMAC(secretKey, signVerbAndUri, httpVerb, httpResourceUri, timestamp, nonce, body, headerValues)
+	computedMAC := computeMAC(secretKey, signVerbAndURI, httpVerb, httpResourceURI, timestamp, nonce, body, headerValues)
 
 	// constant time compare
 	isEqual := hmac.Equal(expectedMAC, computedMAC)
@@ -378,7 +378,7 @@ func extractHeaderValues(r *http.Request, headerNames []string) ([]string, error
 	for i, headerName := range headerNames {
 		_, ok := r.Header[headerName]
 		if !ok {
-			return nil, fmt.Errorf("header %v not found in request.", headerName)
+			return nil, fmt.Errorf("header %s not found in request", headerName)
 		}
 		headerValues[i] = r.Header.Get(headerName)
 	}

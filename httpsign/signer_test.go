@@ -26,9 +26,9 @@ func TestSignRequest(t *testing.T) {
 
 	var signtests = []struct {
 		inHeadersToSign     map[string]string
-		inSignVerbAndUri    bool
-		inHttpVerb          string
-		inRequestUri        string
+		inSignVerbAndURI    bool
+		inHTTPVerb          string
+		inRequestURI        string
 		inRequestBody       string
 		outNonce            string
 		outTimestamp        string
@@ -53,7 +53,7 @@ func TestSignRequest(t *testing.T) {
 			&Config{
 				KeyBytes:           testKey,
 				HeadersToSign:      headerNames,
-				SignVerbAndURI:     tt.inSignVerbAndUri,
+				SignVerbAndURI:     tt.inSignVerbAndURI,
 				NonceCacheCapacity: defaultCacheCapacity,
 				NonceCacheTimeout:  defaultCacheTimeout,
 			},
@@ -63,7 +63,7 @@ func TestSignRequest(t *testing.T) {
 		}
 
 		body := strings.NewReader(tt.inRequestBody)
-		request, err := http.NewRequestWithContext(ctx, tt.inHttpVerb, tt.inRequestUri, body)
+		request, err := http.NewRequestWithContext(ctx, tt.inHTTPVerb, tt.inRequestURI, body)
 		if err != nil {
 			t.Errorf("[%v] Got unexpected error from http.NewRequest: %v", i, err)
 		}
