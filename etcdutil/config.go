@@ -20,7 +20,7 @@ const (
 func init() {
 	// We check this here to avoid data race with GRPC go routines writing to the logger
 	if os.Getenv("ETCD3_DEBUG") != "" {
-		etcd.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 	}
 }
 

@@ -60,6 +60,7 @@ func (st *systemTime) NewTicker(d time.Duration) Ticker {
 }
 
 func (st *systemTime) Tick(d time.Duration) <-chan time.Time {
+	// nolint: staticcheck
 	return time.Tick(d)
 }
 

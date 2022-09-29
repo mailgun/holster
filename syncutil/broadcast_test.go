@@ -67,7 +67,7 @@ func TestBroadcaster(t *testing.T) {
 
 		var count int
 		for msg := range socket {
-			fmt.Printf(msg)
+			t.Log(msg)
 			count++
 			if count == 10 {
 				break

@@ -239,7 +239,7 @@ func NewLogWriter(log logrus.FieldLogger) *io.PipeWriter {
 		reader.Close()
 	}()
 	runtime.SetFinalizer(writer, func(w *io.PipeWriter) {
-		writer.Close()
+		w.Close()
 	})
 
 	return writer

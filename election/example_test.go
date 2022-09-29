@@ -31,7 +31,6 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	if err != nil {
 		return errors.Wrap(err, "while creating request")
 	}
-	hr.WithContext(ctx)
 
 	// Send the request
 	hp, err := http.DefaultClient.Do(hr)
