@@ -44,7 +44,6 @@ type MemberList struct {
 	memberList *ml.Memberlist
 	conf       MemberListConfig
 	events     *eventDelegate
-	mutex      sync.Mutex
 }
 
 type MemberListConfig struct {
