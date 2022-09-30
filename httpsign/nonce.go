@@ -23,7 +23,7 @@ func newNonceCache(capacity int, cacheTTL int) (*nonceCache, error) {
 
 // inCache checks if a nonce is in the cache. If not, it adds it to the
 // cache and returns false. Otherwise it returns true.
-func (n *nonceCache) inCache(nonce string) (exists bool, reterr error) {
+func (n *nonceCache) inCache(nonce string) (exists bool, err error) {
 	n.Lock()
 	defer n.Unlock()
 
@@ -34,6 +34,6 @@ func (n *nonceCache) inCache(nonce string) (exists bool, reterr error) {
 	}
 
 	// it's not, so let's put it in the cache
-	reterr = n.cache.Set(nonce, "", n.cacheTTL)
+	err = n.cache.Set(nonce, "", n.cacheTTL)
 	return
 }
