@@ -15,7 +15,12 @@ const AlphaRunes = UpperAlphaRunes + LowerAlphaRunes
 func Runes(prefix string, length int, runes ...string) string {
 	chars := strings.Join(runes, "")
 	var bytes = make([]byte, length)
-	_, _ = rand.Read(bytes)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// TODO(v5): Return this error instead?
+		panic(fmt.Errorf("while reading random bytes: %w", err))
+	}
+
 	for i, b := range bytes {
 		bytes[i] = chars[b%byte(len(chars))]
 	}
@@ -35,7 +40,12 @@ func String(prefix string, length int) string {
 // Given a list of strings, return one of the strings randomly
 func Item(items ...string) string {
 	var bytes = make([]byte, 1)
-	_, _ = rand.Read(bytes)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// TODO(v5): Return this error instead?
+		panic(fmt.Errorf("while reading random bytes: %w", err))
+	}
+
 	return items[bytes[0]%byte(len(items))]
 }
 
