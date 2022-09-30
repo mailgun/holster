@@ -60,7 +60,8 @@ func (m *TTLMap) Set(key string, value interface{}, ttlSeconds int) error {
 	}
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	return m.set(key, value, expiryTime)
+	m.set(key, value, expiryTime)
+	return nil
 }
 
 func (m *TTLMap) Len() int {
@@ -92,8 +93,7 @@ func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
 
 	mapEl, expired := m.get(key)
 	if mapEl == nil || expired {
-		// TODO: Handle error
-		_ = m.set(key, value, expiryTime)
+		m.set(key, value, expiryTime)
 		return value, nil
 	}
 
@@ -103,8 +103,7 @@ func (m *TTLMap) Increment(key string, value int, ttlSeconds int) (int, error) {
 	}
 
 	currentValue += value
-	// TODO: Handle error
-	_ = m.set(key, currentValue, expiryTime)
+	m.set(key, currentValue, expiryTime)
 	return currentValue, nil
 }
 
@@ -120,11 +119,11 @@ func (m *TTLMap) GetInt(key string) (int, bool, error) {
 	return value, true, nil
 }
 
-func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
+func (m *TTLMap) set(key string, value interface{}, expiryTime int) {
 	if mapEl, ok := m.elements[key]; ok {
 		mapEl.value = value
 		m.expiryTimes.Update(mapEl.heapEl, expiryTime)
-		return nil
+		return
 	}
 
 	if len(m.elements) >= m.capacity {
@@ -141,7 +140,7 @@ func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
 	heapEl.Value = mapEl
 	m.elements[key] = mapEl
 	m.expiryTimes.Push(heapEl)
-	return nil
+	return
 }
 
 func (m *TTLMap) lockNGet(key string) (value interface{}, mapEl *mapElement, expired bool) {
