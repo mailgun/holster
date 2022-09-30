@@ -66,7 +66,7 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 		if req.RPC == election.SetPeersRPC {
 			status := http.StatusBadRequest
 			w.WriteHeader(status)
-			if _, err := w.Write([]byte(fmt.Sprintf("RPC request '%s' not allowed", req.RPC))); err != nil {
+			if _, err := fmt.Fprintf(w, "RPC request '%s' not allowed", req.RPC); err != nil {
 				logrus.WithError(err).WithField("status", status).Warn("while writing response")
 			}
 			return
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	electionAddr, memberListAddr, knownAddr := os.Args[1], os.Args[2], os.Args[3]
-	//logrus.SetLevel(logrus.DebugLevel)
+	// logrus.SetLevel(logrus.DebugLevel)
 
 	node, err := election.NewNode(election.Config{
 		// A unique identifier used to identify us in a list of peers

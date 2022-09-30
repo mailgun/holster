@@ -47,13 +47,13 @@ func WithToxiProxy(t *testing.T, fn func(*toxiproxy.Proxy, *api.Client)) {
 }
 
 func printKeys(prefix string) {
-	print := "-----------------\n"
+	out := "-----------------\n"
 	client, _ := api.NewClient(api.DefaultConfig())
 	list, _, _ := client.KV().List(prefix, nil)
 	for _, pair := range list {
-		print = print + fmt.Sprintf("Pair: %s:%s\n", pair.Key, string(pair.Value))
+		out += fmt.Sprintf("Pair: %s:%s\n", pair.Key, string(pair.Value))
 	}
-	fmt.Print(print + "-----\n")
+	fmt.Print(out + "-----\n")
 }
 
 func TestBehaviorRelease(t *testing.T) {

@@ -330,7 +330,7 @@ func TestFormatGeneric(t *testing.T) {
 			func(err error) error { return WithMessage(err, "with-message") },
 			[]string{"with-message"},
 		}, {
-			func(err error) error { return WithStack(err) },
+			WithStack,
 			[]string{
 				"github.com/mailgun/holster/v4/errors.(func·002|TestFormatGeneric.func2)\n\t" +
 					".+/errors/format_test.go:333",
@@ -362,8 +362,8 @@ func TestFormatGeneric(t *testing.T) {
 
 func testFormatRegexp(t *testing.T, n int, arg interface{}, format, want string) {
 	got := fmt.Sprintf(format, arg)
-	gotLines := strings.SplitN(got, "\n", -1)
-	wantLines := strings.SplitN(want, "\n", -1)
+	gotLines := strings.Split(got, "\n")
+	wantLines := strings.Split(want, "\n")
 
 	if len(wantLines) > len(gotLines) {
 		t.Errorf("test %d: wantLines(%d) > gotLines(%d):\n got: %q\nwant: %q", n+1, len(wantLines), len(gotLines), got, want)
@@ -420,7 +420,7 @@ func parseBlocks(input string, detectStackboundaries bool) ([]string, error) {
 				// our tests due to WithStack(WithStack(io.EOF)) on same line.
 				if detectStackboundaries {
 					if lines[l] {
-						if len(stack) == 0 {
+						if stack == "" {
 							return nil, errors.New("len of block must not be zero here")
 						}
 
@@ -476,11 +476,9 @@ func testFormatCompleteCompare(t *testing.T, n int, arg interface{}, format stri
 				t.Fatalf("test %d: block %d: fmt.Sprintf(%q, err):\ngot:\n%q\nwant:\n%q\nall-got:\n%s\nall-want:\n%s\n",
 					n+1, i+1, format, got[i], want[i], prettyBlocks(got), prettyBlocks(want))
 			}
-		} else {
+		} else if got[i] != want[i] {
 			// Match as message
-			if got[i] != want[i] {
-				t.Fatalf("test %d: fmt.Sprintf(%s, err) at block %d got != want:\n got: %q\nwant: %q", n+1, format, i+1, got[i], want[i])
-			}
+			t.Fatalf("test %d: fmt.Sprintf(%s, err) at block %d got != want:\n got: %q\nwant: %q", n+1, format, i+1, got[i], want[i])
 		}
 	}
 }
@@ -491,13 +489,7 @@ type wrapper struct {
 }
 
 func prettyBlocks(blocks []string, prefix ...string) string {
-	var out []string
-
-	for _, b := range blocks {
-		out = append(out, fmt.Sprintf("%v", b))
-	}
-
-	return "   " + strings.Join(out, "\n   ")
+	return "   " + strings.Join(blocks, "\n   ")
 }
 
 func testGenericRecursive(t *testing.T, beforeErr error, beforeWant []string, list []wrapper, maxDepth int) {

@@ -67,9 +67,8 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 			if err != nil {
 				return errors.Wrap(err, "error in makeJaegerExporter")
 			}
-		case "otlp":
-			fallthrough
 		default:
+			// default assuming "otlp".
 			exporter, err = makeOtlpExporter(ctx)
 			if err != nil {
 				return errors.Wrap(err, "error in makeOtlpExporter")

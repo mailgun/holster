@@ -12,8 +12,8 @@ func TestWrapFirst(t *testing.T) {
 	// First context
 	firstCtx := cancel.New(context.Background())
 	// Second context
-	secondCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	secondCtx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
 
 	// Now if either firstCtx or secondCtx is cancelled 'ctx' should cancel
 	ctx := firstCtx.Wrap(secondCtx)
@@ -37,7 +37,7 @@ func TestWrapSecond(t *testing.T) {
 	// First context
 	firstCtx := cancel.New(context.Background())
 	// Second context
-	secondCtx, cancel := context.WithCancel(context.Background())
+	secondCtx, cancelCtx := context.WithCancel(context.Background())
 
 	// Now if either firstCtx or secondCtx is cancelled 'ctx' should cancel
 	ctx := firstCtx.Wrap(secondCtx)
@@ -48,7 +48,7 @@ func TestWrapSecond(t *testing.T) {
 		close(done)
 	}()
 
-	cancel()
+	cancelCtx()
 
 	select {
 	case <-done:

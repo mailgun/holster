@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/mailgun/holster/v4/callstack"
-	pkgerrors "github.com/pkg/errors" // nolint: depguard
+	pkgerrors "github.com/pkg/errors" //nolint:depguard // Legacy code requires deprecated package.
 )
 
 // Implements the `error` `causer` and `Contexter` interfaces
@@ -22,7 +22,7 @@ func (c *withContext) Cause() error {
 }
 
 func (c *withContext) Error() string {
-	if len(c.msg) == 0 {
+	if c.msg == "" {
 		return c.cause.Error()
 	}
 	return c.msg + ": " + c.cause.Error()

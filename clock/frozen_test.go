@@ -9,7 +9,7 @@ import (
 )
 
 func TestFreezeUnfreeze(t *testing.T) {
-	defer Freeze(Now()).Unfreeze()
+	Freeze(Now()).Unfreeze()
 }
 
 type FrozenSuite struct {

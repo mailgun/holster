@@ -166,7 +166,6 @@ func (s *Async) Async(key interface{}, ctx context.Context, bo BackOff,
 
 	// Create an go routine to run the retry
 	s.wg.Until(func(done chan struct{}) bool {
-		//var start = time.Now()
 		async := AsyncItem{Retrying: true}
 
 		for {

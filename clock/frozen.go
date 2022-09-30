@@ -96,14 +96,16 @@ func (ft *frozenTime) stopTimer(t *frozenTimer) bool {
 		return false
 	}
 	for i, curr := range ft.timers {
-		if curr == t {
-			t.stopped = true
-			copy(ft.timers[i:], ft.timers[i+1:])
-			lastIdx := len(ft.timers) - 1
-			ft.timers[lastIdx] = nil
-			ft.timers = ft.timers[:lastIdx]
-			return true
+		if curr != t {
+			continue
 		}
+
+		t.stopped = true
+		copy(ft.timers[i:], ft.timers[i+1:])
+		lastIdx := len(ft.timers) - 1
+		ft.timers[lastIdx] = nil
+		ft.timers = ft.timers[:lastIdx]
+		return true
 	}
 	return false
 }

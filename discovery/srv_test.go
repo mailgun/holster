@@ -14,15 +14,19 @@ func TestGetSRVAddressesDirect(t *testing.T) {
 	require.NoError(t, err)
 
 	// Register ourselves in consul as a member of the cluster
+	const id = "1234123"
 	err = client.Agent().ServiceRegisterOpts(&api.AgentServiceRegistration{
 		Name:    "scout",
-		ID:      "1234123",
+		ID:      id,
 		Tags:    []string{"ml"},
 		Address: "127.0.0.1",
 		Port:    2319,
 	}, api.ServiceRegisterOpts{ReplaceExistingChecks: true})
 	require.NoError(t, err)
-	//defer client.Agent().ServiceDeregister("1234123")
+	defer func() {
+		err := client.Agent().ServiceDeregister(id)
+		require.NoError(t, err)
+	}()
 
 	addresses, err := discovery.GetSRVAddresses("ml.scout.service.consul", "127.0.0.1:8600")
 	require.NoError(t, err)

@@ -96,7 +96,7 @@ import (
 	"io"
 
 	stack "github.com/mailgun/holster/v4/callstack"
-	pkgerrors "github.com/pkg/errors" // nolint: depguard
+	pkgerrors "github.com/pkg/errors" //nolint:depguard // Legacy code requires deprecated package.
 	"github.com/sirupsen/logrus"
 )
 

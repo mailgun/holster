@@ -260,11 +260,10 @@ func startSpan(ctx context.Context, spanName, fileTag string, level Level, opts 
 	return ctx
 }
 
-func getCallerSpanName(skip int) (string, string) {
+func getCallerSpanName(skip int) (spanName, fileTag string) {
 	pc, file, line, ok := runtime.Caller(skip)
 
 	// Determine source file and line number.
-	var fileTag, spanName string
 	if ok {
 		fileTag = file + ":" + strconv.Itoa(line)
 		spanName = runtime.FuncForPC(pc).Name()
@@ -272,8 +271,7 @@ func getCallerSpanName(skip int) (string, string) {
 		// Rare condition.  Probably a bug in caller.
 		fileTag = "unknown"
 	}
-
-	return spanName, fileTag
+	return
 }
 
 func getFileTag(skip int) string {

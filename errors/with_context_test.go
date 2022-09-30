@@ -35,7 +35,7 @@ func TestContext(t *testing.T) {
 	err = errors.Cause(wrap).(*TestError)
 	assert.Equal(t, "query error", err.Msg)
 
-	out := fmt.Sprintf("%s", wrap)
+	out := wrap.Error()
 	assert.Equal(t, "message: query error", out)
 
 	// Should output the message, fields and trace

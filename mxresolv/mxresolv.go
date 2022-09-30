@@ -41,7 +41,7 @@ func init() {
 // does not have explicit MX records, and its A record is returned instead.
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
-func Lookup(ctx context.Context, hostname string) ([]string, bool, error) {
+func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImplicit bool, reterr error) {
 	if cachedVal, ok := lookupResultCache.Get(hostname); ok {
 		lookupResult := cachedVal.(lookupResult)
 		return lookupResult.mxHosts, lookupResult.implicit, lookupResult.err
@@ -141,7 +141,7 @@ type lookupResult struct {
 	err      error
 }
 
-func cacheAndReturn(hostname string, mxHosts []string, implicit bool, err error) ([]string, bool, error) {
+func cacheAndReturn(hostname string, mxHosts []string, implicit bool, err error) (retMxHosts []string, retImplicit bool, reterr error) {
 	lookupResultCache.AddWithTTL(hostname, lookupResult{mxHosts, implicit, err}, cacheTTL)
 	return mxHosts, implicit, err
 }

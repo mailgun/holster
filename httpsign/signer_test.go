@@ -150,10 +150,8 @@ func TestAuthenticateRequest(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestAuthenticateRequestWithHeaders(t *testing.T) {
@@ -208,10 +206,8 @@ func TestAuthenticateRequestWithHeaders(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestAuthenticateRequestWithKey(t *testing.T) {
@@ -265,10 +261,8 @@ func TestAuthenticateRequestWithKey(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
@@ -322,10 +316,8 @@ func TestAuthenticateRequestWithVerbAndUri(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestAuthenticateRequestForged(t *testing.T) {
@@ -378,10 +370,8 @@ func TestAuthenticateRequestForged(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestAuthenticateRequestMissingHeaders(t *testing.T) {
@@ -433,10 +423,8 @@ func TestAuthenticateRequestMissingHeaders(t *testing.T) {
 	if err != nil {
 		t.Errorf("Got unexpected error from client.Do: %v", err)
 	}
-	defer func() {
-		err := res.Body.Close()
-		require.NoError(t, err)
-	}()
+	err = res.Body.Close()
+	require.NoError(t, err)
 }
 
 func TestCheckTimestamp(t *testing.T) {

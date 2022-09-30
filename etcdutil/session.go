@@ -89,16 +89,16 @@ func (s *Session) start() {
 		select {
 		case _, ok := <-s.keepAlive:
 			if !ok {
-				//log.Warn("heartbeat lost")
+				// heartbeat lost
 				s.keepAlive = nil
 			} else {
-				//log.Debug("heartbeat received")
+				// heartbeat received
 				s.lastKeepAlive = time.Now()
 			}
 		case <-ticker.C:
 			// Ensure we are getting heartbeats regularly
 			if time.Now().Sub(s.lastKeepAlive) > s.ttl {
-				//log.Warn("too long between heartbeats")
+				// too long between heartbeats
 				s.keepAlive = nil
 			}
 		case <-done:

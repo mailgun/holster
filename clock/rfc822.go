@@ -79,10 +79,10 @@ func NewRFC822Time(t Time) RFC822Time {
 func ParseRFC822Time(s string) (Time, error) {
 	var t time.Time
 	var err error
-	for _, layout := range datetimeLayouts {
+	for _, layout := range &datetimeLayouts {
 		t, err = Parse(layout, s)
 		if err == nil {
-			return t, err
+			return t, nil
 		}
 	}
 	return t, err

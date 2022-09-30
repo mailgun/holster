@@ -226,19 +226,19 @@ func (s *ElectionsSuite) TestLostLeaderStop() {
 }
 
 // FIXME: This test gets stuck on e0.Stop().
-//// If Etcd is down on start the candidate keeps trying to connect.
-//func (s *ElectionsSuite) TestEtcdDownOnStart() {
-//	s.toxiProxies[0].Stop()
-//	campaign := "EtcdDownOnStart"
-//	e0, ch0 := s.newElection(campaign, 0)
+// // If Etcd is down on start the candidate keeps trying to connect.
+// func (s *ElectionsSuite) TestEtcdDownOnStart() {
+// 	s.toxiProxies[0].Stop()
+// 	campaign := "EtcdDownOnStart"
+// 	e0, ch0 := s.newElection(campaign, 0)
 //
-//	// When
-//	_ = s.toxiProxies[0].Start()
+// 	// When
+// 	_ = s.toxiProxies[0].Start()
 //
-//	// Then
-//	s.assertElectionWinner(ch0, 3*clock.Second)
-//	e0.Stop()
-//}
+// 	// Then
+// 	s.assertElectionWinner(ch0, 3*clock.Second)
+// 	e0.Stop()
+// }
 
 // If provided etcd endpoint candidate keeps trying to connect until it is
 // stopped.
@@ -296,22 +296,22 @@ func (s *ElectionsSuite) assertElectionClosed(ch chan bool, timeout clock.Durati
 	}
 }
 
-func (s *ElectionsSuite) newElection(campaign string, id int) (*etcdutil.Election, chan bool) {
-	electedCh := make(chan bool, 32)
+func (s *ElectionsSuite) newElection(campaign string, id int) (election *etcdutil.Election, electedCh chan bool) {
+	eCh := make(chan bool, 32)
 	candidate := fmt.Sprintf("candidate-%d", id)
 	electionCfg := etcdutil.ElectionConfig{
 		EventObserver: func(e etcdutil.ElectionEvent) {
 			logrus.Infof("%s got %#v", candidate, e)
 			if e.IsDone {
-				close(electedCh)
+				close(eCh)
 				return
 			}
-			electedCh <- e.IsLeader
+			eCh <- e.IsLeader
 		},
 		Election:  campaign,
 		Candidate: candidate,
 		TTL:       1,
 	}
 	e := etcdutil.NewElectionAsync(s.proxiedClients[id], electionCfg)
-	return e, electedCh
+	return e, eCh
 }
