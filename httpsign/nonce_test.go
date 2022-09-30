@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/mailgun/holster/v4/clock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNonceInCache(t *testing.T) {
@@ -20,27 +21,31 @@ func TestNonceInCache(t *testing.T) {
 	}
 
 	// nothing in cache, it should be valid
-	inCache := nc.inCache("0")
+	inCache, err := nc.inCache("0")
+	require.NoError(t, err)
 	if inCache {
 		t.Error("Check should be valid, but failed.")
 	}
 
 	// second time around it shouldn't be
-	inCache = nc.inCache("0")
+	inCache, err = nc.inCache("0")
+	require.NoError(t, err)
 	if !inCache {
 		t.Error("Check should be invalid, but passed.")
 	}
 
 	// check some other value
 	clock.Advance(999 * clock.Millisecond)
-	inCache = nc.inCache("1")
+	inCache, err = nc.inCache("1")
+	require.NoError(t, err)
 	if inCache {
 		t.Error("Check should be valid, but failed.", err)
 	}
 
 	// age off first value, then it should be valid
 	clock.Advance(1 * clock.Millisecond)
-	inCache = nc.inCache("0")
+	inCache, err = nc.inCache("0")
+	require.NoError(t, err)
 	if inCache {
 		t.Error("Check should be valid, but failed.")
 	}
