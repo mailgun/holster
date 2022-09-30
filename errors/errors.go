@@ -96,7 +96,7 @@ import (
 	"io"
 
 	stack "github.com/mailgun/holster/v4/callstack"
-	pkg "github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors" // nolint: depguard
 	"github.com/sirupsen/logrus"
 )
 
@@ -405,7 +405,7 @@ func (e *CauseError) Context() map[string]interface{} {
 	}
 	return nil
 }
-func (e *CauseError) StackTrace() pkg.StackTrace {
+func (e *CauseError) StackTrace() pkgerrors.StackTrace {
 	if child, ok := e.error.(stack.HasStackTrace); ok {
 		return child.StackTrace()
 	}

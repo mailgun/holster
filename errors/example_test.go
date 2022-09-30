@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mailgun/holster/v4/errors"
-	pkgerrors "github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors" // nolint: depguard
 )
 
 func ExampleNew() {
