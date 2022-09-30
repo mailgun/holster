@@ -33,7 +33,8 @@ func TestServerClient(t *testing.T) {
 	require.NoError(t, err)
 
 	b := make([]byte, 50)
-	n, _, _ := conn.Recv(b, time.Second)
+	n, _, err := conn.Recv(b, time.Second)
+	require.NoError(t, err)
 
 	assert.Equal(t, "Hello, Thrawn", string(b[:n]))
 }
