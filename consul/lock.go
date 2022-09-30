@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul/api"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/setter"
 	"github.com/mailgun/holster/v4/syncutil"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 

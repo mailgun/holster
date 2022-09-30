@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/mailgun/holster/v4/callstack"
-	pkg "github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors" // nolint: depguard
 )
 
 // Implements the `error` `causer` and `Contexter` interfaces
@@ -28,7 +28,7 @@ func (c *withContext) Error() string {
 	return c.msg + ": " + c.cause.Error()
 }
 
-func (c *withContext) StackTrace() pkg.StackTrace {
+func (c *withContext) StackTrace() pkgerrors.StackTrace {
 	if child, ok := c.cause.(callstack.HasStackTrace); ok {
 		return child.StackTrace()
 	}

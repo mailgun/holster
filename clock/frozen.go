@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 )
 
 type frozenTime struct {

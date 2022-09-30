@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/election"
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +38,9 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	if err != nil {
 		return errors.Wrap(err, "while sending http request")
 	}
+	defer func() {
+		_ = hp.Body.Close()
+	}()
 
 	// Decode the response from JSON
 	dec := json.NewDecoder(hp.Body)
@@ -126,7 +129,7 @@ func SimpleExample(t *testing.T) {
 
 	// Now that both http handlers are listening for requests we
 	// can safely start the election.
-	err  = node1.Start(context.Background())
+	err = node1.Start(context.Background())
 	require.NoError(t, err)
 	err = node2.Start(context.Background())
 	require.NoError(t, err)

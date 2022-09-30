@@ -47,8 +47,12 @@ func TestUntilPass(t *testing.T) {
 	defer ts.Close()
 
 	// Start the async process that produces a value on the server
-	_, err := http.PostForm(ts.URL, url.Values{"value": []string{"batch job completed"}})
+	res, err := http.PostForm(ts.URL, url.Values{"value": []string{"batch job completed"}})
 	require.NoError(t, err)
+	defer func() {
+		err := res.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	// Keep running this until the batch job completes or attempts are exhausted
 	testutil.UntilPass(t, 10, time.Millisecond*100, func(t testutil.TestingT) {
@@ -57,6 +61,11 @@ func TestUntilPass(t *testing.T) {
 		// use of `require` will abort the current test here and tell UntilPass() to
 		// run again after 100 milliseconds
 		require.NoError(t, err)
+
+		defer func() {
+			err = r.Body.Close()
+			require.NoError(t, err)
+		}()
 
 		// Or you can check if the assert returned true or not
 		if !assert.Equal(t, 200, r.StatusCode) {

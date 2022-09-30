@@ -4,8 +4,8 @@ linters:
   # Full list of linters - https://golangci-lint.run/usage/linters
   disable-all: true
   enable:
-    # - bodyclose # https://github.com/timakin/bodyclose
-    # - depguard
+    - bodyclose # https://github.com/timakin/bodyclose
+    - depguard
     - errcheck # Mandatory. Do not disable.
     # - gocritic
     # - goimports
