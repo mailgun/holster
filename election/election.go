@@ -859,7 +859,7 @@ func (e *node) send(req interface{}) chan RPCResponse {
 
 // randomDuration returns a value that is between the minDur and 2x minDur.
 func randomDuration(minDur time.Duration) time.Duration {
-	return minDur + time.Duration(rand.Int63())%minDur // #nosec
+	return minDur + time.Duration(rand.Int63())%minDur // #nosec // Cryptographic security not required.
 }
 
 // WaitForConnect waits for the specified address to accept connections then returns nil.

@@ -1,4 +1,3 @@
-// #nosec
 package consul_test
 
 import (
