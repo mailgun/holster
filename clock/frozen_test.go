@@ -222,7 +222,7 @@ func (s *FrozenSuite) TestTicker() {
 
 func (s *FrozenSuite) TestTickerZero() {
 	defer func() {
-		recover()
+		_ = recover()
 	}()
 
 	NewTicker(0)

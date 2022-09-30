@@ -51,15 +51,21 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 		dec := json.NewDecoder(r.Body)
 		var req election.RPCRequest
 		if err := dec.Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			status := http.StatusBadRequest
+			w.WriteHeader(status)
+			if _, err := w.Write([]byte(err.Error())); err != nil {
+				logrus.WithError(err).WithField("status", status).Warn("while writing response")
+			}
 		}
 
 		// Example of how a peer might exclude RPC
 		// commands it doesn't want made.
 		if req.RPC == election.SetPeersRPC {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("RPC request '%s' not allowed", req.RPC)))
+			status := http.StatusBadRequest
+			w.WriteHeader(status)
+			if _, err := w.Write([]byte(fmt.Sprintf("RPC request '%s' not allowed", req.RPC))); err != nil {
+				logrus.WithError(err).WithField("status", status).Warn("while writing response")
+			}
 			return
 		}
 
@@ -68,8 +74,11 @@ func newHandler(node election.Node) func(w http.ResponseWriter, r *http.Request)
 
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(resp); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+			status := http.StatusInternalServerError
+			w.WriteHeader(status)
+			if _, err = w.Write([]byte(err.Error())); err != nil {
+				logrus.WithError(err).WithField("status", status).Warn("while writing response")
+			}
 		}
 	}
 }
@@ -110,7 +119,9 @@ func main() {
 				result = append(result, string(p.Metadata))
 			}
 			logrus.Infof("Update Peers: %s", result)
-			node.SetPeers(context.Background(), result)
+			if err := node.SetPeers(context.Background(), result); err != nil {
+				logrus.WithError(err).Warn("while setting peers")
+			}
 		},
 	})
 	if err != nil {
@@ -130,7 +141,9 @@ func main() {
 
 	// Now that our http handler is listening for requests we
 	// can safely start the election.
-	node.Start(context.Background())
+	if err := node.Start(context.Background()); err != nil {
+		logrus.Fatal(err)
+	}
 
 	// Wait here for signals to clean up our mess
 	c := make(chan os.Signal, 1)
@@ -141,7 +154,7 @@ func main() {
 			logrus.WithError(err).Error("during member list catalog close")
 		}
 		cancel()
-		node.Stop(context.Background())
+		_ = node.Stop(context.Background())
 		os.Exit(0)
 	}
 }

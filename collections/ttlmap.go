@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,7 +60,8 @@ func (m *TTLMap) Set(key string, value interface{}, ttlSeconds int) error {
 	}
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	return m.set(key, value, expiryTime)
+	m.set(key, value, expiryTime)
+	return nil
 }
 
 func (m *TTLMap) Len() int {
@@ -118,11 +119,11 @@ func (m *TTLMap) GetInt(key string) (int, bool, error) {
 	return value, true, nil
 }
 
-func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
+func (m *TTLMap) set(key string, value interface{}, expiryTime int) {
 	if mapEl, ok := m.elements[key]; ok {
 		mapEl.value = value
 		m.expiryTimes.Update(mapEl.heapEl, expiryTime)
-		return nil
+		return
 	}
 
 	if len(m.elements) >= m.capacity {
@@ -139,7 +140,7 @@ func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
 	heapEl.Value = mapEl
 	m.elements[key] = mapEl
 	m.expiryTimes.Push(heapEl)
-	return nil
+	return
 }
 
 func (m *TTLMap) lockNGet(key string) (value interface{}, mapEl *mapElement, expired bool) {

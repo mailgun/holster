@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -162,9 +162,10 @@ func (s *TTLMapSuite) TestGetIntNotExists() {
 
 func (s *TTLMapSuite) TestGetInvalidType() {
 	m := NewTTLMap(1)
-	m.Set("a", "banana", 5)
+	err := m.Set("a", "banana", 5)
+	s.Require().NoError(err)
 
-	_, _, err := m.GetInt("a")
+	_, _, err = m.GetInt("a")
 	s.Require().EqualError(err, "Expected existing value to be integer, got string")
 
 	_, err = m.Increment("a", 4, 1)
@@ -174,7 +175,8 @@ func (s *TTLMapSuite) TestGetInvalidType() {
 func (s *TTLMapSuite) TestIncrementGetExpire() {
 	m := NewTTLMap(1)
 
-	m.Increment("a", 5, 1)
+	_, err := m.Increment("a", 5, 1)
+	s.Require().NoError(err)
 	val, exists, err := m.GetInt("a")
 
 	s.Require().Equal(nil, err)
@@ -183,7 +185,8 @@ func (s *TTLMapSuite) TestIncrementGetExpire() {
 
 	clock.Advance(1 * clock.Second)
 
-	m.Increment("a", 4, 1)
+	_, err = m.Increment("a", 4, 1)
+	s.Require().NoError(err)
 	val, exists, err = m.GetInt("a")
 
 	s.Require().Equal(nil, err)
@@ -194,14 +197,16 @@ func (s *TTLMapSuite) TestIncrementGetExpire() {
 func (s *TTLMapSuite) TestIncrementOverwrite() {
 	m := NewTTLMap(1)
 
-	m.Increment("a", 5, 1)
+	_, err := m.Increment("a", 5, 1)
+	s.Require().NoError(err)
 	val, exists, err := m.GetInt("a")
 
 	s.Require().Equal(nil, err)
 	s.Require().Equal(true, exists)
 	s.Require().Equal(5, val)
 
-	m.Increment("a", 4, 1)
+	_, err = m.Increment("a", 4, 1)
+	s.Require().NoError(err)
 	val, exists, err = m.GetInt("a")
 
 	s.Require().Equal(nil, err)
@@ -212,14 +217,16 @@ func (s *TTLMapSuite) TestIncrementOverwrite() {
 func (s *TTLMapSuite) TestIncrementOutOfCapacity() {
 	m := NewTTLMap(1)
 
-	m.Increment("a", 5, 1)
+	_, err := m.Increment("a", 5, 1)
+	s.Require().NoError(err)
 	val, exists, err := m.GetInt("a")
 
 	s.Require().Equal(nil, err)
 	s.Require().Equal(true, exists)
 	s.Require().Equal(5, val)
 
-	m.Increment("b", 4, 1)
+	_, err = m.Increment("b", 4, 1)
+	s.Require().NoError(err)
 	val, exists, err = m.GetInt("b")
 
 	s.Require().Equal(nil, err)
@@ -235,11 +242,14 @@ func (s *TTLMapSuite) TestIncrementOutOfCapacity() {
 func (s *TTLMapSuite) TestIncrementRemovesExpired() {
 	m := NewTTLMap(2)
 
-	m.Increment("a", 1, 1)
-	m.Increment("b", 2, 2)
+	_, err := m.Increment("a", 1, 1)
+	s.Require().NoError(err)
+	_, err = m.Increment("b", 2, 2)
+	s.Require().NoError(err)
 
 	clock.Advance(1 * clock.Second)
-	m.Increment("c", 3, 3)
+	_, err = m.Increment("c", 3, 3)
+	s.Require().NoError(err)
 
 	val, exists, err := m.GetInt("a")
 
@@ -260,9 +270,12 @@ func (s *TTLMapSuite) TestIncrementRemovesExpired() {
 func (s *TTLMapSuite) TestIncrementRemovesLastUsed() {
 	m := NewTTLMap(2)
 
-	m.Increment("a", 1, 10)
-	m.Increment("b", 2, 11)
-	m.Increment("c", 3, 12)
+	_, err := m.Increment("a", 1, 10)
+	s.Require().NoError(err)
+	_, err = m.Increment("b", 2, 11)
+	s.Require().NoError(err)
+	_, err = m.Increment("c", 3, 12)
+	s.Require().NoError(err)
 
 	val, exists, err := m.GetInt("a")
 
@@ -284,8 +297,10 @@ func (s *TTLMapSuite) TestIncrementRemovesLastUsed() {
 func (s *TTLMapSuite) TestIncrementUpdatesTtl() {
 	m := NewTTLMap(1)
 
-	m.Increment("a", 1, 1)
-	m.Increment("a", 1, 10)
+	_, err := m.Increment("a", 1, 1)
+	s.Require().NoError(err)
+	_, err = m.Increment("a", 1, 10)
+	s.Require().NoError(err)
 
 	clock.Advance(1 * clock.Second)
 
@@ -298,8 +313,10 @@ func (s *TTLMapSuite) TestIncrementUpdatesTtl() {
 func (s *TTLMapSuite) TestUpdate() {
 	m := NewTTLMap(1)
 
-	m.Increment("a", 1, 1)
-	m.Increment("a", 1, 10)
+	_, err := m.Increment("a", 1, 1)
+	s.Require().NoError(err)
+	_, err = m.Increment("a", 1, 10)
+	s.Require().NoError(err)
 
 	clock.Advance(1 * clock.Second)
 

@@ -245,7 +245,10 @@ func (s *Signer) VerifyRequestWithKey(r *http.Request, secretKey []byte) (err er
 	}
 
 	// check to see if we have seen nonce before
-	inCache := s.nonceCache.inCache(nonce)
+	inCache, err := s.nonceCache.inCache(nonce)
+	if err != nil {
+		return fmt.Errorf("while reading nonce cache for value %v: %w", nonce, err)
+	}
 	if inCache {
 		return fmt.Errorf("nonce already in cache: %v", nonce)
 	}

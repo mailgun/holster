@@ -44,10 +44,14 @@ func createCluster(t *testing.T, c *TestCluster) {
 	})
 
 	// Added nodes should become followers
-	c.SpawnNode("n1", cfg)
-	c.SpawnNode("n2", cfg)
-	c.SpawnNode("n3", cfg)
-	c.SpawnNode("n4", cfg)
+	err = c.SpawnNode("n1", cfg)
+	require.NoError(t, err)
+	err = c.SpawnNode("n2", cfg)
+	require.NoError(t, err)
+	err = c.SpawnNode("n3", cfg)
+	require.NoError(t, err)
+	err = c.SpawnNode("n4", cfg)
+	require.NoError(t, err)
 
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
 		status := c.GetClusterStatus()
@@ -62,7 +66,7 @@ func createCluster(t *testing.T, c *TestCluster) {
 }
 
 func TestSingleNodeLeader(t *testing.T) {
-	c := NewTestCluster()
+	c := NewTestCluster(t)
 	err := c.SpawnNode("n0", cfg)
 	require.NoError(t, err)
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
@@ -89,11 +93,12 @@ func TestSingleNodeLeader(t *testing.T) {
 }
 
 func TestSimpleElection(t *testing.T) {
-	c := NewTestCluster()
+	c := NewTestCluster(t)
 	createCluster(t, c)
 	defer c.Close()
 
-	c.Nodes["n0"].Node.Resign(context.Background())
+	err := c.Nodes["n0"].Node.Resign(context.Background())
+	require.NoError(t, err)
 
 	// Wait until n0 is no longer leader
 	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
@@ -110,7 +115,7 @@ func TestSimpleElection(t *testing.T) {
 }
 
 func TestLeaderDisconnect(t *testing.T) {
-	c := NewTestCluster()
+	c := NewTestCluster(t)
 	createCluster(t, c)
 	defer c.Close()
 
@@ -132,7 +137,7 @@ func TestLeaderDisconnect(t *testing.T) {
 }
 
 func TestFollowerDisconnect(t *testing.T) {
-	c := NewTestCluster()
+	c := NewTestCluster(t)
 	createCluster(t, c)
 	defer c.Close()
 
@@ -155,11 +160,11 @@ func TestFollowerDisconnect(t *testing.T) {
 }
 
 func TestSplitBrain(t *testing.T) {
-	c1 := NewTestCluster()
+	c1 := NewTestCluster(t)
 	createCluster(t, c1)
 	defer c1.Close()
 
-	c2 := NewTestCluster()
+	c2 := NewTestCluster(t)
 
 	// Now take 2 nodes from cluster 1 and put them in their own cluster.
 	// This causes n0 to lose contact with n2-n4 and should update the member list
@@ -214,7 +219,7 @@ func TestSplitBrain(t *testing.T) {
 }
 
 func TestOmissionFaults(t *testing.T) {
-	c1 := NewTestCluster()
+	c1 := NewTestCluster(t)
 	createCluster(t, c1)
 	defer c1.Close()
 
@@ -269,7 +274,7 @@ func TestOmissionFaults(t *testing.T) {
 }
 
 func TestIsolatedLeader(t *testing.T) {
-	c1 := NewTestCluster()
+	c1 := NewTestCluster(t)
 	createCluster(t, c1)
 	defer c1.Close()
 
@@ -342,7 +347,7 @@ func TestIsolatedLeader(t *testing.T) {
 }
 
 func TestMinimumQuorum(t *testing.T) {
-	c := NewTestCluster()
+	c := NewTestCluster(t)
 
 	cfg := &election.Config{
 		NetworkTimeout:      time.Second,
@@ -361,7 +366,8 @@ func TestMinimumQuorum(t *testing.T) {
 	status := c.GetClusterStatus()
 	require.NotEqual(t, "n0", status["n0"])
 
-	c.SpawnNode("n1", cfg)
+	err = c.SpawnNode("n1", cfg)
+	require.NoError(t, err)
 
 	// Should elect a leader
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
@@ -374,10 +380,12 @@ func TestMinimumQuorum(t *testing.T) {
 
 	// Shutdown the follower
 	if status["n0"] == "n0" {
-		c.Remove("n1").Node.Stop(context.Background())
+		err = c.Remove("n1").Node.Stop(context.Background())
+		require.NoError(t, err)
 		leader = "n0"
 	} else {
-		c.Remove("n0").Node.Stop(context.Background())
+		err = c.Remove("n0").Node.Stop(context.Background())
+		require.NoError(t, err)
 		leader = "n1"
 	}
 
@@ -389,7 +397,7 @@ func TestMinimumQuorum(t *testing.T) {
 }
 
 func TestResign(t *testing.T) {
-	c1 := NewTestCluster()
+	c1 := NewTestCluster(t)
 	createCluster(t, c1)
 	defer c1.Close()
 
@@ -400,7 +408,8 @@ func TestResign(t *testing.T) {
 	leader := c1.GetLeader()
 
 	// Calling resign on a follower should have no effect
-	c1.Nodes["n1"].Node.Resign(context.Background())
+	err := c1.Nodes["n1"].Node.Resign(context.Background())
+	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
 		if c1.GetLeader() != leader {
@@ -409,7 +418,8 @@ func TestResign(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 	// Calling resign on the leader should give up leader
-	c1.Nodes["n0"].Node.Resign(context.Background())
+	err = c1.Nodes["n0"].Node.Resign(context.Background())
+	require.NoError(t, err)
 
 	testutil.UntilPass(t, 30, time.Second, func(t testutil.TestingT) {
 		assert.NotEqual(t, leader, c1.GetLeader())
@@ -417,8 +427,9 @@ func TestResign(t *testing.T) {
 }
 
 func TestResignSingleNode(t *testing.T) {
-	c := NewTestCluster()
-	c.SpawnNode("n0", cfg)
+	c := NewTestCluster(t)
+	err := c.SpawnNode("n0", cfg)
+	require.NoError(t, err)
 	defer c.Close()
 
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {
@@ -428,7 +439,8 @@ func TestResignSingleNode(t *testing.T) {
 		}, status)
 	})
 
-	c.Nodes["n0"].Node.Resign(context.Background())
+	err = c.Nodes["n0"].Node.Resign(context.Background())
+	require.NoError(t, err)
 
 	// n0 will eventually become leader again
 	testutil.UntilPass(t, 10, time.Second, func(t testutil.TestingT) {

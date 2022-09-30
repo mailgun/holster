@@ -20,11 +20,12 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func cleanUp() {
+func cleanUp(t *testing.T) {
 	client, _ := api.NewClient(api.DefaultConfig())
 	list, _, _ := client.KV().List("lock-test", nil)
 	for _, pair := range list {
-		client.KV().Delete(pair.Key, nil)
+		_, err := client.KV().Delete(pair.Key, nil)
+		require.NoError(t, err)
 	}
 }
 
@@ -58,7 +59,7 @@ func printKeys(prefix string) {
 func TestBehaviorRelease(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	hasLockCh := make(chan bool, 5)
-	defer cleanUp()
+	defer cleanUp(t)
 
 	WithToxiProxy(t, func(p *toxiproxy.Proxy, c *api.Client) {
 		printKeys("lock-test")
@@ -141,7 +142,7 @@ func TestBehaviorRelease(t *testing.T) {
 func TestBehaviorDeleteOnUnlock(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	hasLockCh := make(chan bool, 5)
-	defer cleanUp()
+	defer cleanUp(t)
 
 	WithToxiProxy(t, func(p *toxiproxy.Proxy, c *api.Client) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
@@ -195,7 +196,7 @@ func TestBehaviorDeleteOnUnlock(t *testing.T) {
 
 func TestBehaviorDeleteOnDisconnect(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
-	defer cleanUp()
+	defer cleanUp(t)
 
 	WithToxiProxy(t, func(p *toxiproxy.Proxy, c *api.Client) {
 		printKeys("lock-test")

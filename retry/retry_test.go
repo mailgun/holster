@@ -112,9 +112,9 @@ func TestUntilExponentialCancelled(t *testing.T) {
 func TestAsync(t *testing.T) {
 	ctx := context.Background()
 	async := retry.NewRetryAsync()
-	async.Async("one", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
-	async.Async("two", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
-	async.Async("thr", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
+	a1 := async.Async("one", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
+	a2 := async.Async("two", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
+	a3 := async.Async("thr", ctx, retry.Attempts(10, time.Millisecond*10), func(ctx context.Context, i int) error { return errCause })
 
 	// Creates the async retry
 	f1 := async.Async("for", ctx, retry.Attempts(10, time.Millisecond*100), func(ctx context.Context, i int) error { return errCause })
@@ -141,6 +141,12 @@ func TestAsync(t *testing.T) {
 
 	// Wait for all the async retries to exhaust their timeouts
 	async.Wait()
+
+	require.Equal(t, errCause, a1.Err)
+	require.Equal(t, errCause, a2.Err)
+	require.Equal(t, errCause, a3.Err)
+	require.Equal(t, errCause, f1.Err)
+	require.Equal(t, errCause, f2.Err)
 }
 
 func TestBackoffRace(t *testing.T) {
@@ -156,10 +162,11 @@ func TestBackoffRace(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
+			err := retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
 				t.Logf("Attempts: %d", backOff.NumRetries())
 				return fmt.Errorf("failed attempt '%d'", att)
 			})
+			require.NoError(t, err)
 			wg.Done()
 		}()
 	}
