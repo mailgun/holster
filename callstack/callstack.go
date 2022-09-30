@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	pkgerrors "github.com/pkg/errors" // nolint: depguard
+	pkgerrors "github.com/pkg/errors" //nolint:depguard // Legacy code requires deprecated package.
 )
 
 type FrameInfo struct {

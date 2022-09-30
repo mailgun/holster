@@ -330,7 +330,7 @@ func TestFormatGeneric(t *testing.T) {
 			func(err error) error { return WithMessage(err, "with-message") },
 			[]string{"with-message"},
 		}, {
-			func(err error) error { return WithStack(err) }, // nolint: gocritic
+			WithStack,
 			[]string{
 				"github.com/mailgun/holster/v4/errors.(func·002|TestFormatGeneric.func2)\n\t" +
 					".+/errors/format_test.go:333",
