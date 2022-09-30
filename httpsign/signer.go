@@ -78,7 +78,7 @@ type Signer struct {
 func New(config *Config) (*Signer, error) {
 	// config is required!
 	if config == nil {
-		return nil, fmt.Errorf("config is required")
+		return nil, fmt.Errorf("config is required.") //nolint:stylecheck // TODO(v5): ST1005: error strings should not end with punctuation or newlines
 	}
 
 	// set defaults if not set
@@ -147,7 +147,7 @@ func New(config *Config) (*Signer, error) {
 // Signs a given HTTP request with signature, nonce, and timestamp.
 func (s *Signer) SignRequest(r *http.Request) error {
 	if s.secretKey == nil {
-		return fmt.Errorf("service not loaded with key")
+		return fmt.Errorf("service not loaded with key.") //nolint:stylecheck // TODO(v5): ST1005: error strings should not end with punctuation or newlines
 	}
 	return s.SignRequestWithKey(r, s.secretKey)
 }
@@ -192,7 +192,7 @@ func (s *Signer) SignRequestWithKey(r *http.Request, secretKey []byte) error {
 // VerifyRequest checks that an HTTP request was sent by an authorized sender.
 func (s *Signer) VerifyRequest(r *http.Request) error {
 	if s.secretKey == nil {
-		return fmt.Errorf("service not loaded with key")
+		return fmt.Errorf("service not loaded with key.") //nolint:stylecheck // TODO(v5): ST1005: error strings should not end with punctuation or newlines
 	}
 	return s.VerifyRequestWithKey(r, s.secretKey)
 }
