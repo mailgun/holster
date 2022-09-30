@@ -5,6 +5,7 @@ $(GOLINT):
 
 .PHONY: lint
 lint: $(GOLINT)
+	go vet ./...
 	$(GOLINT) run
 
 .PHONY: test
