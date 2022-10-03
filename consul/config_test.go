@@ -25,6 +25,7 @@ func TestNewClientTLS(t *testing.T) {
 	_, err = client.KV().Put(&kv, nil)
 	require.NoError(t, err)
 	resp, _, err := client.KV().Get("test-key-tls", nil)
+	require.NoError(t, err)
 	assert.Equal(t, resp.Key, "test-key-tls")
 	assert.Equal(t, resp.Value, []byte("test-value-tls"))
 }
@@ -40,6 +41,7 @@ func TestNewClient(t *testing.T) {
 	_, err = client.KV().Put(&kv, nil)
 	require.NoError(t, err)
 	resp, _, err := client.KV().Get("test-key", nil)
+	require.NoError(t, err)
 	assert.Equal(t, resp.Key, "test-key")
 	assert.Equal(t, resp.Value, []byte("test-value"))
 }

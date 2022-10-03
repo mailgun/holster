@@ -162,12 +162,11 @@ func TestBackoffRace(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			err := retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
+			defer wg.Done()
+			_ = retry.Until(ctx, backOff, func(ctx context.Context, att int) error {
 				t.Logf("Attempts: %d", backOff.NumRetries())
 				return fmt.Errorf("failed attempt '%d'", att)
 			})
-			require.NoError(t, err)
-			wg.Done()
 		}()
 	}
 	wg.Wait()

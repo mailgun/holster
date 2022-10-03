@@ -95,7 +95,7 @@ func (c *TestCluster) Remove(name string) *ClusterNode {
 func (c *TestCluster) updatePeers() {
 	// Build a list of all the peers
 	var peers []string
-	for k, _ := range c.Nodes {
+	for k := range c.Nodes {
 		peers = append(peers, k)
 	}
 

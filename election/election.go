@@ -322,10 +322,9 @@ func (e *node) Stop(ctx context.Context) error {
 		e.wg.Wait()
 		close(done)
 	}()
-	select {
-	case <-done:
-		return ctx.Err()
-	}
+
+	<-done
+	return ctx.Err()
 }
 
 // Main thread loop
@@ -363,7 +362,7 @@ func (e *node) runFollower() {
 			e.processRPC(rpc)
 		case <-heartbeatTimer.C:
 			// Check if we have had successful contact with the leader
-			if time.Now().Sub(e.lastContact) < e.conf.HeartBeatTimeout {
+			if time.Since(e.lastContact) < e.conf.HeartBeatTimeout {
 				continue
 			}
 
@@ -816,7 +815,6 @@ func (e *node) handleVote(rpc RPCRequest, req VoteReq) {
 	// Tell the requester we voted for him
 	resp.Granted = true
 	e.lastContact = time.Now()
-	return
 }
 
 func (e *node) handleSetPeers(rpc RPCRequest, req SetPeersReq) {
@@ -861,7 +859,7 @@ func (e *node) send(req interface{}) chan RPCResponse {
 
 // randomDuration returns a value that is between the minDur and 2x minDur.
 func randomDuration(minDur time.Duration) time.Duration {
-	return minDur + time.Duration(rand.Int63())%minDur
+	return minDur + time.Duration(rand.Int63())%minDur //nolint:gosec // Cryptographic security not required.
 }
 
 // WaitForConnect waits for the specified address to accept connections then returns nil.

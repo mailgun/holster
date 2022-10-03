@@ -26,11 +26,10 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	}
 
 	// Create a new http request with context
-	hr, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/rpc", peer), bytes.NewBuffer(b))
+	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://%s/rpc", peer), bytes.NewBuffer(b))
 	if err != nil {
 		return errors.Wrap(err, "while creating request")
 	}
-	hr.WithContext(ctx)
 
 	// Send the request
 	hp, err := http.DefaultClient.Do(hr)
@@ -134,7 +133,12 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rpc", newHandler(node))
 	go func() {
-		logrus.Fatal(http.ListenAndServe(electionAddr, mux))
+		server := &http.Server{
+			Addr:              electionAddr,
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		logrus.Fatal(server.ListenAndServe())
 	}()
 
 	// Wait until the http server is up and can receive RPC requests

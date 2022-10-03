@@ -20,7 +20,7 @@ const (
 func init() {
 	// We check this here to avoid data race with GRPC go routines writing to the logger
 	if os.Getenv("ETCD3_DEBUG") != "" {
-		etcd.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 	}
 }
 
@@ -70,9 +70,13 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 		cfg.DialTimeout = duration
 	}
 
+	defaultCfg := &tls.Config{
+		MinVersion: tls.VersionTLS13,
+	}
+
 	// If the CA file was provided
 	if tlsCAFile != "" {
-		setter.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, defaultCfg)
 
 		var certPool *x509.CertPool = nil
 		if pemBytes, err := os.ReadFile(tlsCAFile); err == nil {
@@ -87,7 +91,7 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 
 	// If the cert and key files are provided attempt to load them
 	if tlsCertFile != "" && tlsKeyFile != "" {
-		setter.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, defaultCfg)
 		tlsCert, err := tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
 		if err != nil {
 			return nil, errors.Errorf("while loading cert '%s' and key file '%s': %s",
@@ -102,13 +106,13 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	// If no other TLS config is provided this will force connecting with TLS,
 	// without cert verification
 	if os.Getenv("ETCD3_SKIP_VERIFY") != "" {
-		setter.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, defaultCfg)
 		cfg.TLS.InsecureSkipVerify = true
 	}
 
 	// Enable TLS with no additional configuration
 	if os.Getenv("ETCD3_ENABLE_TLS") != "" {
-		setter.SetDefault(&cfg.TLS, &tls.Config{})
+		setter.SetDefault(&cfg.TLS, defaultCfg)
 	}
 
 	return cfg, nil

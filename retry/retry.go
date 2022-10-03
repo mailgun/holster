@@ -41,10 +41,7 @@ func (e *Err) Error() string {
 
 func (e *Err) Is(target error) bool {
 	_, ok := target.(*Err)
-	if !ok {
-		return false
-	}
-	return true
+	return ok
 }
 
 // Stop forces the retry to cancel with the provided error

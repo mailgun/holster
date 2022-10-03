@@ -91,18 +91,16 @@ OUT:
 }
 
 func (s *WaitGroupTestSuite) TestLoop() {
-	pipe := make(chan int32, 0)
+	pipe := make(chan int32)
 	var wg syncutil.WaitGroup
 	var count int32
 
 	wg.Loop(func() bool {
-		select {
-		case inc, ok := <-pipe:
-			if !ok {
-				return false
-			}
-			atomic.AddInt32(&count, inc)
+		inc, ok := <-pipe
+		if !ok {
+			return false
 		}
+		atomic.AddInt32(&count, inc)
 		return true
 	})
 
@@ -120,7 +118,7 @@ func (s *WaitGroupTestSuite) TestLoop() {
 }
 
 func (s *WaitGroupTestSuite) TestUntil() {
-	pipe := make(chan int32, 0)
+	pipe := make(chan int32)
 	var wg syncutil.WaitGroup
 	var count int32
 
