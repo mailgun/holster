@@ -71,7 +71,7 @@ func NewConfig(cfg *etcd.Config) (*etcd.Config, error) {
 	}
 
 	defaultCfg := &tls.Config{
-		MinVersion: tls.VersionTLS13,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	// If the CA file was provided
