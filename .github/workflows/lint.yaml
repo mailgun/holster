@@ -1,11 +1,8 @@
 name: Lint
 
 on:
-  push:
-    branches:
-      - main
-      - master
   pull_request:
+    branches: [ master, main ]
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock

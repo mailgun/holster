@@ -105,12 +105,19 @@ issues:
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 50
 
+  exclude:
+    # Some packages have deprecated fields which continue to be useful
+    - SA1019
+
   exclude-rules:
     # Exclude some rules from tests.
     - path: '_test\.go$'
       linters:
         - gosec
         - noctx
+    - path: '_test\.go$'
+      text: "unnamedResult:"
+
 
 run:
   # include test files or not, default is true
