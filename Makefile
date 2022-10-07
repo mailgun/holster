@@ -2,7 +2,6 @@ GOLINT = $(GOPATH)/bin/golangci-lint
 
 .PHONY: lint
 lint: $(GOLINT)
-	go vet ./...
 	$(GOLINT) run
 
 $(GOLINT):

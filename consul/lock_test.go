@@ -229,6 +229,7 @@ func TestBehaviorDeleteOnDisconnect(t *testing.T) {
 
 		// Wait for the lock file to disappear
 		client, err := api.NewClient(api.DefaultConfig())
+		require.NoError(t, err)
 		testutil.UntilPass(t, 50, time.Second, func(t testutil.TestingT) {
 			kv, _, err := client.KV().Get(name, nil)
 			assert.NoError(t, err)

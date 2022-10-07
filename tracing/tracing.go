@@ -22,9 +22,6 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 )
 
-// Context Values key for embedding `Tracer` object.
-type tracerKey struct{}
-
 type initState struct {
 	opts  []sdktrace.TracerProviderOption
 	level Level

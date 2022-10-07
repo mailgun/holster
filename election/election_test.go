@@ -409,7 +409,7 @@ func TestResign(t *testing.T) {
 
 	// Calling resign on a follower should have no effect
 	err := c1.Nodes["n1"].Node.Resign(context.Background())
-	require.NoError(t, err)
+	assert.ErrorContains(t, err, "not the leader")
 
 	for i := 0; i < 10; i++ {
 		if c1.GetLeader() != leader {

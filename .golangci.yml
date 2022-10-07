@@ -8,17 +8,17 @@ linters:
     - depguard
     - errcheck # Mandatory. Do not disable.
     - gocritic
-    # - goimports
-    # - gosec
-    # - gosimple
-    # - govet
-    # - noctx
+    - goimports
+    - gosec
+    - gosimple
+    - govet
+    - noctx
     - nolintlint
-    # - ineffassign # Mandatory. Do not disable.
-    # - staticcheck # Mandatory. Do not disable.
-    # - stylecheck
-    # - typecheck
-    # - unused
+    - ineffassign # Mandatory. Do not disable.
+    - staticcheck # Mandatory. Do not disable.
+    - stylecheck
+    - typecheck
+    - unused
 
 # Other linters:
 #    - dogsled
@@ -104,6 +104,13 @@ issues:
 
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 50
+
+  exclude-rules:
+    # Exclude some rules from tests.
+    - path: '_test\.go$'
+      linters:
+        - gosec
+        - noctx
 
 run:
   # include test files or not, default is true

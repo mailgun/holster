@@ -2,19 +2,20 @@ package mxresolv
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"sort"
 	"testing"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/mailgun/holster/v4/collections"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLookup(t *testing.T) {
 	defer disableShuffle()()
-	for i, tc := range []struct {
+	for _, tc := range []struct {
 		desc          string
 		inDomainName  string
 		outMXHosts    []string
@@ -54,57 +55,81 @@ func TestLookup(t *testing.T) {
 		inDomainName:  "xn--test--xweh4bya7b6j.definbox.com",
 		outMXHosts:    []string{"xn--test---mofb0ab4b8camvcmn8gxd.definbox.com"},
 		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-mx-ipv4.definbox.com",
+		outMXHosts:    []string{"34.150.176.225"},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-mx-ipv6.definbox.com",
+		outMXHosts:    []string{"::ffff:2296:b0e1"},
+		outImplicitMX: false,
 	}} {
-		fmt.Printf("Test case #%d: %s, %s\n", i, tc.inDomainName, tc.desc)
-		// When
-		ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
-		mxHosts, explictMX, err := Lookup(ctx, tc.inDomainName)
-		cancel()
-		// Then
-		assert.NoError(t, err)
-		assert.Equal(t, tc.outMXHosts, mxHosts)
-		assert.Equal(t, tc.outImplicitMX, explictMX)
+		t.Run(tc.inDomainName, func(t *testing.T) {
+			// When
+			ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
+			mxHosts, explictMX, err := Lookup(ctx, tc.inDomainName)
+			cancel()
+			// Then
+			assert.NoError(t, err)
+			assert.Equal(t, tc.outMXHosts, mxHosts)
+			assert.Equal(t, tc.outImplicitMX, explictMX)
 
-		// The second lookup returns the cached result, that only shows on the
-		// coverage report.
-		mxHosts, explictMX, err = Lookup(ctx, tc.inDomainName)
-		assert.NoError(t, err)
-		assert.Equal(t, tc.outMXHosts, mxHosts)
-		assert.Equal(t, tc.outImplicitMX, explictMX)
+			// The second lookup returns the cached result, that only shows on the
+			// coverage report.
+			mxHosts, explictMX, err = Lookup(ctx, tc.inDomainName)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.outMXHosts, mxHosts)
+			assert.Equal(t, tc.outImplicitMX, explictMX)
+		})
 	}
 }
 
 func TestLookupError(t *testing.T) {
 	defer disableShuffle()()
-	for i, tc := range []struct {
-		desc       string
-		inHostname string
-		outError   string
+	for _, tc := range []struct {
+		desc         string
+		inDomainName string
+		outError     string
 	}{{
-		inHostname: "test-broken.definbox.com",
-		outError:   "lookup test-broken.definbox.com.*: no such host",
+		inDomainName: "test-broken.definbox.com",
+		outError:     "lookup test-broken.definbox.com.*: no such host",
 	}, {
-		inHostname: "",
-		outError:   "lookup : no such host",
+		inDomainName: "",
+		outError:     "lookup : no such host",
 	}, {
-		inHostname: "kaboom",
-		outError:   "lookup kaboom.*: no such host",
+		inDomainName: "kaboom",
+		outError:     "lookup kaboom.*: no such host",
 	}, {
-		inHostname: "example.com",
-		outError:   "domain accepts no mail",
+		// MX  0  .
+		inDomainName: "example.com",
+		outError:     "domain accepts no mail",
+	}, {
+		// MX  10  0.0.0.0.
+		inDomainName: "test-mx-zero.definbox.com",
+		outError:     "domain accepts no mail",
 	}} {
-		fmt.Printf("Test case #%d: %s, %s\n", i, tc.inHostname, tc.desc)
-		// When
-		ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
-		_, _, err := Lookup(ctx, tc.inHostname)
-		cancel()
-		// Then
-		assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
+		t.Run(tc.inDomainName, func(t *testing.T) {
+			// When
+			ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
+			_, _, err := Lookup(ctx, tc.inDomainName)
+			cancel()
 
-		// The second lookup returns the cached result, that only shows on the
-		// coverage report.
-		_, _, err = Lookup(ctx, tc.inHostname)
-		assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
+			// Then
+			require.Error(t, err)
+			assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
+
+			gotTemporary := false
+			var temporary interface{ Temporary() bool }
+			if errors.As(err, &temporary) {
+				gotTemporary = temporary.Temporary()
+			}
+			assert.False(t, gotTemporary)
+
+			// The second lookup returns the cached result, that only shows on the
+			// coverage report.
+			_, _, err = Lookup(ctx, tc.inDomainName)
+			assert.Regexp(t, regexp.MustCompile(tc.outError), err.Error())
+		})
 	}
 }
 

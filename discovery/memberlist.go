@@ -44,7 +44,6 @@ type MemberList struct {
 	memberList *ml.Memberlist
 	conf       MemberListConfig
 	events     *eventDelegate
-	mutex      sync.Mutex
 }
 
 type MemberListConfig struct {
@@ -239,7 +238,7 @@ func NewLogWriter(log logrus.FieldLogger) *io.PipeWriter {
 		reader.Close()
 	}()
 	runtime.SetFinalizer(writer, func(w *io.PipeWriter) {
-		writer.Close()
+		w.Close()
 	})
 
 	return writer

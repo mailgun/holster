@@ -27,11 +27,10 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	}
 
 	// Create a new http request with context
-	hr, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s/rpc", peer), bytes.NewBuffer(b))
+	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://%s/rpc", peer), bytes.NewBuffer(b))
 	if err != nil {
 		return errors.Wrap(err, "while creating request")
 	}
-	hr.WithContext(ctx)
 
 	// Send the request
 	hp, err := http.DefaultClient.Do(hr)
@@ -109,13 +108,23 @@ func SimpleExample(t *testing.T) {
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/rpc", newHandler(t, node1))
-		log.Fatal(http.ListenAndServe(":7080", mux))
+		server := &http.Server{
+			Addr:              ":7080",
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		log.Fatal(server.ListenAndServe())
 	}()
 
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/rpc", newHandler(t, node2))
-		log.Fatal(http.ListenAndServe(":7081", mux))
+		server := &http.Server{
+			Addr:              ":7081",
+			Handler:           mux,
+			ReadHeaderTimeout: 1 * time.Minute,
+		}
+		log.Fatal(server.ListenAndServe())
 	}()
 
 	// Wait for each of the http listeners to start fielding requests
