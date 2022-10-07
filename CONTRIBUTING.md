@@ -11,8 +11,6 @@ Prior to commit all code should be formatted by the [goimports](https://pkg.go.d
 
 ### How to configure IDEs
 #### GoLand
-Installation of goimports is not needed.
-
 Go to Preferences → Editor → Code style → Go → Imports → Sorting, choose "goimports".
 
 #### VSCode
