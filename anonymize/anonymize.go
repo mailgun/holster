@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/mailgun/holster/errors"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/mailgun/holster/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
