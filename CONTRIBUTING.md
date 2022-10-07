@@ -1,7 +1,13 @@
 # Contributing to holster
 
+## Go version
+Use the same version as in the [go.mod](https://github.com/mailgun/holster/blob/master/go.mod#L3) file.
+
+## go.mod and go.sum
+`go mod tidy` should be called before commit to add missing and remove unused modules.
+
 ## Formatting
-Prior to commit all code should be formatted by the goimports tool.
+Prior to commit all code should be formatted by the [goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports) tool.
 
 ### How to install
 ```shell
