@@ -1,32 +1,35 @@
-module github.com/mailgun/holster/v4
+module github.com/mailgun/holster
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/ahmetb/go-linq v3.0.0+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/consul/api v1.13.0
-	github.com/hashicorp/go-hclog v1.2.1
-	github.com/hashicorp/memberlist v0.3.1
-	github.com/miekg/dns v1.1.49
+	github.com/hashicorp/consul/api v1.15.2
+	github.com/hashicorp/go-hclog v1.3.1
+	github.com/hashicorp/memberlist v0.5.0
+	github.com/mailgun/holster/v4 v4.8.2
+	github.com/miekg/dns v1.1.50
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.0
 	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.1.16
-	go.etcd.io/etcd/api/v3 v3.5.4
-	go.etcd.io/etcd/client/v3 v3.5.4
+	go.etcd.io/etcd/api/v3 v3.5.5
+	go.etcd.io/etcd/client/v3 v3.5.5
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.10.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.10.0
 	go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/trace v1.10.0
-	golang.org/x/net v0.0.0-20220921155015-db77216a4ee9
-	google.golang.org/grpc v1.49.0
-	sigs.k8s.io/yaml v1.2.0
+	golang.org/x/net v0.0.0-20221004154528-8021a29435af
+	golang.org/x/text v0.3.7
+	google.golang.org/grpc v1.50.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -63,18 +66,16 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
-	github.com/stretchr/objx v0.1.1 // indirect
+	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelutil v0.1.16 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.10.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.9.0
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
-	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20220920201722-2b89144ce006 // indirect
