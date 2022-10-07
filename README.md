@@ -590,5 +590,4 @@ equivalents to log details of the deadline and source file:line where it was
 set.  Must enable debug logging.
 
 ## Contributing code
-
 Please read the [Contribution Guidelines](./CONTRIBUTING.md) before sending patches.
