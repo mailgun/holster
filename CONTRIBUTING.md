@@ -12,7 +12,7 @@ go install golang.org/x/tools/cmd/goimports@latest
 #### GoLand
 Installation of goimports is not needed.
 
-Go to Preferences → Editor → Code style → Go → Imports → Sorting, choose “goimports“.
+Go to Preferences → Editor → Code style → Go → Imports → Sorting, choose "goimports".
 
 #### VSCode
 1. Install Golang extension.
