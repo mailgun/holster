@@ -68,7 +68,7 @@ func replaceNames(s string) string {
 	}
 	var lowTrimmedWords []string
 	var trimmedWords []string
-	words := strings.SplitN(s, " ", -1)
+	words := strings.Split(s, " ")
 	for i, word := range words {
 		trimmedWords = append(trimmedWords, strings.Trim(word, ","))
 		lowTrimmedWords = append(lowTrimmedWords, strings.ToLower(trimmedWords[i]))
@@ -86,24 +86,24 @@ func replaceNames(s string) string {
 				capitalized := isCapitalized(trimmedWords[i])
 				upperCased := isUpperCased(trimmedWords[i])
 				if capitalized || upperCased {
-					words[i] = strings.Replace(words[i], trimmedWords[i], "xxx", -1)
+					words[i] = strings.ReplaceAll(words[i], trimmedWords[i], "xxx")
 					if i > 0 && len(trimmedWords[i-1]) > 1 {
 						prevCapitalized := isCapitalized(trimmedWords[i-1])
 						prevUpperCased := isUpperCased(trimmedWords[i-1])
 						bothCapitalized := capitalized && prevCapitalized
 						bothUpperCased := upperCased && prevUpperCased
 						if bothCapitalized || bothUpperCased {
-							words[i-1] = strings.Replace(words[i-1], trimmedWords[i-1], "xxx", -1)
+							words[i-1] = strings.ReplaceAll(words[i-1], trimmedWords[i-1], "xxx")
 						}
 					}
-					if i < len(words) - 1 && len(trimmedWords[i+1]) > 1 {
+					if i < len(words)-1 && len(trimmedWords[i+1]) > 1 {
 						nextCapitalized := isCapitalized(trimmedWords[i+1])
 						nextUpperCased := isUpperCased(trimmedWords[i+1])
 						bothCapitalized := capitalized && nextCapitalized
 						bothUpperCased := upperCased && nextUpperCased
 						fmt.Printf("for found name %s i %v is cap %v is upper %v\n", name, i, capitalized, upperCased)
 						if bothCapitalized || bothUpperCased {
-							words[i+1] = strings.Replace(words[i+1], trimmedWords[i+1], "xxx", -1)
+							words[i+1] = strings.ReplaceAll(words[i+1], trimmedWords[i+1], "xxx")
 						}
 					}
 				}
@@ -147,9 +147,9 @@ func or(tokens []string) (*regexp.Regexp, error) {
 func isCapitalized(s string) bool {
 	fmt.Printf("is capitalized %v '%s' '%s'\n",
 		len(s) > 1 && cases.Title(language.Und, cases.NoLower).String(s) == s,
-			s,
-			cases.Title(language.Und, cases.NoLower).String(s),
-		)
+		s,
+		cases.Title(language.Und, cases.NoLower).String(s),
+	)
 	capitalized := cases.Title(language.Und, cases.NoLower).String(s)
 	return len(s) > 1 && capitalized == s && !isUpperCased(s)
 }
