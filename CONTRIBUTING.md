@@ -9,11 +9,6 @@ Use the same version as in the [go.mod](https://github.com/mailgun/holster/blob/
 ## Formatting
 Prior to commit all code should be formatted by the [goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports) tool.
 
-### How to install
-```shell
-go install golang.org/x/tools/cmd/goimports@latest
-```
-
 ### How to configure IDEs
 #### GoLand
 Installation of goimports is not needed.
@@ -24,7 +19,7 @@ Go to Preferences → Editor → Code style → Go → Imports → Sorting, choo
 1. Install Golang extension.
 2. Go to Settings → Extensions → Format tool, choose "goimports".
 
-#### Emacs, Vim, GoSublime
+#### Emacs, Vim, GoSublime, etc.
 See [goimports doc](https://pkg.go.dev/golang.org/x/tools/cmd/goimports?tab=doc).
 
 ## Linters
