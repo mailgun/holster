@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	_ "unsafe" // For go:linkname
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/mailgun/holster/v4/collections"
@@ -27,8 +28,6 @@ var (
 
 	// It is modified only in tests to make them deterministic.
 	shuffle = true
-
-	DefaultResolver = net.DefaultResolver
 )
 
 func init() {
@@ -50,7 +49,7 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid hostname")
 	}
-	mxRecords, err := DefaultResolver.LookupMX(ctx, asciiHostname)
+	mxRecords, err := lookupMX(net.DefaultResolver, ctx, asciiHostname)
 	if err != nil {
 		var timeouter interface{ Timeout() bool }
 		if errors.As(err, &timeouter) && timeouter.Timeout() {
@@ -58,7 +57,7 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		}
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.Err == "no such host" {
-			if _, err := DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
+			if _, err := net.DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
 				return cacheAndReturn(hostname, nil, false, errors.WithStack(err))
 			}
 			return cacheAndReturn(hostname, []string{asciiHostname}, true, nil)
@@ -68,8 +67,15 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		}
 	}
 	// Check for "Null MX" record (https://tools.ietf.org/html/rfc7505).
-	if len(mxRecords) == 1 && mxRecords[0].Host == "." {
-		return cacheAndReturn(hostname, nil, false, errNullMXRecord)
+	if len(mxRecords) == 1 {
+		if mxRecords[0].Host == "." {
+			return cacheAndReturn(hostname, nil, false, errNullMXRecord)
+		}
+		// 0.0.0.0 is not really a "Null MX" record, but some people apparently
+		// have never heard of RFC7505 and configure it this way.
+		if strings.HasPrefix(mxRecords[0].Host, "0.0.0.0") {
+			return cacheAndReturn(hostname, nil, false, errNullMXRecord)
+		}
 	}
 	// Normalize returned hostnames: drop trailing '.' and lowercase.
 	for _, mxRecord := range mxRecords {
@@ -145,3 +151,16 @@ func cacheAndReturn(hostname string, mxHosts []string, implicit bool, err error)
 	lookupResultCache.AddWithTTL(hostname, lookupResult{mxHosts, implicit, err}, cacheTTL)
 	return mxHosts, implicit, err
 }
+
+// lookupMX exposes the respective private function of net.Resolver. The public
+// alternative net.(*Resolver).LookupMX considers MX records that contain an IP
+// address invalid. It is indeed invalid according to an RFC, but in reality
+// some people do not read RFC and configure IP addresses in MX records.
+//
+// An issue against the Golang proper was created to remove the strict MX DNS
+// record validation https://github.com/golang/go/issues/56025. When it is
+// fixed we will be able to remove this unsafe binding and get back to calling
+// the public method.
+//
+//go:linkname lookupMX net.(*Resolver).lookupMX
+func lookupMX(r *net.Resolver, ctx context.Context, name string) ([]*net.MX, error)
