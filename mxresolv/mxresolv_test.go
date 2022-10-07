@@ -8,7 +8,7 @@ import (
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/mailgun/holster/v4/collections"
-	"github.com/pkg/errors"
+	"github.com/mailgun/holster/v4/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
