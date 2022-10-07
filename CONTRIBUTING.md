@@ -14,8 +14,9 @@ Prior to commit all code should be formatted by the [goimports](https://pkg.go.d
 Go to Preferences → Editor → Code style → Go → Imports → Sorting, choose "goimports".
 
 #### VSCode
+1. Call `go install golang.org/x/tools/cmd/goimports@latest`.
 1. Install Golang extension.
-2. Go to Settings → Extensions → Format tool, choose "goimports".
+1. Go to Settings → Extensions → Format tool, choose "goimports".
 
 #### Emacs, Vim, GoSublime, etc.
 See [goimports doc](https://pkg.go.dev/golang.org/x/tools/cmd/goimports?tab=doc).
