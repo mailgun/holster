@@ -66,5 +66,8 @@ func (s *AnonymizeSuite) TestAnonymizePopularNames() {
 		anonimized, err := Anonymize(subject, `ivan.ivanov@foo.bar`)
 		s.Nil(err)
 		s.Equal(expected, anonimized)
+		anonimized, err = Anonymize(subject)
+		s.Nil(err)
+		s.Equal(expected, anonimized)
 	}
 }

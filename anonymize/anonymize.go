@@ -2,7 +2,6 @@ package anonymize
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -49,16 +48,16 @@ func LoadNames(options ...Option) error {
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
+	s := replaceNames(src)
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
-		return src, nil
+		return s, nil
 	}
 	secret, err := or(tokens)
 	if err != nil {
-		return src, err
+		return s, err
 	}
-	s := secret.ReplaceAllString(src, "xxx")
-	s = replaceNames(s)
+	s = secret.ReplaceAllString(s, "xxx")
 	s = adjacentSecrets.ReplaceAllString(s, "xxx")
 	return s, nil
 }
@@ -74,13 +73,6 @@ func replaceNames(s string) string {
 		trimmedWords = append(trimmedWords, strings.Trim(word, ","))
 		lowTrimmedWords = append(lowTrimmedWords, strings.ToLower(trimmedWords[i]))
 	}
-	ss, _ := json.Marshal(words)
-	fmt.Printf("words %s\n", ss)
-	ss, _ = json.Marshal(trimmedWords)
-	fmt.Printf("trimmed words %s\n", ss)
-	ss, _ = json.Marshal(lowTrimmedWords)
-	fmt.Printf("low trimmed words %s\n", ss)
-
 	for i, lowTrimmedWord := range lowTrimmedWords {
 		for _, name := range Names {
 			if name == strings.Trim(lowTrimmedWord, ",") {
@@ -102,7 +94,6 @@ func replaceNames(s string) string {
 						nextUpperCased := isUpperCased(trimmedWords[i+1])
 						bothCapitalized := capitalized && nextCapitalized
 						bothUpperCased := upperCased && nextUpperCased
-						fmt.Printf("for found name %s i %v is cap %v is upper %v\n", name, i, capitalized, upperCased)
 						if bothCapitalized || bothUpperCased {
 							words[i+1] = strings.ReplaceAll(words[i+1], trimmedWords[i+1], "xxx")
 						}
@@ -146,11 +137,6 @@ func or(tokens []string) (*regexp.Regexp, error) {
 }
 
 func isCapitalized(s string) bool {
-	fmt.Printf("is capitalized %v '%s' '%s'\n",
-		len(s) > 1 && cases.Title(language.Und, cases.NoLower).String(s) == s,
-		s,
-		cases.Title(language.Und, cases.NoLower).String(s),
-	)
 	capitalized := cases.Title(language.Und, cases.NoLower).String(s)
 	return len(s) > 1 && capitalized == s && !isUpperCased(s)
 }
