@@ -17,7 +17,7 @@ import (
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(`xxx(\sxxx)+`)
-var names []string
+var Names []string
 
 type Config struct {
 	namesFilename string
@@ -42,7 +42,7 @@ func LoadNames(options ...Option) error {
 	}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		names = append(names, strings.ToLower(scanner.Text()))
+		Names = append(Names, strings.ToLower(scanner.Text()))
 	}
 	return errors.Wrapf(scanner.Err(), "fail to scan file with names")
 }
@@ -64,7 +64,7 @@ func Anonymize(src string, secrets ...string) (string, error) {
 }
 
 func replaceNames(s string) string {
-	if len(names) == 0 {
+	if len(Names) == 0 {
 		return s
 	}
 	var lowTrimmedWords []string
@@ -82,7 +82,7 @@ func replaceNames(s string) string {
 	fmt.Printf("low trimmed words %s\n", ss)
 
 	for i, lowTrimmedWord := range lowTrimmedWords {
-		for _, name := range names {
+		for _, name := range Names {
 			if name == strings.Trim(lowTrimmedWord, ",") {
 				capitalized := isCapitalized(trimmedWords[i])
 				upperCased := isUpperCased(trimmedWords[i])

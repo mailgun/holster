@@ -48,7 +48,7 @@ func (s *AnonymizeSuite) TestAnonymizePopularNames() {
 	err := LoadNames()
 	s.Require().Nil(err)
 	defer func() {
-		names = []string{}
+		Names = []string{}
 	}()
 	subjects := map[string]string{
 		"ALEX MIA - Welcome to YORK": "xxx - Welcome to YORK",
