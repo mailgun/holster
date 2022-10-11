@@ -44,23 +44,17 @@ func (s *AnonymizeSuite) TestAnonymizeSquashesAdjacentSecrets() {
 	s.Equal(anonimized, "Hello xxx")
 }
 
-func (s *AnonymizeSuite) TestAnonymizePopularNames() {
-	err := LoadNames()
-	s.Require().Nil(err)
-	defer func() {
-		Names = []string{}
-	}()
+func (s *AnonymizeSuite) TestAnonymizeNames() {
 	subjects := map[string]string{
 		"ALEX MIA - Welcome to YORK": "xxx - Welcome to YORK",
-		"ALEX MIA, Welcome to YORK":  "xxx, Welcome to YORK",
 		"MIA ALEX - Welcome to YORK": "xxx - Welcome to YORK",
 		"MIA ALEX, Welcome to YORK":  "xxx, Welcome to YORK",
 		"MIA ALEX, welcome to YORK":  "xxx, welcome to YORK",
-		"Mia ALEX - Welcome to YORK": "Mia xxx - Welcome to YORK",
-		"ALEX Mia - Welcome to YORK": "xxx Mia - Welcome to YORK",
-		"Alex - Welcome to YORK":     "xxx - Welcome to YORK",
+		"Mia ALEX - Welcome to YORK": "xxx - Welcome to YORK",
+		"ALEX Mia - Welcome to YORK": "xxx - Welcome to YORK",
 		"Alex Mia - Welcome to YORK": "xxx - Welcome to YORK",
-		"Mia Alex, Welcome to YORK":  "xxx, xxx to YORK",
+		"Mia Alex, Welcome to YORK":  "xxx, Welcome to YORK",
+		"ALEX MIA and BORNE ROY, Welcome to YORK":  "xxx and xxx, Welcome to YORK",
 	}
 	for subject, expected := range subjects {
 		anonimized, err := Anonymize(subject, `ivan.ivanov@foo.bar`)

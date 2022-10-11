@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/consul/api v1.15.2
 	github.com/hashicorp/go-hclog v1.3.1
 	github.com/hashicorp/memberlist v0.5.0
+	github.com/jdkato/prose/v2 v2.0.0
 	github.com/mailgun/holster v2.3.5+incompatible
 	github.com/miekg/dns v1.1.50
 	github.com/pkg/errors v0.9.1
@@ -27,7 +28,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/trace v1.10.0
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af
-	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.50.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -40,6 +40,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -59,6 +60,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/mingrammer/commonregex v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -76,10 +78,13 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
+	gonum.org/v1/gonum v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20220920201722-2b89144ce006 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
+	gopkg.in/neurosnap/sentences.v1 v1.0.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
