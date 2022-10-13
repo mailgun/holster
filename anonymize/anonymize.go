@@ -10,9 +10,11 @@ import (
 	"github.com/mailgun/holster/v4/errors"
 )
 
+const anonym = "xxx"
+
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
-var adjacentSecrets = regexp.MustCompile(`xxx(\sxxx)+`)
+var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
@@ -28,8 +30,8 @@ func Anonymize(src string, secrets ...string) (string, error) {
 	if err != nil {
 		return s, err
 	}
-	s = secret.ReplaceAllString(s, "xxx")
-	s = adjacentSecrets.ReplaceAllString(s, "xxx")
+	s = secret.ReplaceAllString(s, anonym)
+	s = adjacentSecrets.ReplaceAllString(s, anonym)
 	return s, nil
 }
 
@@ -40,7 +42,7 @@ func replaceNames(s string) (string, error) {
 	}
 	for _, ent := range doc.Entities() {
 		if ent.Label == "PERSON" {
-			s = strings.ReplaceAll(s, ent.Text, "xxx")
+			s = strings.ReplaceAll(s, ent.Text, anonym)
 		}
 	}
 	return s, nil
