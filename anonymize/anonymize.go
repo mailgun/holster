@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/jdkato/prose/v2"
-	"github.com/mailgun/holster/errors"
+	"github.com/mailgun/holster/v4/errors"
 )
 
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
