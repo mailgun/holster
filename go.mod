@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/ahmetb/go-linq v3.0.0+incompatible
+	github.com/foxcpp/go-mockdns v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/consul/api v1.15.2

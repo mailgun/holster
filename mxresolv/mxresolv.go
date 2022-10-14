@@ -28,6 +28,10 @@ var (
 
 	// It is modified only in tests to make them deterministic.
 	shuffle = true
+
+	// DefaultResolver is exposed mainly to be patched in tests to access a
+	// mock DNS server github.com/foxcpp/go-mockdns.
+	DefaultResolver = net.DefaultResolver
 )
 
 func init() {
@@ -49,7 +53,7 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid hostname")
 	}
-	mxRecords, err := lookupMX(net.DefaultResolver, ctx, asciiHostname)
+	mxRecords, err := lookupMX(DefaultResolver, ctx, asciiHostname)
 	if err != nil {
 		var timeouter interface{ Timeout() bool }
 		if errors.As(err, &timeouter) && timeouter.Timeout() {
@@ -57,7 +61,7 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		}
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.Err == "no such host" {
-			if _, err := net.DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
+			if _, err := DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
 				return cacheAndReturn(hostname, nil, false, errors.WithStack(err))
 			}
 			return cacheAndReturn(hostname, []string{asciiHostname}, true, nil)
