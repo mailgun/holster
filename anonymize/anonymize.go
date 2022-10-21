@@ -12,21 +12,22 @@ const anonym = "xxx"
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
+var namesRe = regexp.MustCompile(fmt.Sprintf("(?i)%s", strings.Join(names, "|")))
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
-	s := src
+	src = namesRe.ReplaceAllString(src, anonym)
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
-		return s, nil
+		return src, nil
 	}
 	secret, err := or(tokens)
 	if err != nil {
-		return s, err
+		return src, err
 	}
-	s = secret.ReplaceAllString(s, anonym)
-	s = adjacentSecrets.ReplaceAllString(s, anonym)
-	return s, nil
+	src = secret.ReplaceAllString(src, anonym)
+	src = adjacentSecrets.ReplaceAllString(src, anonym)
+	return src, nil
 }
 
 func tokenize(text ...string) (tokens []string) {
