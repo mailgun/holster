@@ -18,10 +18,11 @@ var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
-	s, err := replaceNames(src)
-	if err != nil {
-		return src, errors.Wrapf(err, "fail to replace names in src %s", src)
-	}
+	s := src
+	//s, err := replaceNames(src)
+	//if err != nil {
+	//	return src, errors.Wrapf(err, "fail to replace names in src %s", src)
+	//}
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
 		return s, nil
