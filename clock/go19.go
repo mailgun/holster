@@ -99,9 +99,9 @@ func Unix(sec, nsec int64) Time {
 }
 
 func Since(t Time) Duration {
-	return provider.Now().Sub(t)
+	return getProvider().Now().Sub(t)
 }
 
 func Until(t Time) Duration {
-	return t.Sub(provider.Now())
+	return t.Sub(getProvider().Now())
 }
