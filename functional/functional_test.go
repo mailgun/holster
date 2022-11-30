@@ -147,6 +147,30 @@ func TestFunctional(t *testing.T) {
 			}
 		})
 
+		t.Run("Subtest has same N value", func(t *testing.T) {
+			const expectedN = 100
+			var counterFunc1, counterFunc2a int
+			benchmarkFunc := func(fb *functional.B) {
+				fb.Run("Func1", func(fb *functional.B) {
+					for i := 0; i < fb.N; i++ {
+						counterFunc1++
+					}
+				})
+				fb.Run("Func2", func(fb *functional.B) {
+					fb.Run("Func2a", func(fb *functional.B) {
+						for i := 0; i < fb.N; i++ {
+							counterFunc2a++
+						}
+					})
+				})
+			}
+
+			result := functional.RunBenchmarkTimes(ctx, benchmarkFunc, expectedN)
+			assert.True(t, result.Pass)
+			assert.Equal(t, expectedN, counterFunc1)
+			assert.Equal(t, expectedN, counterFunc2a)
+		})
+
 		t.Run("WithWriter()", func(t *testing.T) {
 			testFunc := func(fb *functional.B) {
 				fb.Log("Foobar")

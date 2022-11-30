@@ -44,7 +44,7 @@ func newB(name string, times int, opts ...FunctionalOption) *B {
 }
 
 func (b *B) Run(name string, fn BenchmarkFunc, opts ...FunctionalOption) BenchmarkResult {
-	return b.RunTimes(name, fn, 1, opts...)
+	return b.RunTimes(name, fn, b.N, opts...)
 }
 
 func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
