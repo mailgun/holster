@@ -47,20 +47,11 @@ func newB(name string, times int, opts ...FunctionalOption) *B {
 
 func (b *B) Run(name string, fn BenchmarkFunc, opts ...FunctionalOption) BenchmarkResult {
 	b.leaf = false
-	return b.RunTimes(name, fn, b.N, opts...)
-}
-
-func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
-	b2 := &B{
-		T: T{
-			name:      joinName(b.name, name),
-			indent:    b.indent + 1,
-			writer:    b.writer,
-			errWriter: b.errWriter,
-		},
-		N:    times,
-		leaf: true,
-	}
+	longname := joinName(b.name, name)
+	b2 := newB(longname, b.N)
+	b2.indent++
+	b2.writer = b.writer
+	b2.errWriter = b.errWriter
 
 	b2.invoke(b.T.ctx, fn)
 
