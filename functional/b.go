@@ -10,7 +10,8 @@ import (
 // Functional benchmark context.
 type B struct {
 	T
-	N int
+	N    int
+	leaf bool
 
 	// Mean nanoseconds per operation.
 	nsPerOp   float64
@@ -33,7 +34,8 @@ func newB(name string, times int, opts ...FunctionalOption) *B {
 			writer:    os.Stdout,
 			errWriter: os.Stderr,
 		},
-		N: times,
+		N:    times,
+		leaf: true,
 	}
 
 	for _, opt := range opts {
@@ -44,6 +46,7 @@ func newB(name string, times int, opts ...FunctionalOption) *B {
 }
 
 func (b *B) Run(name string, fn BenchmarkFunc, opts ...FunctionalOption) BenchmarkResult {
+	b.leaf = false
 	return b.RunTimes(name, fn, b.N, opts...)
 }
 
@@ -55,7 +58,8 @@ func (b *B) RunTimes(name string, fn BenchmarkFunc, times int, opts ...Functiona
 			writer:    b.writer,
 			errWriter: b.errWriter,
 		},
-		N: times,
+		N:    times,
+		leaf: true,
 	}
 
 	b2.invoke(b.T.ctx, fn)
@@ -104,8 +108,14 @@ func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 	endTime := time.Now()
 	elapsed := endTime.Sub(b.startTime)
 	b.nsPerOp = float64(elapsed.Nanoseconds()) / float64(b.N)
-	nsPerOpDur := time.Duration(int64(b.nsPerOp))
-	b.Logf("%s\t%d\t%s ns/op (%s/op)", b.name, b.N, formatFloat(b.nsPerOp), nsPerOpDur.String())
+
+	if b.leaf {
+		nsPerOpDur := time.Duration(int64(b.nsPerOp))
+		b.Logf("%s\t%d\t%s ns/op (%s/op)", b.name, b.N, formatFloat(b.nsPerOp), nsPerOpDur.String())
+	} else {
+		b.Logf("%s", b.name)
+	}
+
 	if b.pass {
 		b.Logf("⁓⁓⁓ PASS: %s (%s)", b.name, elapsed)
 	} else {
