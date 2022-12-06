@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/errors"
-	"github.com/sirupsen/logrus"
 )
 
 // Functional test context.
@@ -41,16 +40,20 @@ type T struct {
 	writer    io.Writer
 	errWriter io.Writer
 	args      []string
-	skipped   bool
+	result    TestResult
+}
+
+type TestResult struct {
+	Pass      bool
+	Skipped   bool
+	StartTime time.Time
+	EndTime   time.Time
 }
 
 // Functional test code.
 type TestFunc func(t *T)
 
-var (
-	log        = logrus.WithField("category", "functional")
-	maxTimeout = 10 * time.Minute
-)
+var maxTimeout = 10 * time.Minute
 
 func newT(name string, opts ...FunctionalOption) *T {
 	t := &T{
@@ -133,15 +136,22 @@ func (t *T) Skipf(format string, args ...any) {
 }
 
 func (t *T) Skipped() bool {
-	return t.skipped
+	return t.result.Skipped
 }
 
 func (t *T) SkipNow() {
-	t.skipped = true
+	t.result.Skipped = true
 	runtime.Goexit()
 }
 
 func (t *T) invoke(ctx context.Context, fn TestFunc) {
+	callFn := func() {
+		fn(t)
+	}
+	t.commonInvoke(ctx, callFn, nil)
+}
+
+func (t *T) commonInvoke(ctx context.Context, fn, postHandler func()) {
 	if ctx.Err() != nil {
 		panic(ctx.Err())
 	}
@@ -150,24 +160,24 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 	ctx, cancel := context.WithDeadline(ctx, t.deadline)
 	defer cancel()
 	t.ctx = ctx
-	t.pass = true
+	t.result.Pass = true
 	t.Logf("≈≈≈ RUN   %s", t.name)
-	startTime := time.Now()
+	t.result.StartTime = time.Now()
 
 	// Call test in goroutine.
 	done := make(chan any)
 	go func() {
 		var finished bool
 		defer func() {
-			t.skipped = !finished
+			t.result.Skipped = !finished
 			done <- recover()
 		}()
 
-		fn(t)
+		fn()
 		finished = true
 	}()
 
-	// Handle panic.
+	// Wait, then handle panic.
 	if fnErr := <-done; fnErr != nil {
 		errMsg := fmt.Sprintf("%v", fnErr)
 		if errMsg != "" {
@@ -176,13 +186,19 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 		t.Error(debug.Stack())
 	}
 
-	endTime := time.Now()
-	elapsed := endTime.Sub(startTime)
-	if t.skipped {
+	t.result.EndTime = time.Now()
+	elapsed := t.result.EndTime.Sub(t.result.StartTime)
+
+	if postHandler != nil {
+		postHandler()
+	}
+
+	switch {
+	case t.result.Skipped:
 		t.Logf("⁓⁓⁓ SKIP: %s (%s)", t.name, elapsed)
-	} else if t.pass {
+	case t.result.Pass:
 		t.Logf("⁓⁓⁓ PASS: %s (%s)", t.name, elapsed)
-	} else {
+	default:
 		t.Logf("⁓⁓⁓ FAIL: %s (%s)", t.name, elapsed)
 	}
 }

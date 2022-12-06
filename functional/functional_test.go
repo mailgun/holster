@@ -161,7 +161,8 @@ func TestFunctional(t *testing.T) {
 					}
 					result := functional.RunBenchmarkTimes(ctx, benchmarkFunc, testCase.N)
 					assert.True(t, result.Pass)
-					assert.NotZero(t, result.NsPerOp)
+					assert.False(t, result.StartTime.IsZero())
+					assert.False(t, result.EndTime.IsZero())
 					assert.Equal(t, testCase.N, counter)
 				})
 			}
