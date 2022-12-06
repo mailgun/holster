@@ -41,6 +41,7 @@ type T struct {
 	writer    io.Writer
 	errWriter io.Writer
 	args      []string
+	skipped   bool
 }
 
 // Functional test code.
@@ -93,12 +94,12 @@ func (t *T) Deadline() (time.Time, error) {
 	return t.deadline, nil
 }
 
-func (t *T) Error(args ...interface{}) {
+func (t *T) Error(args ...any) {
 	fmt.Fprintln(t.errWriter, args...)
 	t.pass = false
 }
 
-func (t *T) Errorf(format string, args ...interface{}) {
+func (t *T) Errorf(format string, args ...any) {
 	fmt.Fprintf(t.errWriter, format+"\n", args...)
 	t.pass = false
 }
@@ -107,16 +108,37 @@ func (t *T) FailNow() {
 	panic("")
 }
 
-func (t *T) Log(message ...interface{}) {
-	fmt.Fprintln(t.writer, message...)
+func (t *T) Log(message ...any) {
+	if len(message) > 0 {
+		fmt.Fprintln(t.writer, message...)
+	}
 }
 
-func (t *T) Logf(format string, args ...interface{}) {
+func (t *T) Logf(format string, args ...any) {
 	fmt.Fprintf(t.writer, format+"\n", args...)
 }
 
 func (t *T) Args() []string {
 	return t.args
+}
+
+func (t *T) Skip(args ...any) {
+	t.Log(args...)
+	t.SkipNow()
+}
+
+func (t *T) Skipf(format string, args ...any) {
+	t.Logf(format, args...)
+	t.SkipNow()
+}
+
+func (t *T) Skipped() bool {
+	return t.skipped
+}
+
+func (t *T) SkipNow() {
+	t.skipped = true
+	runtime.Goexit()
 }
 
 func (t *T) invoke(ctx context.Context, fn TestFunc) {
@@ -132,24 +154,33 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 	t.Logf("≈≈≈ RUN   %s", t.name)
 	startTime := time.Now()
 
-	func() {
+	// Call test in goroutine.
+	done := make(chan any)
+	go func() {
+		var finished bool
 		defer func() {
-			// Handle panic.
-			if err := recover(); err != nil {
-				errMsg := fmt.Sprintf("%v", err)
-				if errMsg != "" {
-					t.Error(errMsg)
-				}
-				t.Error(debug.Stack())
-			}
+			t.skipped = !finished
+			done <- recover()
 		}()
 
 		fn(t)
+		finished = true
 	}()
+
+	// Handle panic.
+	if fnErr := <-done; fnErr != nil {
+		errMsg := fmt.Sprintf("%v", fnErr)
+		if errMsg != "" {
+			t.Error(errMsg)
+		}
+		t.Error(debug.Stack())
+	}
 
 	endTime := time.Now()
 	elapsed := endTime.Sub(startTime)
-	if t.pass {
+	if t.skipped {
+		t.Logf("⁓⁓⁓ SKIP: %s (%s)", t.name, elapsed)
+	} else if t.pass {
 		t.Logf("⁓⁓⁓ PASS: %s (%s)", t.name, elapsed)
 	} else {
 		t.Logf("⁓⁓⁓ FAIL: %s (%s)", t.name, elapsed)
@@ -157,7 +188,7 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 }
 
 // Get base name of function.
-func funcName(fn interface{}) string {
+func funcName(fn any) string {
 	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	idx := strings.LastIndex(name, ".")
 	if idx < 0 {

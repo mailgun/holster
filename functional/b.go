@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"time"
 )
 
@@ -79,35 +80,42 @@ func (b *B) invoke(ctx context.Context, fn BenchmarkFunc) {
 	b.Logf("≈≈≈ RUN   %s", b.name)
 	b.startTime = time.Now()
 
-	func() {
+	// Call test in goroutine.
+	done := make(chan any)
+	go func() {
+		var finished bool
 		defer func() {
-			// Handle panic.
-			if err := recover(); err != nil {
-				errMsg := fmt.Sprintf("%v", err)
-				if errMsg != "" {
-					log.WithField("test", b.name).Error(errMsg)
-				}
-				// TODO: Print stack trace.
-
-				b.pass = false
-			}
+			b.skipped = !finished
+			done <- recover()
 		}()
 
 		fn(b)
+		finished = true
 	}()
+
+	// Handle panic.
+	if fnErr := <-done; fnErr != nil {
+		errMsg := fmt.Sprintf("%v", fnErr)
+		if errMsg != "" {
+			log.WithField("test", b.name).Error(errMsg)
+		}
+		b.Error(debug.Stack())
+
+		b.pass = false
+	}
 
 	endTime := time.Now()
 	elapsed := endTime.Sub(b.startTime)
 	b.nsPerOp = float64(elapsed.Nanoseconds()) / float64(b.N)
 
-	if b.leaf {
+	if b.leaf && b.N > 0 {
 		nsPerOpDur := time.Duration(int64(b.nsPerOp))
 		b.Logf("%s\t%d\t%s ns/op (%s/op)", b.name, b.N, formatFloat(b.nsPerOp), nsPerOpDur.String())
-	} else {
-		b.Logf("%s", b.name)
 	}
 
-	if b.pass {
+	if b.skipped {
+		b.Logf("⁓⁓⁓ SKIP: %s (%s)", b.name, elapsed)
+	} else if b.pass {
 		b.Logf("⁓⁓⁓ PASS: %s (%s)", b.name, elapsed)
 	} else {
 		b.Logf("⁓⁓⁓ FAIL: %s (%s)", b.name, elapsed)

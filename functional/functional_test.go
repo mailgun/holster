@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,6 +69,25 @@ func TestFunctional(t *testing.T) {
 			}
 			pass := functional.Run(ctx, testFunc, functional.WithArgs(args...))
 			assert.True(t, pass)
+		})
+
+		t.Run("Skip", func(t *testing.T) {
+			var mutex sync.Mutex
+			var before, after bool
+			testFunc := func(ft *functional.T) {
+				mutex.Lock()
+				defer mutex.Unlock()
+				before = true
+				ft.SkipNow()
+				after = true
+			}
+			pass := functional.Run(ctx, testFunc)
+			assert.True(t, pass)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+			assert.True(t, before)
+			assert.False(t, after)
 		})
 	})
 
@@ -218,6 +238,25 @@ func TestFunctional(t *testing.T) {
 				result := functional.RunBenchmarkTimes(ctx, benchFunc, 1)
 				assert.False(t, result.Pass)
 			})
+		})
+
+		t.Run("Skip", func(t *testing.T) {
+			var mutex sync.Mutex
+			var before, after bool
+			testFunc := func(fb *functional.B) {
+				mutex.Lock()
+				defer mutex.Unlock()
+				before = true
+				fb.SkipNow()
+				after = true
+			}
+			result := functional.RunBenchmarkTimes(ctx, testFunc, 1)
+			assert.True(t, result.Pass)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+			assert.True(t, before)
+			assert.False(t, after)
 		})
 	})
 
