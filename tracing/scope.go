@@ -31,78 +31,68 @@ const (
 
 // Start a scope with span named after fully qualified caller function.
 func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // debug log level.
 func StartScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	level := DebugLevel
 	spanName, fileTag := getCallerSpanName(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // info log level.
 func StartScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // warning log level.
 func StartScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	level := WarnLevel
 	spanName, fileTag := getCallerSpanName(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 }
 
 // Start a scope with span named after fully qualified caller function with
 // error log level.
 func StartScopeError(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
-	level := ErrorLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool("error", true))
 	return ctx
 }
 
 // Start a scope with user-provided span name.
 func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 }
 
 // Start a scope with user-provided span name with debug log level.
 func StartNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	level := DebugLevel
 	fileTag := getFileTag(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 }
 
 // Start a scope with user-provided span name with info log level.
 func StartNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 }
 
 // Start a scope with user-provided span name with warning log level.
 func StartNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	level := WarnLevel
 	fileTag := getFileTag(2)
-	return startSpan(ctx, spanName, fileTag, level, opts...)
+	return startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 }
 
 // Start a scope with user-provided span name with error log level.
 func StartNamedScopeError(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
-	level := ErrorLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool("error", true))
 	return ctx
 }
@@ -239,9 +229,8 @@ var (
 // function.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func CallScope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -251,9 +240,8 @@ func CallScope(ctx context.Context, action ScopeAction, opts ...trace.SpanStartO
 // function.  Scope tagged with log level debug.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func CallScopeDebug(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := DebugLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -263,9 +251,8 @@ func CallScopeDebug(ctx context.Context, action ScopeAction, opts ...trace.SpanS
 // function.  Scope tagged with log level info.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func CallScopeInfo(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -275,9 +262,8 @@ func CallScopeInfo(ctx context.Context, action ScopeAction, opts ...trace.SpanSt
 // function.  Scope tagged with log level warning.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func CallScopeWarn(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := WarnLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -287,9 +273,8 @@ func CallScopeWarn(ctx context.Context, action ScopeAction, opts ...trace.SpanSt
 // function.  Scope tagged with log level error.
 // Equivalent to wrapping a code block with `StartScope()`/`EndScope()`.
 func CallScopeError(ctx context.Context, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := ErrorLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool("error", true))
 	err := action(ctx)
 	EndScope(ctx, err)
@@ -299,9 +284,8 @@ func CallScopeError(ctx context.Context, action ScopeAction, opts ...trace.SpanS
 // CallNamedScope calls action function within a tracing span.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func CallNamedScope(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -311,9 +295,8 @@ func CallNamedScope(ctx context.Context, spanName string, action ScopeAction, op
 // with log level debug.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func CallNamedScopeDebug(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := DebugLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -323,9 +306,8 @@ func CallNamedScopeDebug(ctx context.Context, spanName string, action ScopeActio
 // with log level info.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func CallNamedScopeInfo(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -335,9 +317,8 @@ func CallNamedScopeInfo(ctx context.Context, spanName string, action ScopeAction
 // with log level warning.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func CallNamedScopeWarn(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := WarnLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -347,9 +328,8 @@ func CallNamedScopeWarn(ctx context.Context, spanName string, action ScopeAction
 // with log level error.
 // Equivalent to wrapping a code block with `StartNamedScope()`/`EndScope()`.
 func CallNamedScopeError(ctx context.Context, spanName string, action ScopeAction, opts ...trace.SpanStartOption) error {
-	level := ErrorLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool("error", true))
 	err := action(ctx)
 	EndScope(ctx, err)
@@ -363,9 +343,8 @@ func CallScopeBranch(ctx context.Context, action ScopeAction, opts ...trace.Span
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -378,9 +357,8 @@ func CallScopeBranchDebug(ctx context.Context, action ScopeAction, opts ...trace
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := DebugLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -393,9 +371,8 @@ func CallScopeBranchInfo(ctx context.Context, action ScopeAction, opts ...trace.
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := InfoLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -408,9 +385,8 @@ func CallScopeBranchWarn(ctx context.Context, action ScopeAction, opts ...trace.
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := WarnLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -423,9 +399,8 @@ func CallScopeBranchError(ctx context.Context, action ScopeAction, opts ...trace
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := ErrorLevel
 	spanName, fileTag := getCallerSpanName(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -437,9 +412,8 @@ func CallNamedScopeBranch(ctx context.Context, spanName string, action ScopeActi
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -452,9 +426,8 @@ func CallNamedScopeBranchDebug(ctx context.Context, spanName string, action Scop
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := DebugLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, DebugLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -467,9 +440,8 @@ func CallNamedScopeBranchInfo(ctx context.Context, spanName string, action Scope
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := InfoLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, InfoLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -482,9 +454,8 @@ func CallNamedScopeBranchWarn(ctx context.Context, spanName string, action Scope
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := WarnLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, WarnLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
@@ -497,9 +468,8 @@ func CallNamedScopeBranchError(ctx context.Context, spanName string, action Scop
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return action(ctx)
 	}
-	level := ErrorLevel
 	fileTag := getFileTag(2)
-	ctx = startSpan(ctx, spanName, fileTag, level, opts...)
+	ctx = startSpan(ctx, spanName, fileTag, ErrorLevel, opts...)
 	err := action(ctx)
 	EndScope(ctx, err)
 	return err
