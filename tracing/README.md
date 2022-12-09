@@ -285,13 +285,19 @@ trace.
 
 | Function       | Description |
 | -------------- | ----------- |
-| `StartScope()` | Start a scope by creating a span named after the fully qualified calling function. |
-| `StartNamedScope()` | Start a scope by creating a span with user-provided name. |
+| `StartScope()`/`BranchScope()` | Start a scope by creating a span named after the fully qualified calling function. |
+| `StartNamedScope()`/`BranchNamedScope()` | Start a scope by creating a span with user-provided name. |
 | `EndScope()`   | End the scope, record returned error value. |
-| `Scope()`      | Wraps a code block as a scope using `StartScope()`/`EndScope()` functionality. |
-| `NamedScope()` | Same as `Scope()` with a user-provided span name. |
+| `CallScope()`/`CallScopeBranch()` | Call a code block as a scope using `StartScope()`/`EndScope()` functionality. |
+| `CallNamedScope()`/`CallNamedScopeBranch()` | Same as `CallScope()` with a user-provided span name. |
 
-If the scope's action function returns an error, the error message is
+The secondary `Branch` functions perform the same task as their counterparts,
+except that it will "branch" from an existing trace only.  If the context
+contains no trace id, no trace will be created.  The `Branch` functions are
+best used with lower level or shared code where there is no value in creating a
+trace starting at that point.
+
+If the `CallScope()` action function returns an error, the error message is
 automatically logged to the trace and the trace is marked as error.
 
 #### Using `StartScope()`/`EndScope()`
@@ -317,7 +323,7 @@ func MyFunc(ctx context.Context) (reterr error) {
 }
 ```
 
-#### Using `Scope()`
+#### Using `CallScope()`
 ```go
 import (
 	"context"
@@ -327,7 +333,7 @@ import (
 )
 
 func MyFunc(ctx context.Context) error {
-	return tracing.Scope(ctx, func(ctx context.Context) error {
+	return tracing.CallScope(ctx, func(ctx context.Context) error {
 		logrus.WithContext(ctx).Info("This message also logged to trace")
 
 		// ...
@@ -339,7 +345,7 @@ func MyFunc(ctx context.Context) error {
 
 #### Scope Log Level
 Log level can be applied to individual spans using variants of
-`Scope()`/`StartScope()` to set debug, info, warn, or error levels:
+`CallScope()`/`StartScope()` to set debug, info, warn, or error levels:
 
 ```go
 ctx2 := tracing.StartScopeDebug(ctx)
@@ -347,7 +353,7 @@ defer tracing.EndScope(ctx2, nil)
 ```
 
 ```go
-err := tracing.ScopeDebug(ctx, func(ctx context.Context) error {
+err := tracing.CallScopeDebug(ctx, func(ctx context.Context) error {
     // ...
 
     return nil
