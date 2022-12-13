@@ -5,6 +5,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/jdkato/prose/v2"
+	"github.com/mailgun/holster/v4/errors"
 )
 
 const anonym = "xxx"
@@ -12,22 +15,37 @@ const anonym = "xxx"
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
-var namesRe = regexp.MustCompile(fmt.Sprintf("(?i)%s", strings.Join(names, "|")))
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
-	src = namesRe.ReplaceAllString(src, anonym)
+	s, err := replaceNames(src)
+	if err != nil {
+		return src, errors.Wrapf(err, "fail to replace names in src %s", src)
+	}
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
-		return src, nil
+		return s, nil
 	}
 	secret, err := or(tokens)
 	if err != nil {
-		return src, err
+		return s, err
 	}
-	src = secret.ReplaceAllString(src, anonym)
-	src = adjacentSecrets.ReplaceAllString(src, anonym)
-	return src, nil
+	s = secret.ReplaceAllString(s, anonym)
+	s = adjacentSecrets.ReplaceAllString(s, anonym)
+	return s, nil
+}
+
+func replaceNames(s string) (string, error) {
+	doc, err := prose.NewDocument(s)
+	if err != nil {
+		return s, errors.Wrapf(err, "fail to parse string %s", s)
+	}
+	for _, ent := range doc.Entities() {
+		if ent.Label == "PERSON" {
+			s = strings.ReplaceAll(s, ent.Text, anonym)
+		}
+	}
+	return s, nil
 }
 
 func tokenize(text ...string) (tokens []string) {
