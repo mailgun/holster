@@ -11,7 +11,6 @@ const anonym = "xxx"
 
 var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
-//var namesSep = regexp.MustCompile(`\s|[,-:]`)
 var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
 const namesSep = `(\b|[!,.?:-]+)`
 var namesRe = regexp.MustCompile(
