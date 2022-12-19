@@ -29,30 +29,30 @@ const (
 	ErrorTypeKey  = "error.type"
 )
 
-// Start a scope with span named after fully qualified caller function.
+// StartScope start a scope with span named after fully qualified caller function.
 func StartScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	return startScope(ctx, InfoLevel, 1, opts...)
 }
 
-// Start a scope with span named after fully qualified caller function with
+// StartScopeDebug start a scope with span named after fully qualified caller function with
 // debug log level.
 func StartScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	return startScope(ctx, DebugLevel, 1, opts...)
 }
 
-// Start a scope with span named after fully qualified caller function with
+// StartScopeInfo start a scope with span named after fully qualified caller function with
 // info log level.
 func StartScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	return startScope(ctx, InfoLevel, 1, opts...)
 }
 
-// Start a scope with span named after fully qualified caller function with
+// StartScopeWarn start a scope with span named after fully qualified caller function with
 // warning log level.
 func StartScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	return startScope(ctx, WarnLevel, 1, opts...)
 }
 
-// Start a scope with span named after fully qualified caller function with
+// StartScopeError start a scope with span named after fully qualified caller function with
 // error log level.
 func StartScopeError(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	return startScope(ctx, ErrorLevel, 1, opts...)
@@ -63,27 +63,27 @@ func StartNamedScope(ctx context.Context, spanName string, opts ...trace.SpanSta
 	return startNamedScope(ctx, spanName, InfoLevel, 1, opts...)
 }
 
-// Start a scope with user-provided span name with debug log level.
+// StartNamedScopeDebug start a scope with user-provided span name with debug log level.
 func StartNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	return startNamedScope(ctx, spanName, DebugLevel, 1, opts...)
 }
 
-// Start a scope with user-provided span name with info log level.
+// StartNamedScopeInfo start a scope with user-provided span name with info log level.
 func StartNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	return startNamedScope(ctx, spanName, InfoLevel, 1, opts...)
 }
 
-// Start a scope with user-provided span name with warning log level.
+// StartNamedScopeWarn start a scope with user-provided span name with warning log level.
 func StartNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	return startNamedScope(ctx, spanName, WarnLevel, 1, opts...)
 }
 
-// Start a scope with user-provided span name with error log level.
+// StartNamedScopeError start a scope with user-provided span name with error log level.
 func StartNamedScopeError(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	return startNamedScope(ctx, spanName, ErrorLevel, 1, opts...)
 }
 
-// Branch an existing scope with span named after fully qualified caller function.
+// BranchScope branch an existing scope with span named after fully qualified caller function.
 func BranchScope(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -91,7 +91,7 @@ func BranchScope(ctx context.Context, opts ...trace.SpanStartOption) context.Con
 	return startScope(ctx, InfoLevel, 1, opts...)
 }
 
-// Branch an existing scope with span named after fully qualified caller function with
+// BranchScopeDebug branch an existing scope with span named after fully qualified caller function with
 // debug log level.
 func BranchScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
@@ -100,7 +100,7 @@ func BranchScopeDebug(ctx context.Context, opts ...trace.SpanStartOption) contex
 	return startScope(ctx, DebugLevel, 1, opts...)
 }
 
-// Branch an existing scope with span named after fully qualified caller function with
+// BranchScopeInfo branch an existing scope with span named after fully qualified caller function with
 // info log level.
 func BranchScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
@@ -109,7 +109,7 @@ func BranchScopeInfo(ctx context.Context, opts ...trace.SpanStartOption) context
 	return startScope(ctx, InfoLevel, 1, opts...)
 }
 
-// Branch an existing scope with span named after fully qualified caller function with
+// BranchScopeWarn branch an existing scope with span named after fully qualified caller function with
 // warn log level.
 func BranchScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
@@ -118,7 +118,7 @@ func BranchScopeWarn(ctx context.Context, opts ...trace.SpanStartOption) context
 	return startScope(ctx, WarnLevel, 1, opts...)
 }
 
-// Branch an existing scope with span named after fully qualified caller function with
+// BranchScopeError branch an existing scope with span named after fully qualified caller function with
 // error log level.
 func BranchScopeError(ctx context.Context, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
@@ -127,7 +127,7 @@ func BranchScopeError(ctx context.Context, opts ...trace.SpanStartOption) contex
 	return startScope(ctx, ErrorLevel, 1, opts...)
 }
 
-// Branch an existing scope with user-provided span name.
+// BranchNamedScope branch an existing scope with user-provided span name.
 func BranchNamedScope(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -135,7 +135,7 @@ func BranchNamedScope(ctx context.Context, spanName string, opts ...trace.SpanSt
 	return startNamedScope(ctx, spanName, InfoLevel, 1, opts...)
 }
 
-// Branch an existing scope with user-provided span name with debug log level.
+// BranchNamedScopeDebug branch an existing scope with user-provided span name with debug log level.
 func BranchNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -143,7 +143,7 @@ func BranchNamedScopeDebug(ctx context.Context, spanName string, opts ...trace.S
 	return startNamedScope(ctx, spanName, DebugLevel, 1, opts...)
 }
 
-// Branch an existing scope with user-provided span name with info log level.
+// BranchNamedScopeInfo branch an existing scope with user-provided span name with info log level.
 func BranchNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -151,7 +151,7 @@ func BranchNamedScopeInfo(ctx context.Context, spanName string, opts ...trace.Sp
 	return startNamedScope(ctx, spanName, InfoLevel, 1, opts...)
 }
 
-// Branch an existing scope with user-provided span name with warn log level.
+// BranchNamedScopeWarn branch an existing scope with user-provided span name with warn log level.
 func BranchNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -159,7 +159,7 @@ func BranchNamedScopeWarn(ctx context.Context, spanName string, opts ...trace.Sp
 	return startNamedScope(ctx, spanName, WarnLevel, 1, opts...)
 }
 
-// Branch an existing scope with user-provided span name with error log level.
+// BranchNamedScopeError branch an existing scope with user-provided span name with error log level.
 func BranchNamedScopeError(ctx context.Context, spanName string, opts ...trace.SpanStartOption) context.Context {
 	if !trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
@@ -167,7 +167,7 @@ func BranchNamedScopeError(ctx context.Context, spanName string, opts ...trace.S
 	return startNamedScope(ctx, spanName, ErrorLevel, 1, opts...)
 }
 
-// End scope created by `StartScope()`/`StartNamedScope()`.
+// EndScope end scope created by `StartScope()`/`StartNamedScope()`.
 // Logs error return value and ends span.
 func EndScope(ctx context.Context, err error) {
 	span := trace.SpanFromContext(ctx)
