@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"strings"
-	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -140,9 +139,6 @@ func CloseTracing(ctx context.Context) error {
 	if !ok {
 		return errors.New("OpenTelemetry global tracer provider has not been initialized")
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	err := tp.Shutdown(ctx)
 	if err != nil {
