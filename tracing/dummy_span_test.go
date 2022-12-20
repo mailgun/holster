@@ -14,6 +14,8 @@ import (
 )
 
 func TestDummySpan(t *testing.T) {
+	t.Skip("TODO: fix https://github.com/mailgun/holster/issues/154")
+
 	ctx := context.Background()
 	withErrorAttr := trace.WithAttributes(attribute.Bool("error", true))
 
