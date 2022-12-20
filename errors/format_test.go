@@ -352,10 +352,10 @@ func TestFormatGeneric(t *testing.T) {
 		},
 	}
 
-	for s := range starts {
-		err := starts[s].err
-		want := starts[s].want
-		testFormatCompleteCompare(t, s, err, "%+v", want, false)
+	for i := range starts {
+		err := starts[i].err
+		want := starts[i].want
+		testFormatCompleteCompare(t, i, err, "%+v", want, false)
 		testGenericRecursive(t, err, want, wrappers, 3)
 	}
 }
