@@ -99,7 +99,7 @@ func TestLookupError(t *testing.T) {
 			inDomainName: "",
 			outError:     "lookup : no such host",
 		},
-		// TODO(vtopc): fix for CI:
+		// TODO: fix https://github.com/mailgun/holster/issues/155:
 		// {
 		// 	inDomainName: "kaboom",
 		// 	outError:     "lookup kaboom.*: no such host",
