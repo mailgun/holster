@@ -485,6 +485,7 @@ func testFormatCompleteCompare(t *testing.T, n int, arg interface{}, format stri
 	}
 }
 
+//nolint:unused // fix https://github.com/mailgun/holster/issues/153.
 type wrapper struct {
 	wrap func(err error) error
 	want []string
@@ -494,6 +495,7 @@ func prettyBlocks(blocks []string, prefix ...string) string {
 	return "   " + strings.Join(blocks, "\n   ")
 }
 
+//nolint:unused // fix https://github.com/mailgun/holster/issues/153.
 func testGenericRecursive(t *testing.T, beforeErr error, beforeWant []string, list []wrapper, maxDepth int) {
 	if len(beforeWant) == 0 {
 		panic("beforeWant must not be empty")
