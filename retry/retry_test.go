@@ -29,7 +29,7 @@ func TestUntilInterval(t *testing.T) {
 	var retryErr *retry.Err
 	assert.True(t, errors.As(err, &retryErr))
 	assert.GreaterOrEqual(t, retryErr.Attempts, 18)
-	assert.LessOrEqual(t, retryErr.Attempts, 19)
+	assert.LessOrEqual(t, retryErr.Attempts, 20)
 	assert.Equal(t, retry.Cancelled, retryErr.Reason)
 
 	// Cause() works as expected
