@@ -308,6 +308,8 @@ func TestFormatWithMessage(t *testing.T) {
 }
 
 func TestFormatGeneric(t *testing.T) {
+	t.Skip("TODO: fix https://github.com/mailgun/holster/issues/153")
+
 	starts := []struct {
 		err  error
 		want []string
