@@ -13,23 +13,25 @@ var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
 
-const namesSep = `(\b|[!,.?:-]+)`
-
-var namesRe = regexp.MustCompile(
-	fmt.Sprintf(
-		`(?i)%s%s%s`,
-		namesSep,
-		strings.Join(
-			names,
-			fmt.Sprintf(`%s|%s`, namesSep, namesSep),
-		),
-		namesSep,
-	),
-)
+func replaceNames(src string) string {
+	words := strings.Split(src, " ")
+	for i, word := range words {
+		for _, name := range names {
+			lowerCasedWord := strings.ToLower(word)
+			lowerCasedTrimmedWord := strings.Trim(lowerCasedWord, ":,!?.;")
+			lowerCasedName := strings.ToLower(name)
+			if lowerCasedTrimmedWord == lowerCasedName {
+				words[i] = strings.ReplaceAll(lowerCasedWord, lowerCasedName, anonym)
+				break
+			}
+		}
+	}
+	return strings.Join(words, " ")
+}
 
 // Anonymize replace secret information with xxx.
 func Anonymize(src string, secrets ...string) (string, error) {
-	src = namesRe.ReplaceAllString(src, anonym)
+	src = replaceNames(src)
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
 		return src, nil
