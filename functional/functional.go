@@ -71,18 +71,18 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc, opts ...F
 }
 
 // Run a benchmark test.  Test named after function name.
-func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
+func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int, opts ...FunctionalOption) TestResult {
 	name := funcName(fn)
 	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
-	return b.result()
+	return b.result
 }
 
 // Run a benchmark test with user-provided name.
-func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
+func RunBenchmarkTimesWithName(ctx context.Context, name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) TestResult {
 	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
-	return b.result()
+	return b.result
 }
 
 // Run a suite of benchmark tests as a unit.
@@ -97,7 +97,8 @@ func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, te
 	b.invoke(ctx, func(b *B) {
 		for _, test := range tests {
 			testName := funcName(test)
-			bret := b.RunTimes(testName, test, times)
+			b.N = times
+			bret := b.Run(testName, test)
 			result[bret.Pass]++
 		}
 
