@@ -28,14 +28,14 @@ func Run(ctx context.Context, fn TestFunc, opts ...FunctionalOption) bool {
 	name := funcName(fn)
 	t := newT(name, opts...)
 	t.invoke(ctx, fn)
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a test with user-provided name.
 func RunWithName(ctx context.Context, name string, fn TestFunc, opts ...FunctionalOption) bool {
 	t := newT(name, opts...)
 	t.invoke(ctx, fn)
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a suite of tests as a unit.
@@ -67,7 +67,7 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc, opts ...F
 		}
 	})
 
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a benchmark test.  Test named after function name.
@@ -116,5 +116,5 @@ func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, te
 		}
 	})
 
-	return b.pass
+	return b.result.Pass
 }
