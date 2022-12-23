@@ -35,7 +35,6 @@ type T struct {
 	name      string
 	ctx       context.Context
 	deadline  time.Time
-	pass      bool
 	indent    int
 	writer    io.Writer
 	errWriter io.Writer
@@ -83,11 +82,11 @@ func (t *T) Run(name string, fn TestFunc) bool {
 
 	t2.invoke(t.ctx, fn)
 
-	if !t2.pass {
-		t.pass = false
+	if !t2.result.Pass {
+		t.result.Pass = false
 	}
 
-	return t.pass
+	return t.result.Pass
 }
 
 func (t *T) Deadline() (time.Time, error) {
@@ -99,12 +98,12 @@ func (t *T) Deadline() (time.Time, error) {
 
 func (t *T) Error(args ...any) {
 	fmt.Fprintln(t.errWriter, args...)
-	t.pass = false
+	t.result.Pass = false
 }
 
 func (t *T) Errorf(format string, args ...any) {
 	fmt.Fprintf(t.errWriter, format+"\n", args...)
-	t.pass = false
+	t.result.Pass = false
 }
 
 func (t *T) FailNow() {
