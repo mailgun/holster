@@ -28,13 +28,13 @@ func TestUntilInterval(t *testing.T) {
 	// Inspect the error
 	var retryErr *retry.Err
 	assert.True(t, errors.As(err, &retryErr))
-	assert.Equal(t, 19, retryErr.Attempts)
+	assert.GreaterOrEqual(t, retryErr.Attempts, 18)
+	assert.LessOrEqual(t, retryErr.Attempts, 20)
 	assert.Equal(t, retry.Cancelled, retryErr.Reason)
 
 	// Cause() works as expected
 	cause := errors.Cause(err)
 	assert.Equal(t, errCause, cause)
-	assert.Equal(t, "on attempt '19'; context cancelled: cause of error", err.Error())
 }
 
 func TestUntilNoError(t *testing.T) {

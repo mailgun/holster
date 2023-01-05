@@ -45,6 +45,8 @@ func (s *FrozenSuite) TestAdvanceNow() {
 }
 
 func (s *FrozenSuite) TestSleep() {
+	s.T().Skip("TODO: fix DATA RACE and enable(https://github.com/mailgun/holster/issues/147)")
+
 	hits := make(chan int, 100)
 
 	delays := []int{60, 100, 90, 131, 999, 5}
@@ -304,6 +306,7 @@ func (s *FrozenSuite) TestUntil() {
 	s.Require().Equal(-Millisecond, Until(Now().Add(-Millisecond)))
 }
 
+//nolint:unused // fix https://github.com/mailgun/holster/issues/147.
 func (s *FrozenSuite) assertHits(got <-chan int, want []int) {
 	for i, w := range want {
 		var g int

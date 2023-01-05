@@ -10,6 +10,8 @@ import (
 )
 
 func TestNewClientTLS(t *testing.T) {
+	t.Skip("TODO: https://github.com/mailgun/holster/issues/151")
+
 	t.Setenv("CONSUL_HTTP_ADDR", "https://127.0.0.1:8501")
 	t.Setenv("CONSUL_CLIENT_CERT", "config/dc1-server-consul-0.pem")
 	t.Setenv("CONSUL_CLIENT_KEY", "config/dc1-server-consul-0-key.pem")

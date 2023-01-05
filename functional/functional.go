@@ -28,14 +28,14 @@ func Run(ctx context.Context, fn TestFunc, opts ...FunctionalOption) bool {
 	name := funcName(fn)
 	t := newT(name, opts...)
 	t.invoke(ctx, fn)
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a test with user-provided name.
 func RunWithName(ctx context.Context, name string, fn TestFunc, opts ...FunctionalOption) bool {
 	t := newT(name, opts...)
 	t.invoke(ctx, fn)
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a suite of tests as a unit.
@@ -67,22 +67,22 @@ func RunSuite(ctx context.Context, suiteName string, tests []TestFunc, opts ...F
 		}
 	})
 
-	return t.pass
+	return t.result.Pass
 }
 
 // Run a benchmark test.  Test named after function name.
-func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
+func RunBenchmarkTimes(ctx context.Context, fn BenchmarkFunc, times int, opts ...FunctionalOption) TestResult {
 	name := funcName(fn)
 	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
-	return b.result()
+	return b.result
 }
 
 // Run a benchmark test with user-provided name.
-func RunBenchmarkWithNameTimes(ctx context.Context, name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) BenchmarkResult {
+func RunBenchmarkTimesWithName(ctx context.Context, name string, fn BenchmarkFunc, times int, opts ...FunctionalOption) TestResult {
 	b := newB(name, times, opts...)
 	b.invoke(ctx, fn)
-	return b.result()
+	return b.result
 }
 
 // Run a suite of benchmark tests as a unit.
@@ -97,7 +97,8 @@ func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, te
 	b.invoke(ctx, func(b *B) {
 		for _, test := range tests {
 			testName := funcName(test)
-			bret := b.RunTimes(testName, test, times)
+			b.N = times
+			bret := b.Run(testName, test)
 			result[bret.Pass]++
 		}
 
@@ -115,5 +116,5 @@ func RunBenchmarkSuiteTimes(ctx context.Context, suiteName string, times int, te
 		}
 	})
 
-	return b.pass
+	return b.result.Pass
 }

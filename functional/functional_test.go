@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,6 +69,25 @@ func TestFunctional(t *testing.T) {
 			}
 			pass := functional.Run(ctx, testFunc, functional.WithArgs(args...))
 			assert.True(t, pass)
+		})
+
+		t.Run("Skip", func(t *testing.T) {
+			var mutex sync.Mutex
+			var before, after bool
+			testFunc := func(ft *functional.T) {
+				mutex.Lock()
+				defer mutex.Unlock()
+				before = true
+				ft.SkipNow()
+				after = true
+			}
+			pass := functional.Run(ctx, testFunc)
+			assert.True(t, pass)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+			assert.True(t, before)
+			assert.False(t, after)
 		})
 	})
 
@@ -141,10 +161,35 @@ func TestFunctional(t *testing.T) {
 					}
 					result := functional.RunBenchmarkTimes(ctx, benchmarkFunc, testCase.N)
 					assert.True(t, result.Pass)
-					assert.NotZero(t, result.NsPerOp)
+					assert.False(t, result.StartTime.IsZero())
+					assert.False(t, result.EndTime.IsZero())
 					assert.Equal(t, testCase.N, counter)
 				})
 			}
+		})
+
+		t.Run("Subtest has same N value", func(t *testing.T) {
+			const expectedN = 100
+			var counterFunc1, counterFunc2a int
+			benchmarkFunc := func(fb *functional.B) {
+				fb.Run("Func1", func(fb *functional.B) {
+					for i := 0; i < fb.N; i++ {
+						counterFunc1++
+					}
+				})
+				fb.Run("Func2", func(fb *functional.B) {
+					fb.Run("Func2a", func(fb *functional.B) {
+						for i := 0; i < fb.N; i++ {
+							counterFunc2a++
+						}
+					})
+				})
+			}
+
+			result := functional.RunBenchmarkTimes(ctx, benchmarkFunc, expectedN)
+			assert.True(t, result.Pass)
+			assert.Equal(t, expectedN, counterFunc1)
+			assert.Equal(t, expectedN, counterFunc2a)
 		})
 
 		t.Run("WithWriter()", func(t *testing.T) {
@@ -194,6 +239,25 @@ func TestFunctional(t *testing.T) {
 				result := functional.RunBenchmarkTimes(ctx, benchFunc, 1)
 				assert.False(t, result.Pass)
 			})
+		})
+
+		t.Run("Skip", func(t *testing.T) {
+			var mutex sync.Mutex
+			var before, after bool
+			testFunc := func(fb *functional.B) {
+				mutex.Lock()
+				defer mutex.Unlock()
+				before = true
+				fb.SkipNow()
+				after = true
+			}
+			result := functional.RunBenchmarkTimes(ctx, testFunc, 1)
+			assert.True(t, result.Pass)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+			assert.True(t, before)
+			assert.False(t, after)
 		})
 	})
 

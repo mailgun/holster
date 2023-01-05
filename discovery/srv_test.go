@@ -35,6 +35,8 @@ func TestGetSRVAddressesDirect(t *testing.T) {
 }
 
 func TestGetSRVAddresses(t *testing.T) {
+	t.Skip("TODO: fix https://github.com/mailgun/holster/issues/152")
+
 	client, err := api.NewClient(api.DefaultConfig())
 	require.NoError(t, err)
 

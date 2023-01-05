@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/mailgun/holster/v4/errors"
-	"github.com/sirupsen/logrus"
 )
 
 // Functional test context.
@@ -36,20 +35,24 @@ type T struct {
 	name      string
 	ctx       context.Context
 	deadline  time.Time
-	pass      bool
 	indent    int
 	writer    io.Writer
 	errWriter io.Writer
 	args      []string
+	result    TestResult
+}
+
+type TestResult struct {
+	Pass      bool
+	Skipped   bool
+	StartTime time.Time
+	EndTime   time.Time
 }
 
 // Functional test code.
 type TestFunc func(t *T)
 
-var (
-	log        = logrus.WithField("category", "functional")
-	maxTimeout = 10 * time.Minute
-)
+var maxTimeout = 10 * time.Minute
 
 func newT(name string, opts ...FunctionalOption) *T {
 	t := &T{
@@ -79,11 +82,11 @@ func (t *T) Run(name string, fn TestFunc) bool {
 
 	t2.invoke(t.ctx, fn)
 
-	if !t2.pass {
-		t.pass = false
+	if !t2.result.Pass {
+		t.result.Pass = false
 	}
 
-	return t.pass
+	return t.result.Pass
 }
 
 func (t *T) Deadline() (time.Time, error) {
@@ -93,25 +96,27 @@ func (t *T) Deadline() (time.Time, error) {
 	return t.deadline, nil
 }
 
-func (t *T) Error(args ...interface{}) {
+func (t *T) Error(args ...any) {
 	fmt.Fprintln(t.errWriter, args...)
-	t.pass = false
+	t.result.Pass = false
 }
 
-func (t *T) Errorf(format string, args ...interface{}) {
+func (t *T) Errorf(format string, args ...any) {
 	fmt.Fprintf(t.errWriter, format+"\n", args...)
-	t.pass = false
+	t.result.Pass = false
 }
 
 func (t *T) FailNow() {
 	panic("")
 }
 
-func (t *T) Log(message ...interface{}) {
-	fmt.Fprintln(t.writer, message...)
+func (t *T) Log(message ...any) {
+	if len(message) > 0 {
+		fmt.Fprintln(t.writer, message...)
+	}
 }
 
-func (t *T) Logf(format string, args ...interface{}) {
+func (t *T) Logf(format string, args ...any) {
 	fmt.Fprintf(t.writer, format+"\n", args...)
 }
 
@@ -119,7 +124,33 @@ func (t *T) Args() []string {
 	return t.args
 }
 
+func (t *T) Skip(args ...any) {
+	t.Log(args...)
+	t.SkipNow()
+}
+
+func (t *T) Skipf(format string, args ...any) {
+	t.Logf(format, args...)
+	t.SkipNow()
+}
+
+func (t *T) Skipped() bool {
+	return t.result.Skipped
+}
+
+func (t *T) SkipNow() {
+	t.result.Skipped = true
+	runtime.Goexit()
+}
+
 func (t *T) invoke(ctx context.Context, fn TestFunc) {
+	callFn := func() {
+		fn(t)
+	}
+	t.commonInvoke(ctx, callFn, nil)
+}
+
+func (t *T) commonInvoke(ctx context.Context, fn, postHandler func()) {
 	if ctx.Err() != nil {
 		panic(ctx.Err())
 	}
@@ -128,36 +159,51 @@ func (t *T) invoke(ctx context.Context, fn TestFunc) {
 	ctx, cancel := context.WithDeadline(ctx, t.deadline)
 	defer cancel()
 	t.ctx = ctx
-	t.pass = true
+	t.result.Pass = true
 	t.Logf("≈≈≈ RUN   %s", t.name)
-	startTime := time.Now()
+	t.result.StartTime = time.Now()
 
-	func() {
+	// Call test in goroutine.
+	done := make(chan any)
+	go func() {
+		var finished bool
 		defer func() {
-			// Handle panic.
-			if err := recover(); err != nil {
-				errMsg := fmt.Sprintf("%v", err)
-				if errMsg != "" {
-					t.Error(errMsg)
-				}
-				t.Error(debug.Stack())
-			}
+			t.result.Skipped = !finished
+			done <- recover()
 		}()
 
-		fn(t)
+		fn()
+		finished = true
 	}()
 
-	endTime := time.Now()
-	elapsed := endTime.Sub(startTime)
-	if t.pass {
+	// Wait, then handle panic.
+	if fnErr := <-done; fnErr != nil {
+		errMsg := fmt.Sprintf("%v", fnErr)
+		if errMsg != "" {
+			t.Error(errMsg)
+		}
+		t.Error(debug.Stack())
+	}
+
+	t.result.EndTime = time.Now()
+	elapsed := t.result.EndTime.Sub(t.result.StartTime)
+
+	if postHandler != nil {
+		postHandler()
+	}
+
+	switch {
+	case t.result.Skipped:
+		t.Logf("⁓⁓⁓ SKIP: %s (%s)", t.name, elapsed)
+	case t.result.Pass:
 		t.Logf("⁓⁓⁓ PASS: %s (%s)", t.name, elapsed)
-	} else {
+	default:
 		t.Logf("⁓⁓⁓ FAIL: %s (%s)", t.name, elapsed)
 	}
 }
 
 // Get base name of function.
-func funcName(fn interface{}) string {
+func funcName(fn any) string {
 	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	idx := strings.LastIndex(name, ".")
 	if idx < 0 {
