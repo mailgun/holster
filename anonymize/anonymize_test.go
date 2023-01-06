@@ -41,7 +41,7 @@ func (s *AnonymizeSuite) TestAnonymizeSquashesAdjacentSecrets() {
 		"Hello Иван Иванов ivan ivanov foo.bar",
 		`"Иван Иванов" <ivan.ivanov@foo.bar>`)
 	s.Nil(err)
-	s.Equal("xxx", anonimized)
+	s.Equal("Hello xxx", anonimized)
 }
 
 func (s *AnonymizeSuite) TestAnonymizeNames() {
