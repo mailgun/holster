@@ -1,13 +1,15 @@
 package tracing
 
 import (
+	"net/http"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/trace"
 )
 
 // NewHTTPClient creates an HTTP client configured with OpenTelemetry
 // span proagation.
-func NewHTTPClient() *http.HTTPClient {
+func NewHTTPClient() *http.Client {
 	opts := []otelhttp.Option{
 		otelhttp.WithSpanOptions(trace.WithSpanKind(trace.SpanKindClient)),
 		otelhttp.WithSpanNameFormatter(spanNameFormatter),
