@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/setter"
 	etcd "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc/grpclog"
 )

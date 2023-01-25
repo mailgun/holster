@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mailgun/holster/v4/election"
+	"github.com/mailgun/holster/v5/election"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

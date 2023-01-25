@@ -8,10 +8,10 @@ import (
 
 func Test_getCallerSpanName(t *testing.T) {
 	gotSpanName, _ := getCallerSpanName(0)
-	assert.Equal(t, "github.com/mailgun/holster/v4/tracing.Test_getCallerSpanName", gotSpanName)
+	assert.Equal(t, "github.com/mailgun/holster/v5/tracing.Test_getCallerSpanName", gotSpanName)
 
 	gotNestedSpanName := NestedCaller()
-	assert.Equal(t, "github.com/mailgun/holster/v4/tracing.Test_getCallerSpanName", gotNestedSpanName)
+	assert.Equal(t, "github.com/mailgun/holster/v5/tracing.Test_getCallerSpanName", gotNestedSpanName)
 }
 
 func NestedCaller() (spanName string) {

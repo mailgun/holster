@@ -1,4 +1,4 @@
-module github.com/mailgun/holster/v4
+module github.com/mailgun/holster/v5
 
 go 1.19
 
@@ -12,7 +12,6 @@ require (
 	github.com/hashicorp/go-hclog v1.3.1
 	github.com/hashicorp/memberlist v0.5.0
 	github.com/miekg/dns v1.1.50
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0

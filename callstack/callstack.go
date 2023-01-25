@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-
-	pkgerrors "github.com/pkg/errors" //nolint:depguard // Legacy code requires deprecated package.
 )
 
 type FrameInfo struct {
@@ -17,7 +15,7 @@ type FrameInfo struct {
 	LineNo    int
 }
 
-func GetCallStack(frames pkgerrors.StackTrace) string {
+func GetCallStack(frames StackTrace) string {
 	var trace []string
 	for i := len(frames) - 1; i >= 0; i-- {
 		trace = append(trace, fmt.Sprintf("%v", frames[i]))
@@ -26,7 +24,7 @@ func GetCallStack(frames pkgerrors.StackTrace) string {
 }
 
 // GetLastFrame returns Caller information on the first frame in the stack trace.
-func GetLastFrame(frames pkgerrors.StackTrace) FrameInfo {
+func GetLastFrame(frames StackTrace) FrameInfo {
 	if len(frames) == 0 {
 		return FrameInfo{}
 	}
@@ -59,26 +57,22 @@ func FuncName(fn *runtime.Func) string {
 	return funcPath[idx+1:]
 }
 
-type HasStackTrace interface {
-	StackTrace() pkgerrors.StackTrace
-}
-
 // CallStack represents a stack of program counters.
 type CallStack []uintptr
 
 func (cs *CallStack) Format(st fmt.State, verb rune) {
 	if verb == 'v' && st.Flag('+') {
 		for _, pc := range *cs {
-			f := pkgerrors.Frame(pc)
+			f := Frame(pc)
 			_, _ = fmt.Fprintf(st, "\n%+v", f)
 		}
 	}
 }
 
-func (cs *CallStack) StackTrace() pkgerrors.StackTrace {
-	f := make([]pkgerrors.Frame, len(*cs))
+func (cs *CallStack) StackTrace() StackTrace {
+	f := make([]Frame, len(*cs))
 	for i := 0; i < len(f); i++ {
-		f[i] = pkgerrors.Frame((*cs)[i])
+		f[i] = Frame((*cs)[i])
 	}
 	return f
 }

@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
+	"github.com/mailgun/holster/v5/errors"
 )
 
 // Functional test context.

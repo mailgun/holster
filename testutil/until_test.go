@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/testutil"
+	"github.com/mailgun/holster/v5/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"

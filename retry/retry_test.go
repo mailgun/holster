@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/retry"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,8 +32,8 @@ func TestUntilInterval(t *testing.T) {
 	assert.LessOrEqual(t, retryErr.Attempts, 20)
 	assert.Equal(t, retry.Cancelled, retryErr.Reason)
 
-	// Cause() works as expected
-	cause := errors.Cause(err)
+	// Unwrap() works as expected
+	cause := errors.Unwrap(err)
 	assert.Equal(t, errCause, cause)
 }
 

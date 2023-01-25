@@ -29,15 +29,12 @@ context == map[string]interface{}{
 }
 ```
 
-## Conforms to the `Causer` interface
-Errors wrapped with `errors.WithContext{}` are compatible with errors wrapped by `github.com/pkg/errors`
+## Can be used with standard errors.Unwrap() and errors.Is() and errors.As()
+Errors wrapped with `errors.WithContext{}` are compatible with standard library introspection functions
 ```go
-switch err := errors.Cause(err).(type) {
-case *MyError:
-        // handle specifically
-default:
-        // unknown error
-}
+var ErrQuery := errors.New("query error")
+wrap := errors.WithContext{"key1": "value1"}.Wrap(err, "message")
+errors.Is(wrap, ErrQuery) // == true
 ```
 
 ## Proper Usage
@@ -65,10 +62,17 @@ func (r *Repository) FetchAuthor(isbn string) (Author, error) {
 
 You should continue to create and inspect error types
 ```go
-type ErrorAuthorNotFound struct {}
 
-func isNotFound(err error) {
-    _, ok := err.(*ErrorAuthorNotFound)
+type ErrAuthorNotFound struct {
+    Msg string
+}
+
+func (e *ErrAuthorNotFound) Error() string {
+    return e.Msg
+}
+
+func (e *ErrAuthorNotFound) Is(target error) bool {
+    _, ok := target.(*NotFoundError)
     return ok
 }
 
@@ -77,7 +81,7 @@ func main() {
     author, err := r.FetchAuthor("isbn-213f-23422f52356")
     if err != nil {
         // Fetch the original Cause() and determine if the error is recoverable
-        if isNotFound(error.Cause(err)) {
+        if error.Is(err, &ErrAuthorNotFound{}) {
                 author, err := r.AddBook("isbn-213f-23422f52356", "charles", "darwin")
         }
         if err != nil {
@@ -100,11 +104,11 @@ if ok {
 
 This makes it easy for error types to provide their context information.
  ```go
-type ErrorBookNotFound struct {
+type ErrBookNotFound struct {
     ISBN string
 }
 // Implements the `HasContext` interface
-func (e *ErrorBookNotFound) func Context() map[string]interface{} {
+func (e *ErrBookNotFound) func Context() map[string]interface{} {
     return map[string]interface{}{
         "isbn": e.ISBN,
     }
@@ -117,7 +121,7 @@ func (* Repository) FetchBook(isbn string) (*Book, error) {
     var book Book
     err := r.db.Query("SELECT * FROM books WHERE isbn = ?").One(&book)
     if err != nil {
-        return nil, ErrorBookNotFound{ISBN: isbn}
+        return nil, ErrBookNotFound{ISBN: isbn}
     }
 }
 

@@ -3,7 +3,7 @@ package httpsign
 import (
 	"testing"
 
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v5/clock"
 	"github.com/stretchr/testify/require"
 )
 

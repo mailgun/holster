@@ -1,13 +1,14 @@
 package consul
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/setter"
 )
 
 // EnvHasConsulConfig returns true if there are items in the local environment
@@ -56,7 +57,7 @@ func NewConfig(cfg *api.Config) (*api.Config, error) {
 	if auth != "" {
 		parts := strings.Split(auth, ":")
 		if len(parts) != 2 {
-			return nil, errors.Errorf("invalid format for 'CONSUL_HTTP_AUTH'; "+
+			return nil, fmt.Errorf("invalid format for 'CONSUL_HTTP_AUTH'; "+
 				"expected 'user:pass' got '%s'", auth)
 		}
 		cfg.HttpAuth = &api.HttpBasicAuth{

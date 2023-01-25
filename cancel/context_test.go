@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/cancel"
+	"github.com/mailgun/holster/v5/cancel"
 )
 
 func TestWrapFirst(t *testing.T) {

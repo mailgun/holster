@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/ctxutil"
+	"github.com/mailgun/holster/v5/ctxutil"
 	"github.com/stretchr/testify/require"
 )
 

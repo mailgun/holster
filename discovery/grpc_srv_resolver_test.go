@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/foxcpp/go-mockdns"
-	"github.com/mailgun/holster/v4/discovery"
+	"github.com/mailgun/holster/v5/discovery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/resolver"

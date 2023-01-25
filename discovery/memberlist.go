@@ -12,10 +12,10 @@ import (
 	"time"
 
 	ml "github.com/hashicorp/memberlist"
-	"github.com/mailgun/holster/v4/clock"
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/retry"
-	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v5/clock"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/retry"
+	"github.com/mailgun/holster/v5/setter"
 	"github.com/sirupsen/logrus"
 )
 

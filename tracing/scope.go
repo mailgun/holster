@@ -16,7 +16,6 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/mailgun/holster/v4/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -176,13 +175,6 @@ func EndScope(ctx context.Context, err error) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-
-		if typedErr, ok := err.(*errors.TypedError); ok {
-			span.SetAttributes(
-				attribute.String(ErrorClassKey, typedErr.Class()),
-				attribute.String(ErrorTypeKey, typedErr.Type()),
-			)
-		}
 	}
 
 	span.End()

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/mailgun/holster/v4/consul"
+	"github.com/mailgun/holster/v5/consul"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

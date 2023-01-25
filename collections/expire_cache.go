@@ -18,9 +18,9 @@ package collections
 import (
 	"sync"
 
-	"github.com/mailgun/holster/v4/clock"
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/syncutil"
+	"github.com/mailgun/holster/v5/clock"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/syncutil"
 )
 
 type ExpireCacheStats struct {

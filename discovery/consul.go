@@ -9,11 +9,11 @@ import (
 
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/api/watch"
-	"github.com/mailgun/holster/v4/cancel"
-	"github.com/mailgun/holster/v4/consul"
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/setter"
-	"github.com/mailgun/holster/v4/syncutil"
+	"github.com/mailgun/holster/v5/cancel"
+	"github.com/mailgun/holster/v5/consul"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/setter"
+	"github.com/mailgun/holster/v5/syncutil"
 	"github.com/sirupsen/logrus"
 )
 

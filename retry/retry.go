@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/syncutil"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/syncutil"
 )
 
 const (
@@ -34,7 +34,7 @@ type Err struct {
 	Attempts int
 }
 
-func (e *Err) Cause() error { return e.Err }
+func (e *Err) Unwrap() error { return e.Err }
 func (e *Err) Error() string {
 	return fmt.Sprintf("on attempt '%d'; %s: %s", e.Attempts, e.Reason, e.Err.Error())
 }

@@ -2,8 +2,7 @@ package clock
 
 import (
 	"encoding/json"
-
-	"github.com/mailgun/holster/v4/errors"
+	"fmt"
 )
 
 type DurationJSON struct {
@@ -23,17 +22,17 @@ func NewDurationJSON(v interface{}) (DurationJSON, error) {
 	case []byte:
 		duration, err := ParseDuration(string(v))
 		if err != nil {
-			return DurationJSON{}, errors.Wrap(err, "while parsing []byte")
+			return DurationJSON{}, fmt.Errorf("while parsing []byte: %w", err)
 		}
 		return DurationJSON{Duration: duration}, nil
 	case string:
 		duration, err := ParseDuration(v)
 		if err != nil {
-			return DurationJSON{}, errors.Wrap(err, "while parsing string")
+			return DurationJSON{}, fmt.Errorf("while parsing string: %w", err)
 		}
 		return DurationJSON{Duration: duration}, nil
 	default:
-		return DurationJSON{}, errors.Errorf("bad type %T", v)
+		return DurationJSON{}, fmt.Errorf("bad type %T", v)
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/mailgun/holster/v4/tracing"
+	"github.com/mailgun/holster/v5/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

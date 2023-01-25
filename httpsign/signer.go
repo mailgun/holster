@@ -16,7 +16,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v5/clock"
 )
 
 const (

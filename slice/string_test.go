@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mailgun/holster/v4/slice"
+	"github.com/mailgun/holster/v5/slice"
 	"github.com/stretchr/testify/assert"
 )
 

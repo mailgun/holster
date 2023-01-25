@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/Shopify/toxiproxy"
-	"github.com/mailgun/holster/v4/clock"
-	"github.com/mailgun/holster/v4/etcdutil"
+	"github.com/mailgun/holster/v5/clock"
+	"github.com/mailgun/holster/v5/etcdutil"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

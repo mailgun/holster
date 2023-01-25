@@ -12,9 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mailgun/holster/v4/discovery"
-	"github.com/mailgun/holster/v4/election"
-	"github.com/mailgun/holster/v4/errors"
+	"github.com/mailgun/holster/v5/discovery"
+	"github.com/mailgun/holster/v5/election"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,19 +21,19 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	// Marshall the RPC request to json
 	b, err := json.Marshal(req)
 	if err != nil {
-		return errors.Wrap(err, "while encoding request")
+		return fmt.Errorf("while encoding request: %w", err)
 	}
 
 	// Create a new http request with context
 	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://%s/rpc", peer), bytes.NewBuffer(b))
 	if err != nil {
-		return errors.Wrap(err, "while creating request")
+		return fmt.Errorf("while creating request: %w", err)
 	}
 
 	// Send the request
 	hp, err := http.DefaultClient.Do(hr)
 	if err != nil {
-		return errors.Wrap(err, "while sending http request")
+		return fmt.Errorf("while sending http request: %w", err)
 	}
 	defer func() {
 		_ = hp.Body.Close()
@@ -43,7 +42,7 @@ func sendRPC(ctx context.Context, peer string, req election.RPCRequest, resp *el
 	// Decode the response from JSON
 	dec := json.NewDecoder(hp.Body)
 	if err := dec.Decode(&resp); err != nil {
-		return errors.Wrap(err, "while decoding response")
+		return fmt.Errorf("while decoding response: %w", err)
 	}
 	return nil
 }

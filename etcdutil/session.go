@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/mailgun/holster/v4/errors"
-	"github.com/mailgun/holster/v4/setter"
-	"github.com/mailgun/holster/v4/syncutil"
+	"github.com/mailgun/holster/v5/errors"
+	"github.com/mailgun/holster/v5/setter"
+	"github.com/mailgun/holster/v5/syncutil"
 	etcd "go.etcd.io/etcd/client/v3"
 )
 

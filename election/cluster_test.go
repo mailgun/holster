@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mailgun/holster/v4/election"
-	"github.com/mailgun/holster/v4/setter"
+	"github.com/mailgun/holster/v5/election"
+	"github.com/mailgun/holster/v5/setter"
 	"github.com/stretchr/testify/require"
 )
 

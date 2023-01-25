@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/election"
-	"github.com/mailgun/holster/v4/errors"
+	"github.com/mailgun/holster/v5/election"
+	"github.com/mailgun/holster/v5/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )

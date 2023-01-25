@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v5/clock"
 	"github.com/stretchr/testify/require"
 )
 

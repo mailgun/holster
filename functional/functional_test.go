@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/functional"
+	"github.com/mailgun/holster/v5/functional"
 	"github.com/stretchr/testify/assert"
 )
 

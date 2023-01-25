@@ -9,9 +9,9 @@ import (
 	"unicode"
 	_ "unsafe" // For go:linkname
 
-	"github.com/mailgun/holster/v4/clock"
-	"github.com/mailgun/holster/v4/collections"
-	"github.com/mailgun/holster/v4/errors"
+	"github.com/mailgun/holster/v5/clock"
+	"github.com/mailgun/holster/v5/collections"
+	"github.com/mailgun/holster/v5/errors"
 	"golang.org/x/net/idna"
 )
 

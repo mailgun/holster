@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/holster/v4/cancel"
-	"github.com/mailgun/holster/v4/retry"
+	"github.com/mailgun/holster/v5/cancel"
+	"github.com/mailgun/holster/v5/retry"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/resolver"
 )
