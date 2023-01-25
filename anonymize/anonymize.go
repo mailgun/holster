@@ -5,9 +5,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/jdkato/prose/v2"
-	"github.com/mailgun/holster/v4/errors"
 )
 
 const anonym = "xxx"
@@ -16,36 +13,36 @@ var tokenSep = regexp.MustCompile(`\s|[,;]`)
 var userSep = regexp.MustCompile("[._-]")
 var adjacentSecrets = regexp.MustCompile(fmt.Sprintf(`%s(\s%s)+`, anonym, anonym))
 
-// Anonymize replace secret information with xxx.
-func Anonymize(src string, secrets ...string) (string, error) {
-	s, err := replaceNames(src)
-	if err != nil {
-		return src, errors.Wrapf(err, "fail to replace names in src %s", src)
+func replaceNames(src string, names []string) string {
+	words := strings.Split(src, " ")
+	for i, word := range words {
+		for _, name := range names {
+			lowerCasedWord := strings.ToLower(word)
+			lowerCasedTrimmedWord := strings.Trim(lowerCasedWord, ":,!?.;")
+			lowerCasedName := strings.ToLower(name)
+			if lowerCasedTrimmedWord == lowerCasedName {
+				words[i] = strings.ReplaceAll(lowerCasedWord, lowerCasedName, anonym)
+				break
+			}
+		}
 	}
+	return strings.Join(words, " ")
+}
+
+// Anonymize replace secret information with xxx.
+func Anonymize(src string, names []string, secrets ...string) (string, error) {
+	src = replaceNames(src, names)
 	tokens := tokenize(secrets...)
 	if len(tokens) == 0 {
-		return s, nil
+		return src, nil
 	}
 	secret, err := or(tokens)
 	if err != nil {
-		return s, err
+		return src, err
 	}
-	s = secret.ReplaceAllString(s, anonym)
-	s = adjacentSecrets.ReplaceAllString(s, anonym)
-	return s, nil
-}
-
-func replaceNames(s string) (string, error) {
-	doc, err := prose.NewDocument(s)
-	if err != nil {
-		return s, errors.Wrapf(err, "fail to parse string %s", s)
-	}
-	for _, ent := range doc.Entities() {
-		if ent.Label == "PERSON" {
-			s = strings.ReplaceAll(s, ent.Text, anonym)
-		}
-	}
-	return s, nil
+	src = secret.ReplaceAllString(src, anonym)
+	src = adjacentSecrets.ReplaceAllString(src, anonym)
+	return src, nil
 }
 
 func tokenize(text ...string) (tokens []string) {
