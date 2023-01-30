@@ -8,7 +8,8 @@ import (
 )
 
 // NewHTTPClient creates an HTTP client configured with OpenTelemetry
-// instrumentation.
+// middleware to generate a span on request and propagate the trace to the
+// server.
 func NewHTTPClient() *http.Client {
 	opts := []otelhttp.Option{
 		otelhttp.WithSpanOptions(trace.WithSpanKind(trace.SpanKindClient)),
