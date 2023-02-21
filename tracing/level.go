@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -87,15 +88,36 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 	// Pass-through.
 	spanCtx, span := t.Tracer.Start(ctx, spanName, opts...)
 	span.SetAttributes(
-		attribute.String(LogLevelKey, logLevelName(ctxLevel)),
+		attribute.String(LogLevelKey, ctxLevel.String()),
 	)
 
 	return spanCtx, span
 }
 
-func logLevelName(level Level) string {
+func (level Level) String() string {
 	if level <= 6 {
 		return logLevelNames[level]
 	}
 	return ""
+}
+
+func ParseLogLevel(level string) (Level, error) {
+	switch level {
+	case "PANIC":
+		return PanicLevel, nil
+	case "FATAL":
+		return FatalLevel, nil
+	case "ERROR":
+		return ErrorLevel, nil
+	case "WARNING":
+		return WarnLevel, nil
+	case "INFO":
+		return InfoLevel, nil
+	case "DEBUG":
+		return DebugLevel, nil
+	case "TRACE":
+		return TraceLevel, nil
+	default:
+		return Level(0), fmt.Errorf("unknown log level %q", level)
+	}
 }
