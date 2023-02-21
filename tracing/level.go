@@ -95,7 +95,7 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 }
 
 func (level Level) String() string {
-	if level <= 6 {
+	if level <= TraceLevel {
 		return logLevelNames[level]
 	}
 	return ""
