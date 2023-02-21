@@ -229,8 +229,23 @@ func assertReadOnlySpanNoError(t *testing.T, s sdktrace.ReadOnlySpan) {
 
 func levelFromReadOnlySpan(s sdktrace.ReadOnlySpan) (tracing.Level, bool) {
 	for _, attr := range s.Attributes() {
-		if string(attr.Key) == tracing.LogLevelNumKey {
-			return tracing.Level(attr.Value.AsInt64()), true
+		if string(attr.Key) == tracing.LogLevelKey {
+			switch attr.Value.AsString() {
+			case "PANIC":
+				return tracing.PanicLevel, true
+			case "FATAL":
+				return tracing.FatalLevel, true
+			case "ERROR":
+				return tracing.ErrorLevel, true
+			case "WARNING":
+				return tracing.WarnLevel, true
+			case "INFO":
+				return tracing.InfoLevel, true
+			case "DEBUG":
+				return tracing.DebugLevel, true
+			case "TRACE":
+				return tracing.TraceLevel, true
+			}
 		}
 	}
 

@@ -31,7 +31,6 @@ type LevelTracer struct {
 
 // LogLevelKey is the span attribute key for storing numeric log level.
 const LogLevelKey = "log.level"
-const LogLevelNumKey = "log.levelNum"
 
 const (
 	PanicLevel Level = iota
@@ -88,7 +87,6 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 	// Pass-through.
 	spanCtx, span := t.Tracer.Start(ctx, spanName, opts...)
 	span.SetAttributes(
-		attribute.Int64(LogLevelNumKey, int64(ctxLevel)),
 		attribute.String(LogLevelKey, logLevelName(ctxLevel)),
 	)
 
