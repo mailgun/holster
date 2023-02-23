@@ -2,6 +2,8 @@ package tracing
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -31,7 +33,6 @@ type LevelTracer struct {
 
 // LogLevelKey is the span attribute key for storing numeric log level.
 const LogLevelKey = "log.level"
-const LogLevelNumKey = "log.levelNum"
 
 const (
 	PanicLevel Level = iota
@@ -52,6 +53,16 @@ var logLevelNames = []string{
 	"INFO",
 	"DEBUG",
 	"TRACE",
+}
+
+var logLevelMap = map[string]Level{
+	"PANIC":   PanicLevel,
+	"FATAL":   FatalLevel,
+	"ERROR":   ErrorLevel,
+	"WARNING": WarnLevel,
+	"INFO":    InfoLevel,
+	"DEBUG":   DebugLevel,
+	"TRACE":   TraceLevel,
 }
 
 func NewLevelTracerProvider(level Level, opts ...sdktrace.TracerProviderOption) *LevelTracerProvider {
@@ -88,16 +99,23 @@ func (t *LevelTracer) Start(ctx context.Context, spanName string, opts ...trace.
 	// Pass-through.
 	spanCtx, span := t.Tracer.Start(ctx, spanName, opts...)
 	span.SetAttributes(
-		attribute.Int64(LogLevelNumKey, int64(ctxLevel)),
-		attribute.String(LogLevelKey, logLevelName(ctxLevel)),
+		attribute.String(LogLevelKey, ctxLevel.String()),
 	)
 
 	return spanCtx, span
 }
 
-func logLevelName(level Level) string {
-	if level <= 6 {
+func (level Level) String() string {
+	if level <= TraceLevel {
 		return logLevelNames[level]
 	}
 	return ""
+}
+
+func ParseLogLevel(levelStr string) (Level, error) {
+	level, ok := logLevelMap[strings.ToUpper(levelStr)]
+	if !ok {
+		return Level(0), fmt.Errorf("unknown log level %q", levelStr)
+	}
+	return level, nil
 }

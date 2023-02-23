@@ -462,7 +462,7 @@ func CallNamedScopeBranchError(ctx context.Context, spanName string, action Scop
 }
 
 func startScope(ctx context.Context, level Level, skipCallers int, opts ...trace.SpanStartOption) context.Context {
-	if level == ErrorLevel {
+	if level <= ErrorLevel {
 		opts = append(opts, trace.WithAttributes(
 			attribute.Bool("error", true),
 		))
@@ -473,7 +473,7 @@ func startScope(ctx context.Context, level Level, skipCallers int, opts ...trace
 }
 
 func startNamedScope(ctx context.Context, spanName string, level Level, skipCallers int, opts ...trace.SpanStartOption) context.Context {
-	if level == ErrorLevel {
+	if level <= ErrorLevel {
 		opts = append(opts, trace.WithAttributes(
 			attribute.Bool("error", true),
 		))
