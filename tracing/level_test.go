@@ -1,6 +1,7 @@
 package tracing_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/mailgun/holster/v4/tracing"
@@ -20,26 +21,33 @@ func TestLevel(t *testing.T) {
 	})
 
 	t.Run("ParseLogLevel()", func(t *testing.T) {
-		level, err := tracing.ParseLogLevel("PANIC")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.PanicLevel, level)
-		level, err = tracing.ParseLogLevel("FATAL")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.FatalLevel, level)
-		level, err = tracing.ParseLogLevel("ERROR")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.ErrorLevel, level)
-		level, err = tracing.ParseLogLevel("WARNING")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.WarnLevel, level)
-		level, err = tracing.ParseLogLevel("INFO")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.InfoLevel, level)
-		level, err = tracing.ParseLogLevel("DEBUG")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.DebugLevel, level)
-		level, err = tracing.ParseLogLevel("TRACE")
-		require.NoError(t, err)
-		assert.Equal(t, tracing.TraceLevel, level)
+		testCases := []struct {
+			Input    string
+			Expected tracing.Level
+		}{
+			{Input: "PANIC", Expected: tracing.PanicLevel},
+			{Input: "FATAL", Expected: tracing.FatalLevel},
+			{Input: "ERROR", Expected: tracing.ErrorLevel},
+			{Input: "WARNING", Expected: tracing.WarnLevel},
+			{Input: "INFO", Expected: tracing.InfoLevel},
+			{Input: "DEBUG", Expected: tracing.DebugLevel},
+			{Input: "TRACE", Expected: tracing.TraceLevel},
+		}
+
+		for _, testCase := range testCases {
+			t.Run(testCase.Input, func(t *testing.T) {
+				level, err := tracing.ParseLogLevel(testCase.Input)
+				require.NoError(t, err)
+				assert.Equal(t, testCase.Expected, level)
+				level, err = tracing.ParseLogLevel(strings.ToLower(testCase.Input))
+				require.NoError(t, err)
+				assert.Equal(t, testCase.Expected, level)
+			})
+		}
+
+		t.Run("Handle parse error", func(t *testing.T) {
+			_, err := tracing.ParseLogLevel("bogus")
+			assert.ErrorContains(t, err, "unknown log level")
+		})
 	})
 }

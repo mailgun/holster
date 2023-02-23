@@ -3,6 +3,7 @@ package tracing
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -54,6 +55,16 @@ var logLevelNames = []string{
 	"TRACE",
 }
 
+var logLevelMap = map[string]Level{
+	"PANIC":   PanicLevel,
+	"FATAL":   FatalLevel,
+	"ERROR":   ErrorLevel,
+	"WARNING": WarnLevel,
+	"INFO":    InfoLevel,
+	"DEBUG":   DebugLevel,
+	"TRACE":   TraceLevel,
+}
+
 func NewLevelTracerProvider(level Level, opts ...sdktrace.TracerProviderOption) *LevelTracerProvider {
 	tp := sdktrace.NewTracerProvider(opts...)
 
@@ -101,23 +112,10 @@ func (level Level) String() string {
 	return ""
 }
 
-func ParseLogLevel(level string) (Level, error) {
-	switch level {
-	case "PANIC":
-		return PanicLevel, nil
-	case "FATAL":
-		return FatalLevel, nil
-	case "ERROR":
-		return ErrorLevel, nil
-	case "WARNING":
-		return WarnLevel, nil
-	case "INFO":
-		return InfoLevel, nil
-	case "DEBUG":
-		return DebugLevel, nil
-	case "TRACE":
-		return TraceLevel, nil
-	default:
-		return Level(0), fmt.Errorf("unknown log level %q", level)
+func ParseLogLevel(levelStr string) (Level, error) {
+	level, ok := logLevelMap[strings.ToUpper(levelStr)]
+	if !ok {
+		return Level(0), fmt.Errorf("unknown log level %q", levelStr)
 	}
+	return level, nil
 }
