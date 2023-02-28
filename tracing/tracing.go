@@ -3,6 +3,7 @@ package tracing
 import (
 	"context"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -13,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/mailgun/holster/v4/errors"
@@ -26,21 +27,23 @@ type initState struct {
 	level Level
 }
 
-var logLevels = []logrus.Level{
-	logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
-	logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
-	logrus.TraceLevel,
-}
-
-var log = logrus.WithField("category", "tracing")
-var globalLibraryName string
+var (
+	logLevels = []logrus.Level{
+		logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel,
+		logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
+		logrus.TraceLevel,
+	}
+	log               = logrus.WithField("category", "tracing")
+	globalLibraryName string
+	SemconvSchemaURL  = semconv.SchemaURL
+)
 
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
 // Call to initialize before using functions in this package.
 // Instruments logrus to mirror to active trace.  Must use `WithContext()`
 // method.
 // Call after initializing logrus.
-// libraryName is typically the application's module name.
+// libraryName is typically the application's module name.  Pass empty string to autodetect module name.
 // Prometheus metrics are accessible by registering the metrics at
 // `tracing.Metrics`.
 func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption) error {
@@ -85,6 +88,10 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 
 	tp := NewLevelTracerProvider(state.level, state.opts...)
 	otel.SetTracerProvider(tp)
+
+	if libraryName == "" {
+		libraryName = getMainModule()
+	}
 	globalLibraryName = libraryName
 
 	// Setup logrus instrumentation.
@@ -107,13 +114,22 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 	return err
 }
 
+func getMainModule() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	return info.Main.Path
+}
+
 // NewResource creates a resource with sensible defaults.
 // Replaces common use case of verbose usage.
 func NewResource(serviceName, version string, resources ...*resource.Resource) (*resource.Resource, error) {
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
-			semconv.SchemaURL,
+			SemconvSchemaURL,
 			semconv.ServiceNameKey.String(serviceName),
 			semconv.ServiceVersionKey.String(version),
 		),

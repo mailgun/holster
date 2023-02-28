@@ -115,12 +115,14 @@ a `Tracer` object.  When application is exiting, call `CloseTracing()`.
 The library name passed in the second argument appears in spans as metadata
 `otel.library.name`.  This is used to identify the library or module that
 generated that span.  This usually the fully qualified module name of your
-repo.
+repo.  Pass an empty string to autodetect the module name of the executible.
 
 ```go
 import "github.com/mailgun/holster/v4/tracing"
 
 err := tracing.InitTracing(ctx, "github.com/myrepo/myservice")
+// or...
+err := tracing.InitTracing(ctx, "")
 
 // ...
 
