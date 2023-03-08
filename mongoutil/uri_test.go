@@ -103,7 +103,8 @@ func TestMongoURIFromJSON(t *testing.T) {
 			{"compressors": "snappy,zlib"},
 			{"replica_set": "v34_queue"},
 			{"read_preference": "secondaryPreferred"},
-			{"max_pool_size": 5}
+			{"max_pool_size": 5},
+			{"ssl": true}
 		]
 	}`)
 	var conf mongoutil.Config
@@ -113,7 +114,7 @@ func TestMongoURIFromJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t,
 		"mongodb://127.0.0.1:27017/foo?compressors=snappy,zlib&replicaSet=v34_queue&"+
-			"readPreference=secondaryPreferred&maxPoolSize=5", conf.URIWithOptions())
+			"readPreference=secondaryPreferred&maxPoolSize=5&ssl=true", conf.URIWithOptions())
 }
 
 func TestMongoURIFromYAML(t *testing.T) {
@@ -137,6 +138,6 @@ options:
 	require.NoError(t, err)
 	require.Equal(t, "mongodb://mongo-routes-n01-us-east-1.postgun.com:27017,"+
 		"mongo-routes-n02-us-east-1.postgun.com:27017,mongo-routes-n03-us-east-1.postgun.com:27017/mg_prod?"+
-		"tlsCertificateKeyFile=/etc/mailgun/ssl/mongo.pem&tlsCAFile=/etc/mailgun/ssl/mongo-ca.crt&"+
+		"ssl=true&tlsCertificateKeyFile=/etc/mailgun/ssl/mongo.pem&tlsCAFile=/etc/mailgun/ssl/mongo-ca.crt&"+
 		"replicaSet=routes&readPreferenceTags=dc:use1&readPreferenceTags=dc:usw2", conf.URIWithOptions())
 }
