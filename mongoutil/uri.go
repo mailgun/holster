@@ -66,6 +66,8 @@ func (c Config) URIWithOptions() string {
 				options = append(options, opt{key: toCamelCase(optName), value: strconv.Itoa(int(optVal))})
 			case string:
 				options = append(options, opt{key: toCamelCase(optName), value: optVal})
+			case bool:
+				options = append(options, opt{key: toCamelCase(optName), value: strconv.FormatBool(optVal)})
 			}
 		}
 	}
