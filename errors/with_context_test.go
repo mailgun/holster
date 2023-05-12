@@ -1,6 +1,7 @@
 package errors_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/mailgun/holster/v4/callstack"
 	"github.com/mailgun/holster/v4/errors"
 	"github.com/stretchr/testify/assert"
+
+	stderrors "errors"
 )
 
 type TestError struct {
@@ -67,4 +70,12 @@ func TestWrapfNil(t *testing.T) {
 func TestWrapNil(t *testing.T) {
 	got := errors.WithContext{"some": "context"}.Wrap(nil, "no error")
 	assert.Nil(t, got)
+}
+
+func TestUnwrap(t *testing.T) {
+	holsterWrappedErr := errors.WithContext{"some": "context"}.Wrap(context.Canceled, "external timeout")
+	assert.True(t, stderrors.Is(holsterWrappedErr, context.Canceled))
+
+	stdWrappedErr := fmt.Errorf("%w external timeout", context.Canceled)
+	assert.True(t, stderrors.Is(stdWrappedErr, context.Canceled))
 }

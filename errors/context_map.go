@@ -77,3 +77,7 @@ func (c *withContext) FormatFields() string {
 	}
 	return buf.String()
 }
+
+func (c *withContext) Unwrap() error {
+	return c.cause
+}
