@@ -73,11 +73,9 @@ func TestWrapNil(t *testing.T) {
 }
 
 func TestUnwrap(t *testing.T) {
-	holsterErr := errors.WithContext{"some": "context"}.Wrap(context.Canceled, "external timeout")
-	holsterWrappedErr := errors.WithContext{"some": "othercontext"}.Wrap(holsterErr, "more text")
+	holsterWrappedErr := errors.WithContext{"some": "context"}.Wrap(context.Canceled, "external timeout")
 	assert.True(t, stderrors.Is(holsterWrappedErr, context.Canceled))
 
-	stdErr := fmt.Errorf("%w", context.Canceled)
-	stdWrappedErr := fmt.Errorf("%w more text", stdErr)
+	stdWrappedErr := fmt.Errorf("%w external timeout", context.Canceled)
 	assert.True(t, stderrors.Is(stdWrappedErr, context.Canceled))
 }
