@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -199,10 +200,19 @@ func makeOtlpExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 		client = otlptracegrpc.NewClient()
 	}
 
-	log.WithFields(logrus.Fields{
+	logFields := logrus.Fields{
+		"exporter": "otlp",
 		"protocol": protocol,
 		"endpoint": getenvOrDefault("", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
-	}).Info("Initializing OTLP exporter")
+	}
+
+	sampler := getenvOrDefault("", "OTEL_TRACES_SAMPLER")
+	logFields["sampler"] = sampler
+	if strings.HasSuffix(sampler, "traceidratio") {
+		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"))
+	}
+
+	log.WithFields(logFields).Info("Initializing OpenTelemetry")
 
 	return otlptrace.New(ctx, client)
 }
@@ -211,32 +221,37 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	var endpointOption jaeger.EndpointOption
 	protocol := getenvOrDefault("udp/thrift.compact", "OTEL_EXPORTER_JAEGER_PROTOCOL")
 
+	logFields := logrus.Fields{
+		"exporter": "jaeger",
+		"protocol": protocol,
+	}
+
+	sampler := getenvOrDefault("", "OTEL_TRACES_SAMPLER")
+	logFields["sampler"] = sampler
+	if strings.HasSuffix(sampler, "traceidratio") {
+		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"))
+	}
+
 	// OTel Jaeger client doesn't seem to implement the spec for
 	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
 	// Jaeger endpoint option will parse supported env var configuration.
 	switch protocol {
 	// TODO: Support for "grpc" protocol. https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#jaeger-exporter
 	case "http/thrift.binary":
-		log.WithFields(logrus.Fields{
-			"endpoint": os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT"),
-			"protocol": protocol,
-		}).Info("Initializing Jaeger exporter")
+		logFields["endpoint"] = os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT")
+		log.WithFields(logFields).Info("Initializing OpenTelemetry")
 		endpointOption = jaeger.WithCollectorEndpoint()
 
 	case "udp/thrift.binary":
-		log.WithFields(logrus.Fields{
-			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
-			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-			"protocol":  protocol,
-		}).Info("Initializing Jaeger exporter")
+		logFields["agentHost"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
+		logFields["agentPort"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT")
+		log.WithFields(logFields).Info("Initializing OpenTelemetry")
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	case "udp/thrift.compact":
-		log.WithFields(logrus.Fields{
-			"agentHost": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST"),
-			"agentPort": os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT"),
-			"protocol":  protocol,
-		}).Info("Initializing Jaeger exporter")
+		logFields["agentHost"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
+		logFields["agentPort"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT")
+		log.WithFields(logFields).Info("Initializing OpenTelemetry")
 		endpointOption = jaeger.WithAgentEndpoint()
 
 	default:
