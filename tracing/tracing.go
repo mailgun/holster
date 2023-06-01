@@ -209,7 +209,7 @@ func makeOtlpExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	sampler := getenvOrDefault("", "OTEL_TRACES_SAMPLER")
 	logFields["sampler"] = sampler
 	if strings.HasSuffix(sampler, "traceidratio") {
-		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"))
+		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"), 64)
 	}
 
 	log.WithFields(logFields).Info("Initializing OpenTelemetry")
@@ -229,7 +229,7 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	sampler := getenvOrDefault("", "OTEL_TRACES_SAMPLER")
 	logFields["sampler"] = sampler
 	if strings.HasSuffix(sampler, "traceidratio") {
-		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"))
+		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"), 64)
 	}
 
 	// OTel Jaeger client doesn't seem to implement the spec for
