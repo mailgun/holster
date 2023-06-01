@@ -92,8 +92,8 @@ func TestLookupError(t *testing.T) {
 		outError     string
 	}{
 		{
-			inDomainName: "test-broken.definbox.com",
-			outError:     "lookup test-broken.definbox.com.*: no such host",
+			inDomainName: "test-bogus.definbox.com",
+			outError:     "lookup test-bogus.definbox.com.*: no such host",
 		},
 		{
 			inDomainName: "",
