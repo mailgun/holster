@@ -67,9 +67,8 @@ func TestSrvResolverBuilderSuccess(t *testing.T) {
 
 	b := discovery.NewGRPCSRVBuilder()
 	cc := &testClientConn{target: "srv.example.com", updateChan: make(chan struct{}, 1), errChan: make(chan error, 10)}
-	targetURL, err := url.Parse("srv.example.com:4567")
-	require.NoError(t, err)
-	r, err := b.Build(resolver.Target{URL: *targetURL}, cc, resolver.BuildOptions{})
+	target := resolver.Target{URL: url.URL{Path: "srv.example.com:4567"}}
+	r, err := b.Build(target, cc, resolver.BuildOptions{})
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -109,9 +108,8 @@ func TestSrvResolverBuilderNoARecord(t *testing.T) {
 
 	b := discovery.NewGRPCSRVBuilder()
 	cc := &testClientConn{target: "srv.example.com", updateChan: make(chan struct{}, 1), errChan: make(chan error, 10)}
-	targetURL, err := url.Parse("srv.example.com")
-	require.NoError(t, err)
-	r, err := b.Build(resolver.Target{URL: *targetURL}, cc, resolver.BuildOptions{})
+	target := resolver.Target{URL: url.URL{Path: "srv.example.com"}}
+	r, err := b.Build(target, cc, resolver.BuildOptions{})
 	require.NoError(t, err)
 	defer r.Close()
 
@@ -147,9 +145,8 @@ func TestSrvResolverBuilderNoSRVRecord(t *testing.T) {
 	cc := &testClientConn{target: "srv.example.com", updateChan: make(chan struct{}, 1), errChan: make(chan error, 10)}
 
 	// SRV lookup will ignore the port number here, only if SRV lookup fails will this port number matter
-	targetURL, err := url.Parse("srv.example.com:12345")
-	require.NoError(t, err)
-	r, err := b.Build(resolver.Target{URL: *targetURL}, cc, resolver.BuildOptions{})
+	target := resolver.Target{URL: url.URL{Path: "srv.example.com:12345"}}
+	r, err := b.Build(target, cc, resolver.BuildOptions{})
 	require.NoError(t, err)
 	defer r.Close()
 
