@@ -5,7 +5,7 @@ lint: $(GOLINT)
 	$(GOLINT) run
 
 $(GOLINT):
-	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v1.50.1
+	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v1.52.2
 
 .PHONY: test
 test:

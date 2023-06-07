@@ -1,3 +1,4 @@
+//nolint:gocritic // ignore sloppyTestFuncName
 package consul_test
 
 import (

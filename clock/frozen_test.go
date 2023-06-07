@@ -306,7 +306,6 @@ func (s *FrozenSuite) TestUntil() {
 	s.Require().Equal(-Millisecond, Until(Now().Add(-Millisecond)))
 }
 
-//nolint:unused // fix https://github.com/mailgun/holster/issues/147.
 func (s *FrozenSuite) assertHits(got <-chan int, want []int) {
 	for i, w := range want {
 		var g int

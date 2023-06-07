@@ -1,3 +1,4 @@
+//nolint:gocritic // ignore sloppyTestFuncName
 package election_test
 
 import (
