@@ -345,7 +345,9 @@ func TestTracing(t *testing.T) {
 
 			t.Run("Happy path", func(t *testing.T) {
 				assertValid(t, ctx)
+				// Create parent span.
 				err := tracing.CallNamedScope(ctx, t.Name(), func(ctx context.Context) error {
+					// Eval test case.
 					ctx = testCase.Fn(ctx)
 					assertValid(t, ctx)
 					tracing.EndScope(ctx, nil)
@@ -408,11 +410,20 @@ func TestTracing(t *testing.T) {
 
 	for _, testCase := range callScopeBranchTestCases {
 		t.Run(testCase.Name, func(t *testing.T) {
+			err := tracing.InitTracing(ctx, "TestTracing")
+			require.NoError(t, err)
+			defer func() {
+				err := tracing.CloseTracing(ctx)
+				require.NoError(t, err)
+			}()
+
 			t.Run("Happy path", func(t *testing.T) {
-				assertValid(t, ctx)
-				err := tracing.CallNamedScope(ctx, t.Name(), func(ctx context.Context) error {
-					err := testCase.Fn(ctx, func(ctx context.Context) error {
-						assertValid(t, ctx)
+				// Create parent span.
+				err := tracing.CallNamedScope(ctx, t.Name(), func(ctx2 context.Context) error {
+					assertValid(t, ctx2)
+					// Eval test case.
+					err := testCase.Fn(ctx2, func(ctx3 context.Context) error {
+						assertValid(t, ctx3)
 						return nil
 					})
 
@@ -426,8 +437,8 @@ func TestTracing(t *testing.T) {
 			t.Run("No op when no parent span", func(t *testing.T) {
 				ctx := context.Background()
 				assertNotValid(t, ctx)
-				err := testCase.Fn(ctx, func(ctx context.Context) error {
-					assertNotValid(t, ctx)
+				err := testCase.Fn(ctx, func(ctx2 context.Context) error {
+					assertNotValid(t, ctx2)
 					return nil
 				})
 

@@ -59,6 +59,7 @@ linters-settings:
       - rangeValCopy # TODO(vtopc): configure(disable for tests) and enable.
       - appendAssign
       - commentedOutCode
+      - sloppyTestFuncName
 
   errcheck:
     # List of functions to exclude from checking, where each entry is a single function to exclude.

@@ -40,7 +40,7 @@ func NewGRPCSRVBuilder() resolver.Builder {
 type srvResolverBuilder struct{}
 
 func (*srvResolverBuilder) Build(target resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions) (resolver.Resolver, error) {
-	host, port, err := parseTarget(target.Endpoint, GRPCSrvDefaultPort)
+	host, port, err := parseTarget(target.Endpoint(), GRPCSrvDefaultPort)
 	if err != nil {
 		return nil, err
 	}
