@@ -45,10 +45,14 @@ func init() {
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
 func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImplicit bool, reterr error) {
-	if cachedVal, ok := lookupResultCache.Get(hostname); ok {
-		lookupResult := cachedVal.(lookupResult)
-		return lookupResult.mxHosts, lookupResult.implicit, lookupResult.err
+	if obj, ok := lookupResultCache.Get(hostname); ok {
+		cached := obj.(lookupResult)
+		if len(cached.mxRecords) != 0 {
+			return shuffleMXRecords(cached.mxRecords), cached.implicit, cached.err
+		}
+		return cached.mxHosts, cached.implicit, cached.err
 	}
+
 	asciiHostname, err := ensureASCII(hostname)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid hostname")
@@ -62,23 +66,23 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.Err == "no such host" {
 			if _, err := DefaultResolver.LookupIPAddr(ctx, asciiHostname); err != nil {
-				return cacheAndReturn(hostname, nil, false, errors.WithStack(err))
+				return cacheAndReturn(hostname, nil, nil, false, errors.WithStack(err))
 			}
-			return cacheAndReturn(hostname, []string{asciiHostname}, true, nil)
+			return cacheAndReturn(hostname, []string{asciiHostname}, nil, true, nil)
 		}
 		if mxRecords == nil {
-			return cacheAndReturn(hostname, nil, false, errors.WithStack(err))
+			return cacheAndReturn(hostname, nil, nil, false, errors.WithStack(err))
 		}
 	}
 	// Check for "Null MX" record (https://tools.ietf.org/html/rfc7505).
 	if len(mxRecords) == 1 {
 		if mxRecords[0].Host == "." {
-			return cacheAndReturn(hostname, nil, false, errNullMXRecord)
+			return cacheAndReturn(hostname, nil, nil, false, errNullMXRecord)
 		}
 		// 0.0.0.0 is not really a "Null MX" record, but some people apparently
 		// have never heard of RFC7505 and configure it this way.
 		if strings.HasPrefix(mxRecords[0].Host, "0.0.0.0") {
-			return cacheAndReturn(hostname, nil, false, errNullMXRecord)
+			return cacheAndReturn(hostname, nil, nil, false, errNullMXRecord)
 		}
 	}
 	// Normalize returned hostnames: drop trailing '.' and lowercase.
@@ -94,6 +98,14 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		return mxRecords[i].Pref < mxRecords[j].Pref ||
 			(mxRecords[i].Pref == mxRecords[j].Pref && mxRecords[i].Host < mxRecords[j].Host)
 	})
+	mxHosts := shuffleMXRecords(mxRecords)
+	if len(mxHosts) == 0 {
+		return cacheAndReturn(hostname, nil, nil, false, errNoValidMXHosts)
+	}
+	return cacheAndReturn(hostname, mxHosts, mxRecords, false, nil)
+}
+
+func shuffleMXRecords(mxRecords []*net.MX) []string {
 	// Shuffle records within preference groups unless disabled in tests.
 	if shuffle {
 		mxRecordCount := len(mxRecords)
@@ -119,10 +131,7 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		}
 		mxHosts = append(mxHosts, mxRecord.Host)
 	}
-	if len(mxHosts) == 0 {
-		return cacheAndReturn(hostname, nil, false, errNoValidMXHosts)
-	}
-	return cacheAndReturn(hostname, mxHosts, false, nil)
+	return mxHosts
 }
 
 func ensureASCII(hostname string) (string, error) {
@@ -146,13 +155,14 @@ func isASCII(s string) bool {
 }
 
 type lookupResult struct {
-	mxHosts  []string
-	implicit bool
-	err      error
+	mxRecords []*net.MX
+	mxHosts   []string
+	implicit  bool
+	err       error
 }
 
-func cacheAndReturn(hostname string, mxHosts []string, implicit bool, err error) (retMxHosts []string, retImplicit bool, reterr error) {
-	lookupResultCache.AddWithTTL(hostname, lookupResult{mxHosts, implicit, err}, cacheTTL)
+func cacheAndReturn(hostname string, mxHosts []string, mxRecords []*net.MX, implicit bool, err error) (retMxHosts []string, retImplicit bool, reterr error) {
+	lookupResultCache.AddWithTTL(hostname, lookupResult{mxHosts: mxHosts, mxRecords: mxRecords, implicit: implicit, err: err}, cacheTTL)
 	return mxHosts, implicit, err
 }
 

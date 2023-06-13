@@ -2,6 +2,7 @@ package mxresolv
 
 import (
 	"context"
+	"math"
 	"regexp"
 	"sort"
 	"testing"
@@ -176,6 +177,48 @@ func TestLookupShuffle(t *testing.T) {
 	sort.Strings(shuffle2[4:])
 	assert.Equal(t, []string{"mxb.definbox.com", "mxd.definbox.com", "mxf.definbox.com", "mxg.definbox.com", "mxh.definbox.com"}, shuffle1[4:])
 	assert.Equal(t, shuffle1[4:], shuffle2[4:])
+}
+
+func TestDistribution(t *testing.T) {
+	dist := make(map[string]int, 3)
+	for i := 0; i < 1000; i++ {
+		s, _, _ := Lookup(context.Background(), "test-mx.definbox.com")
+		_, ok := dist[s[0]]
+		if ok {
+			dist[s[0]] += 1
+		} else {
+			dist[s[0]] = 0
+		}
+	}
+
+	// Calculate the mean of the distribution
+	var sum int
+	for _, value := range dist {
+		sum += value
+	}
+	mean := float64(sum) / float64(len(dist))
+
+	// Calculate the sum of squared differences
+	var squaredDifferences float64
+	for _, value := range dist {
+		diff := float64(value) - mean
+		squaredDifferences += diff * diff
+	}
+
+	// Calculate the variance and standard deviation
+	variance := squaredDifferences / float64(len(dist))
+	stdDev := math.Sqrt(variance)
+
+	// The distribution of random hosts chosen should not exceed 30
+	assert.False(t, stdDev > 30.0, "Standard deviation is greater than 30: %.2f", stdDev)
+
+	// For example this is what a standard distribution looks like when 3 hosts have the same MX priority
+	// spew.Dump(dist)
+	// (map[string]int) (len=3) {
+	// 	(string) (len=16) "mxa.definbox.com": (int) 324,
+	//	(string) (len=16) "mxe.definbox.com": (int) 359,
+	//	(string) (len=16) "mxi.definbox.com": (int) 314
+	// }
 }
 
 func disableShuffle() func() {
