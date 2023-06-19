@@ -108,10 +108,10 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 func shuffleMXRecords(mxRecords []*net.MX) []string {
 	// Shuffle records within preference groups unless disabled in tests.
 	if shuffle {
-		mxRecordCount := len(mxRecords)
+		mxRecordCount := len(mxRecords) - 1
 		groupBegin := 0
-		for i := 1; i < mxRecordCount; i++ {
-			if mxRecords[i].Pref != mxRecords[groupBegin].Pref || i == mxRecordCount-1 {
+		for i := 1; i <= mxRecordCount; i++ {
+			if mxRecords[i].Pref != mxRecords[groupBegin].Pref || i == mxRecordCount {
 				groupSlice := mxRecords[groupBegin:i]
 				rand.Shuffle(len(groupSlice), func(i, j int) {
 					groupSlice[i], groupSlice[j] = groupSlice[j], groupSlice[i]

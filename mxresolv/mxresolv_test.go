@@ -3,6 +3,7 @@ package mxresolv
 import (
 	"context"
 	"math"
+	"net"
 	"regexp"
 	"sort"
 	"testing"
@@ -177,6 +178,41 @@ func TestLookupShuffle(t *testing.T) {
 	sort.Strings(shuffle2[4:])
 	assert.Equal(t, []string{"mxb.definbox.com", "mxd.definbox.com", "mxf.definbox.com", "mxg.definbox.com", "mxh.definbox.com"}, shuffle1[4:])
 	assert.Equal(t, shuffle1[4:], shuffle2[4:])
+}
+
+func TestShuffle(t *testing.T) {
+	in := []*net.MX{
+		{Host: "mxa.definbox.com", Pref: 1},
+		{Host: "mxe.definbox.com", Pref: 1},
+		{Host: "mxi.definbox.com", Pref: 1},
+		{Host: "mxc.definbox.com", Pref: 2},
+		{Host: "mxb.definbox.com", Pref: 3},
+		{Host: "mxd.definbox.com", Pref: 3},
+		{Host: "mxf.definbox.com", Pref: 3},
+		{Host: "mxg.definbox.com", Pref: 3},
+		{Host: "mxh.definbox.com", Pref: 3},
+	}
+	out := shuffleMXRecords(in)
+	assert.Equal(t, 9, len(out))
+
+	// This is a regression test, previous implementation of shuffleMXRecords() would
+	// only return 1 MX record if there were 2 MX records with the same preference number.
+	in = []*net.MX{
+		{Host: "mxa.definbox.com", Pref: 5},
+		{Host: "mxe.definbox.com", Pref: 5},
+	}
+	out = shuffleMXRecords(in)
+	assert.Equal(t, 2, len(out))
+
+	in = []*net.MX{
+		{Host: "mxa.definbox.com", Pref: 5},
+	}
+	out = shuffleMXRecords(in)
+	assert.Equal(t, 1, len(out))
+
+	// Should not panic
+	out = shuffleMXRecords([]*net.MX{})
+	assert.Equal(t, 0, len(out))
 }
 
 func TestDistribution(t *testing.T) {
