@@ -118,6 +118,9 @@ issues:
         - noctx
     - path: '_test\.go$'
       text: "unnamedResult:"
+    - path: '.*mxresolv.*'
+      linters:
+        - gosec
 
 
 run:
