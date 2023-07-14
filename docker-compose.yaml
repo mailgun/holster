@@ -17,13 +17,13 @@ services:
       - 22379:22379
 
   consul-agent:
-    image: consul:latest
+    image: hashicorp/consul:latest
     command: "agent -retry-join consul-server-bootstrap -client 0.0.0.0"
     volumes:
       - ${PWD}/consul/config:/consul/config
 
   consul-server-bootstrap:
-    image: consul:latest
+    image: hashicorp/consul:latest
     ports:
       - "8400:8400"
       - "8500:8500"

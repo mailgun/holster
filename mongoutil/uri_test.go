@@ -7,7 +7,7 @@ import (
 	"github.com/mailgun/holster/v4/mongoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 func TestMongoConfig_URIWithOptions(t *testing.T) {

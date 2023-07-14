@@ -97,6 +97,19 @@ func (t RFC822Time) MarshalJSON() ([]byte, error) {
 	return []byte(strconv.Quote(t.Format(RFC1123))), nil
 }
 
+func (t RFC822Time) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+func (t *RFC822Time) UnmarshalText(s []byte) error {
+	parsed, err := ParseRFC822Time(string(s))
+	if err != nil {
+		return err
+	}
+	t.Time = parsed
+	return nil
+}
+
 func (t *RFC822Time) UnmarshalJSON(s []byte) error {
 	q, err := strconv.Unquote(string(s))
 	if err != nil {
