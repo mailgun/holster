@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type testStruct struct {
-	Time RFC822Time `json:"ts"`
+	Time RFC822Time `json:"ts" yaml:"ts"`
 }
 
 func TestRFC822New(t *testing.T) {
@@ -40,6 +41,19 @@ func TestRFC822SecondPrecision(t *testing.T) {
 	rfc822Time2 := NewRFC822Time(stdTime2)
 	assert.True(t, rfc822Time1.Equal(rfc822Time2.Time),
 		"want=%s, got=%s", rfc822Time1.Time, rfc822Time2.Time)
+}
+
+func TestRFC822YAMLMarshaler(t *testing.T) {
+	rfcTime := NewRFC822Time(Date(1955, November, 12, 6, 38, 0, 0, UTC))
+	ts := testStruct{Time: rfcTime}
+	encoded, err := yaml.Marshal(ts)
+	assert.NoError(t, err)
+	assert.Equal(t, "ts: Sat, 12 Nov 1955 06:38:00 UTC\n", string(encoded))
+
+	var decoded testStruct
+	err = yaml.Unmarshal(encoded, &decoded)
+	assert.NoError(t, err)
+	assert.Equal(t, rfcTime, decoded.Time)
 }
 
 // Marshaled representation is truncated down to second precision.
