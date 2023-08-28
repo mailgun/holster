@@ -70,3 +70,16 @@ func main() {
 	c.Close()
 }
 ```
+
+### SRV Resolver
+
+`discovery.GetSRVAddresses()` can be used directly as a utility for querying SRV DNS records. For example:
+
+```go
+// Using "" as the dnsServer argument uses the Golang built-in resolver
+addresses, err = discovery.GetSRVAddresses("mytest.service.consul", "")
+```
+
+If valid, will return a list of IP:Port records associated to the given DNS entry.
+
+Note: you can specify an explicit DNS server instead. Using `""` uses the DNS resolver of the machine.
