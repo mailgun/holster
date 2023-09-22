@@ -5,7 +5,7 @@ linters:
   disable-all: true
   enable:
     - bodyclose # https://github.com/timakin/bodyclose
-    - depguard
+    - gomodguard
     - errcheck # Mandatory. Do not disable.
     - gocritic
     - goimports
@@ -74,23 +74,20 @@ linters-settings:
      - shadow
      - fieldalignment
 
-  depguard:
-    # Kind of list is passed in.
-    # Allowed values: allowlist|denylist
-    # Default: denylist
-    list-type: denylist
-    # Check the list against standard lib.
-    # Default: false
-    include-go-root: true
-    # A list of packages for the list type specified.
-    # Default: []
-    packages:
-      - github.com/pkg/errors
-    # A list of packages for the list type specified.
-    # Specify an error message to output when a denied package is used.
-    # Default: []
-    packages-with-error-message:
-      - github.com/pkg/errors: 'Deprecated: use standard "errors" or "github.com/mailgun/holster/v4/errors" instead.'
+  gomodguard:
+    blocked:
+      # List of blocked modules.
+      # Default: []
+      modules:
+        - github.com/golang/protobuf:
+            recommendations:
+              - google.golang.org/protobuf
+            reason: "see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules"
+        - github.com/pkg/errors:
+            recommendations:
+              - errors
+              - github.com/mailgun/errors
+            reason: "Deprecated"
 
   stylecheck:
     # Select the Go version to target.

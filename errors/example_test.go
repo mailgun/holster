@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mailgun/holster/v4/errors"
-	pkgerrors "github.com/pkg/errors" //nolint:depguard // Legacy code requires deprecated package.
+	pkgerrors "github.com/pkg/errors" //nolint:gomodguard // Legacy code requires deprecated package.
 )
 
 func ExampleNew() {
