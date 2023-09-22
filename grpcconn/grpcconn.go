@@ -64,6 +64,9 @@ type ConnFactory[T any] interface {
 	ShouldDisposeOfConn(err error) bool
 }
 
+// ConnMgr automates gRPC `Connection` pooling.  This is necessary for use
+// cases requiring frequent stream creation and high stream concurrency to
+// avoid reaching the default 100 stream per connection limit.
 // ConnMgr resolves gRPC instance endpoints and connects to them. Both
 // resolution and connection is performed on the background allowing any number
 // of concurrent AcquireConn to result in only one reconnect event.
