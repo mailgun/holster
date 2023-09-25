@@ -87,6 +87,10 @@ func (a *HCLogAdapter) SetLevel(hclog.Level) {
 	// we don't currently.
 }
 
+func (a *HCLogAdapter) GetLevel() hclog.Level {
+	return hclog.Level(a.log.WithFields(logrus.Fields{}).Level)
+}
+
 func (a *HCLogAdapter) With(args ...interface{}) hclog.Logger {
 	e := a.CreateEntry(args)
 	return &HCLogAdapter{
