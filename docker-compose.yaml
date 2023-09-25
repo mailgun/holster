@@ -13,6 +13,7 @@ services:
       -initial-cluster etcd0=http://0.0.0.0:2381
       -initial-cluster-state new
       -enable-v2=false
+    platform: linux/amd64
     ports:
       - 22379:22379
 
