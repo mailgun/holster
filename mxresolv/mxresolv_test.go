@@ -164,6 +164,10 @@ func TestLookup(t *testing.T) {
 		inDomainName:  "test-mx-ipv6.definbox.com",
 		outMXHosts:    []string{"::ffff:2296:b0e1"},
 		outImplicitMX: false,
+	}, {
+		inDomainName:  "arenhp.co.uk",
+		outMXHosts:    []string{"arenhp.co.uk"},
+		outImplicitMX: false,
 	}} {
 		t.Run(tc.inDomainName, func(t *testing.T) {
 			defer mxresolv.SetDeterministic()()
