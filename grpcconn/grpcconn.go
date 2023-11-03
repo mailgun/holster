@@ -389,9 +389,9 @@ func (cm *ConnMgr[T]) newConnection(endpoint string) (*Conn[T], error) {
 	ctx, cancel := context.WithTimeout(cm.ctx, cm.cfg.RPCTimeout)
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+		grpc.WithTransportCredentials(insecureCredentials),
+		grpc.WithUnaryInterceptor(otelUnaryInterceptor),
+		grpc.WithStreamInterceptor(otelStreamInterceptor),
 	}
 	grpcConn, err := grpc.DialContext(ctx, endpoint, opts...)
 	cancel()
@@ -405,6 +405,12 @@ func (cm *ConnMgr[T]) newConnection(endpoint string) (*Conn[T], error) {
 		id:     id,
 	}, nil
 }
+
+var (
+	insecureCredentials   = insecure.NewCredentials()
+	otelUnaryInterceptor  = otelgrpc.UnaryClientInterceptor()
+	otelStreamInterceptor = otelgrpc.StreamClientInterceptor()
+)
 
 func (cm *ConnMgr[T]) getServerEndpoints(ctx context.Context) (*GetGRPCEndpointsRs, error) {
 	rq, err := http.NewRequestWithContext(ctx, "GET", cm.getEndpointsURL, http.NoBody)
