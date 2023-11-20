@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
 )
 
 // DummySpan is used to create a stub span as a placeholder for spans not
@@ -15,6 +16,8 @@ import (
 // Any child spans created from a DummySpan will be linked to the dummy's
 // next non-dummy ancestor.
 type DummySpan struct {
+	embedded.Span
+
 	// Next non-dummy parent span.
 	parentSpan trace.Span
 }
