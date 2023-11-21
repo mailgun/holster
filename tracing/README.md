@@ -396,8 +396,7 @@ import (
 )
 
 conn, err := grpc.Dial(server,
-	grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-	grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+	grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 )
 ```
 
@@ -409,8 +408,7 @@ import (
 )
 
 grpcSrv := grpc.NewServer(
-	grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-	grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
+	grpc.StatsHandler(otelgrpc.NewServerHandler()),
 )
 ```
 
