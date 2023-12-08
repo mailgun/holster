@@ -1,11 +1,14 @@
 name: Lint
 
 on:
+  push:
+    branches:
+      - master
   pull_request:
-    branches: [ master, main ]
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+  GOLANGCI_LINT_VERSION: v1.54.2
 
 jobs:
   lint:
@@ -30,6 +33,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.54.2
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
           skip-cache: true # cache/restore is done by actions/setup-go@v3 step
           args: -v
