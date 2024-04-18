@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"reflect"
 	"regexp"
 	"sort"
 	"testing"
@@ -166,7 +167,7 @@ func TestLookup(t *testing.T) {
 		outImplicitMX: false,
 	}} {
 		t.Run(tc.inDomainName, func(t *testing.T) {
-			defer mxresolv.SetDeterministic()()
+			defer mxresolv.SetDeterministicInTests()()
 
 			// When
 			ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
@@ -181,7 +182,7 @@ func TestLookup(t *testing.T) {
 }
 
 func TestLookupRegression(t *testing.T) {
-	defer mxresolv.SetDeterministic()()
+	defer mxresolv.SetDeterministicInTests()()
 	mxresolv.ResetCache()
 
 	// When
@@ -190,51 +191,57 @@ func TestLookupRegression(t *testing.T) {
 
 	mxHosts, explictMX, err := mxresolv.Lookup(ctx, "test-mx.definbox.com")
 	// Then
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"mxa.definbox.com", "mxi.definbox.com", "mxe.definbox.com", "mxc.definbox.com",
-		"mxb.definbox.com", "mxf.definbox.com", "mxh.definbox.com", "mxd.definbox.com",
-		"mxg.definbox.com",
+		/* 1 */ "mxa.definbox.com", "mxi.definbox.com", "mxe.definbox.com",
+		/* 2 */ "mxc.definbox.com",
+		/* 3 */ "mxb.definbox.com", "mxf.definbox.com", "mxh.definbox.com", "mxd.definbox.com", "mxg.definbox.com",
 	}, mxHosts)
 	assert.Equal(t, false, explictMX)
 
 	// The second lookup returns the cached result, the cached result is shuffled.
 	mxHosts, explictMX, err = mxresolv.Lookup(ctx, "test-mx.definbox.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"mxi.definbox.com", "mxe.definbox.com", "mxa.definbox.com", "mxc.definbox.com",
-		"mxg.definbox.com", "mxh.definbox.com", "mxd.definbox.com", "mxf.definbox.com",
-		"mxb.definbox.com",
+		/* 1 */ "mxe.definbox.com", "mxi.definbox.com", "mxa.definbox.com",
+		/* 2 */ "mxc.definbox.com",
+		/* 3 */ "mxh.definbox.com", "mxf.definbox.com", "mxg.definbox.com", "mxd.definbox.com", "mxb.definbox.com",
 	}, mxHosts)
 	assert.Equal(t, false, explictMX)
 
 	mxHosts, _, err = mxresolv.Lookup(ctx, "definbox.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"mxb.ninomail.com", "mxa.ninomail.com"}, mxHosts)
 
 	// Should always prefer mxb over mxa since mxb has a lower pref than mxa
 	for i := 0; i < 100; i++ {
 		mxHosts, _, err = mxresolv.Lookup(ctx, "prefer.example.com")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []string{"mxb.example.com", "mxa.example.com"}, mxHosts)
 	}
 
-	// Should randomly order mxa and mxb while mxc should always be last
+	// Should randomly order mxa and mxb. We make lookup 10 times and make sure
+	// that the returned result is not always the same.
 	mxHosts, _, err = mxresolv.Lookup(ctx, "prefer3.example.com")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"mxb.example.com", "mxa.example.com", "mxc.example.com"}, mxHosts)
+	sameCount := 0
+	for i := 0; i < 10; i++ {
+		mxHosts2, _, err := mxresolv.Lookup(ctx, "prefer3.example.com")
+		assert.NoError(t, err)
+		if reflect.DeepEqual(mxHosts, mxHosts2) {
+			sameCount++
+		}
+	}
+	assert.Less(t, sameCount, 10)
 
-	mxHosts, _, err = mxresolv.Lookup(ctx, "prefer3.example.com")
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"mxa.example.com", "mxb.example.com", "mxc.example.com"}, mxHosts)
-
-	// 'mxc.example.com' should always be last as it has a different priority than the other two.
+	// mxc.example.com should always be last as it has a different priority,
+	// than the other two.
 	for i := 0; i < 100; i++ {
 		mxHosts, _, err = mxresolv.Lookup(ctx, "prefer3.example.com")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "mxc.example.com", mxHosts[2])
 	}
-
 }
 
 func TestLookupError(t *testing.T) {
@@ -291,7 +298,7 @@ func TestLookupError(t *testing.T) {
 	}
 }
 
-// Shuffling only does not cross preference group boundaries.
+// Shuffling does not cross preference group boundaries.
 //
 // Preference groups are:
 //
@@ -299,7 +306,7 @@ func TestLookupError(t *testing.T) {
 //	2: mxc.definbox.com
 //	3: mxb.definbox.com, mxd.definbox.com, mxf.definbox.com, mxg.definbox.com, mxh.definbox.com
 func TestLookupShuffle(t *testing.T) {
-	defer mxresolv.SetDeterministic()()
+	defer mxresolv.SetDeterministicInTests()()
 
 	// When
 	ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
