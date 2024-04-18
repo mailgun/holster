@@ -67,3 +67,7 @@ func (s *DummySpan) SetAttributes(kv ...attribute.KeyValue) {
 func (s *DummySpan) TracerProvider() trace.TracerProvider {
 	return s.parentSpan.TracerProvider()
 }
+
+func (s *DummySpan) AddLink(trace.Link) {
+       // no-op
+}
