@@ -59,7 +59,6 @@ linters-settings:
       - rangeValCopy # TODO(vtopc): configure(disable for tests) and enable.
       - appendAssign
       - commentedOutCode
-      - sloppyTestFuncName
 
   errcheck:
     # List of functions to exclude from checking, where each entry is a single function to exclude.
@@ -90,9 +89,6 @@ linters-settings:
             reason: "Deprecated"
 
   stylecheck:
-    # Select the Go version to target.
-    # Default: 1.13
-    go: "1.19"
     # https://staticcheck.io/docs/options#checks
     checks: ["all"]
 

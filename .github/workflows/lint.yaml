@@ -8,7 +8,7 @@ on:
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-  GOLANGCI_LINT_VERSION: v1.54.2
+  GOLANGCI_LINT_VERSION: v1.57.2
 
 jobs:
   lint:
