@@ -69,5 +69,5 @@ func (s *DummySpan) TracerProvider() trace.TracerProvider {
 }
 
 func (s *DummySpan) AddLink(trace.Link) {
-       // no-op
+	// no-op
 }
