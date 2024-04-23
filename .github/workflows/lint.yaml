@@ -8,7 +8,7 @@ on:
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-  GOLANGCI_LINT_VERSION: v1.54.2
+  GOLANGCI_LINT_VERSION: v1.57.2
 
 jobs:
   lint:
@@ -19,10 +19,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version-file: ./go.mod
           cache: true # caching and restoring go modules and build outputs
@@ -31,7 +31,7 @@ jobs:
         run: go mod tidy && git diff --exit-code
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           skip-cache: true # cache/restore is done by actions/setup-go@v3 step
