@@ -14,6 +14,7 @@ import (
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/mailgun/holster/v4/collections"
 	"github.com/mailgun/holster/v4/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/idna"
 )
 
@@ -33,10 +34,27 @@ var (
 
 	// Resolver is exposed to be patched in tests
 	Resolver = net.DefaultResolver
+
+	metricLookupCacheHit = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "holster_mxrexolv_lookup_cache_hit_total",
+	})
+	metricLookupTook = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "holster_mxresolv_lookup_seconds",
+		Objectives: map[float64]float64{
+			0.5:  0.01,
+			0.95: 0.01,
+			0.99: 0.001,
+			1:    0.001,
+		},
+	}, []string{"type"})
 )
 
 func init() {
 	lookupResultCache = collections.NewLRUCache(cacheSize)
+}
+
+func Metrics() []prometheus.Collector {
+	return []prometheus.Collector{metricLookupTook, metricLookupCacheHit}
 }
 
 // Lookup performs a DNS lookup of MX records for the specified hostname. It
@@ -47,6 +65,7 @@ func init() {
 // It uses an LRU cache with a timeout to reduce the number of network requests.
 func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImplicit bool, reterr error) {
 	if cachedVal, ok := lookupResultCache.Get(hostname); ok {
+		metricLookupCacheHit.Inc()
 		cachedLookupResult := cachedVal.(lookupResult)
 		if cachedLookupResult.shuffled {
 			reshuffledMXHosts, _ := shuffleMXRecords(cachedLookupResult.mxRecords)
@@ -59,7 +78,9 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid hostname")
 	}
+	lookupBegin := clock.Now()
 	mxRecords, err := lookupMX(Resolver, ctx, asciiHostname)
+	metricLookupTook.WithLabelValues("MX").Observe(clock.Since(lookupBegin).Seconds())
 	if err != nil {
 		var timeouter interface{ Timeout() bool }
 		if errors.As(err, &timeouter) && timeouter.Timeout() {
@@ -67,7 +88,10 @@ func Lookup(ctx context.Context, hostname string) (retMxHosts []string, retImpli
 		}
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.IsNotFound {
-			if _, err := Resolver.LookupIPAddr(ctx, asciiHostname); err != nil {
+			lookupBegin := clock.Now()
+			_, err = Resolver.LookupIPAddr(ctx, asciiHostname)
+			metricLookupTook.WithLabelValues("A").Observe(clock.Since(lookupBegin).Seconds())
+			if err != nil {
 				return cacheAndReturn(hostname, nil, nil, false, false, errors.WithStack(err))
 			}
 			return cacheAndReturn(hostname, []string{asciiHostname}, nil, false, true, nil)
