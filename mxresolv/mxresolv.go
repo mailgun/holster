@@ -45,7 +45,7 @@ func init() {
 // does not have explicit MX records, and its A record is returned instead.
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
-func Lookup(ctx context.Context, domain string) ([]string, bool, error) {
+func Lookup(ctx context.Context, domain string) (mxHosts []string, implicit bool, err error) {
 	mxRecords, implicit, err := LookupWithPref(ctx, domain)
 	if err != nil {
 		return nil, false, err
@@ -63,7 +63,7 @@ func Lookup(ctx context.Context, domain string) ([]string, bool, error) {
 // explicit MX records, and its A record is used instead.
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
-func LookupWithPref(ctx context.Context, domainName string) ([]*net.MX, bool, error) {
+func LookupWithPref(ctx context.Context, domainName string) (mxRecords []*net.MX, implicit bool, err error) {
 	if cachedVal, ok := lookupResultCache.Get(domainName); ok {
 		cachedLookupResult := cachedVal.(lookupResult)
 		return cachedLookupResult.mxRecords, cachedLookupResult.implicit, cachedLookupResult.err
@@ -73,14 +73,14 @@ func LookupWithPref(ctx context.Context, domainName string) ([]*net.MX, bool, er
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid domain name")
 	}
-	mxRecords, err := lookupMX(Resolver, ctx, asciiDomainName)
+	mxRecords, err = lookupMX(Resolver, ctx, asciiDomainName)
 	if err != nil {
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.IsNotFound {
 			if _, err := Resolver.LookupIPAddr(ctx, asciiDomainName); err != nil {
 				return cacheAndReturn(domainName, nil, false, errors.WithStack(err))
 			}
-			return cacheAndReturn(domainName, []*net.MX{{asciiDomainName, 1}}, true, nil)
+			return cacheAndReturn(domainName, []*net.MX{{Host: asciiDomainName, Pref: 1}}, true, nil)
 		}
 		if mxRecords == nil {
 			return cacheAndReturn(domainName, nil, false, errors.WithStack(err))

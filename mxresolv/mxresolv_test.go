@@ -121,49 +121,49 @@ func TestLookupWithPref(t *testing.T) {
 		desc:         "MX record preference is respected",
 		inDomainName: "test-mx.definbox.com",
 		outMXHosts: []*net.MX{
-			{"mxa.definbox.com", 1}, {"mxe.definbox.com", 1}, {"mxi.definbox.com", 1},
-			{"mxc.definbox.com", 2},
-			{"mxb.definbox.com", 3}, {"mxd.definbox.com", 3}, {"mxf.definbox.com", 3}, {"mxg.definbox.com", 3}, {"mxh.definbox.com", 3},
+			{Host: "mxa.definbox.com", Pref: 1}, {Host: "mxe.definbox.com", Pref: 1}, {Host: "mxi.definbox.com", Pref: 1},
+			{Host: "mxc.definbox.com", Pref: 2},
+			{Host: "mxb.definbox.com", Pref: 3}, {Host: "mxd.definbox.com", Pref: 3}, {Host: "mxf.definbox.com", Pref: 3}, {Host: "mxg.definbox.com", Pref: 3}, {Host: "mxh.definbox.com", Pref: 3},
 		},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "test-a.definbox.com",
-		outMXHosts:    []*net.MX{{"test-a.definbox.com", 1}},
+		outMXHosts:    []*net.MX{{Host: "test-a.definbox.com", Pref: 1}},
 		outImplicitMX: true,
 	}, {
 		inDomainName:  "test-cname.definbox.com",
-		outMXHosts:    []*net.MX{{"mxa.ninomail.com", 10}, {"mxb.ninomail.com", 10}},
+		outMXHosts:    []*net.MX{{Host: "mxa.ninomail.com", Pref: 10}, {Host: "mxb.ninomail.com", Pref: 10}},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "definbox.com",
-		outMXHosts:    []*net.MX{{"mxa.ninomail.com", 10}, {"mxb.ninomail.com", 10}},
+		outMXHosts:    []*net.MX{{Host: "mxa.ninomail.com", Pref: 10}, {Host: "mxb.ninomail.com", Pref: 10}},
 		outImplicitMX: false,
 	}, {
 		desc: "If an MX host returned by the resolver contains non ASCII " +
 			"characters then it is silently dropped from the returned list",
 		inDomainName:  "test-unicode.definbox.com",
-		outMXHosts:    []*net.MX{{"mxa.definbox.com", 1}, {"mxb.definbox.com", 3}},
+		outMXHosts:    []*net.MX{{Host: "mxa.definbox.com", Pref: 1}, {Host: "mxb.definbox.com", Pref: 3}},
 		outImplicitMX: false,
 	}, {
 		desc:          "Underscore is allowed in domain names",
 		inDomainName:  "test-underscore.definbox.com",
-		outMXHosts:    []*net.MX{{"foo_bar.definbox.com", 1}},
+		outMXHosts:    []*net.MX{{Host: "foo_bar.definbox.com", Pref: 1}},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "test-яндекс.definbox.com",
-		outMXHosts:    []*net.MX{{"xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", 10}},
+		outMXHosts:    []*net.MX{{Host: "xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", Pref: 10}},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "xn--test--xweh4bya7b6j.definbox.com",
-		outMXHosts:    []*net.MX{{"xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", 10}},
+		outMXHosts:    []*net.MX{{Host: "xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", Pref: 10}},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "test-mx-ipv4.definbox.com",
-		outMXHosts:    []*net.MX{{"34.150.176.225", 10}},
+		outMXHosts:    []*net.MX{{Host: "34.150.176.225", Pref: 10}},
 		outImplicitMX: false,
 	}, {
 		inDomainName:  "test-mx-ipv6.definbox.com",
-		outMXHosts:    []*net.MX{{"::ffff:2296:b0e1", 10}},
+		outMXHosts:    []*net.MX{{Host: "::ffff:2296:b0e1", Pref: 10}},
 		outImplicitMX: false,
 	}} {
 		t.Run(tc.inDomainName, func(t *testing.T) {
