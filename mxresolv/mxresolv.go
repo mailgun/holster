@@ -45,8 +45,8 @@ func init() {
 // does not have explicit MX records, and its A record is returned instead.
 //
 // It uses an LRU cache with a timeout to reduce the number of network requests.
-func Lookup(ctx context.Context, domain string) (mxHosts []string, implicit bool, err error) {
-	mxRecords, implicit, err := LookupWithPref(ctx, domain)
+func Lookup(ctx context.Context, domainName string) (mxHosts []string, implicit bool, err error) {
+	mxRecords, implicit, err := LookupWithPref(ctx, domainName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -203,15 +203,15 @@ func shuffleHosts(hosts []string) {
 	randomizerMu.Unlock()
 }
 
-func ensureASCII(hostname string) (string, error) {
-	if isASCII(hostname) {
-		return hostname, nil
+func ensureASCII(domainName string) (string, error) {
+	if isASCII(domainName) {
+		return domainName, nil
 	}
-	hostname, err := idna.ToASCII(hostname)
+	domainName, err := idna.ToASCII(domainName)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return hostname, nil
+	return domainName, nil
 }
 
 func isASCII(s string) bool {
@@ -229,8 +229,8 @@ type lookupResult struct {
 	err       error
 }
 
-func cacheAndReturn(hostname string, mxRecords []*net.MX, implicit bool, err error) ([]*net.MX, bool, error) {
-	lookupResultCache.AddWithTTL(hostname, lookupResult{mxRecords: mxRecords, implicit: implicit, err: err}, cacheTTL)
+func cacheAndReturn(domainName string, mxRecords []*net.MX, implicit bool, err error) ([]*net.MX, bool, error) {
+	lookupResultCache.AddWithTTL(domainName, lookupResult{mxRecords: mxRecords, implicit: implicit, err: err}, cacheTTL)
 	return mxRecords, implicit, err
 }
 
