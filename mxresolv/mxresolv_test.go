@@ -111,6 +111,76 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
+func TestLookupWithPref(t *testing.T) {
+	for _, tc := range []struct {
+		desc          string
+		inDomainName  string
+		outMXHosts    []*net.MX
+		outImplicitMX bool
+	}{{
+		desc:         "MX record preference is respected",
+		inDomainName: "test-mx.definbox.com",
+		outMXHosts: []*net.MX{
+			{Host: "mxa.definbox.com", Pref: 1}, {Host: "mxe.definbox.com", Pref: 1}, {Host: "mxi.definbox.com", Pref: 1},
+			{Host: "mxc.definbox.com", Pref: 2},
+			{Host: "mxb.definbox.com", Pref: 3}, {Host: "mxd.definbox.com", Pref: 3}, {Host: "mxf.definbox.com", Pref: 3}, {Host: "mxg.definbox.com", Pref: 3}, {Host: "mxh.definbox.com", Pref: 3},
+		},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-a.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "test-a.definbox.com", Pref: 1}},
+		outImplicitMX: true,
+	}, {
+		inDomainName:  "test-cname.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "mxa.ninomail.com", Pref: 10}, {Host: "mxb.ninomail.com", Pref: 10}},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "definbox.com",
+		outMXHosts:    []*net.MX{{Host: "mxa.ninomail.com", Pref: 10}, {Host: "mxb.ninomail.com", Pref: 10}},
+		outImplicitMX: false,
+	}, {
+		desc: "If an MX host returned by the resolver contains non ASCII " +
+			"characters then it is silently dropped from the returned list",
+		inDomainName:  "test-unicode.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "mxa.definbox.com", Pref: 1}, {Host: "mxb.definbox.com", Pref: 3}},
+		outImplicitMX: false,
+	}, {
+		desc:          "Underscore is allowed in domain names",
+		inDomainName:  "test-underscore.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "foo_bar.definbox.com", Pref: 1}},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-яндекс.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", Pref: 10}},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "xn--test--xweh4bya7b6j.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "xn--test---mofb0ab4b8camvcmn8gxd.definbox.com", Pref: 10}},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-mx-ipv4.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "34.150.176.225", Pref: 10}},
+		outImplicitMX: false,
+	}, {
+		inDomainName:  "test-mx-ipv6.definbox.com",
+		outMXHosts:    []*net.MX{{Host: "::ffff:2296:b0e1", Pref: 10}},
+		outImplicitMX: false,
+	}} {
+		t.Run(tc.inDomainName, func(t *testing.T) {
+			defer mxresolv.SetDeterministicInTests()()
+
+			// When
+			ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
+			defer cancel()
+			mxRecords, implicitMX, err := mxresolv.LookupWithPref(ctx, tc.inDomainName)
+			// Then
+			assert.NoError(t, err)
+			assert.Equal(t, tc.outMXHosts, mxRecords)
+			assert.Equal(t, tc.outImplicitMX, implicitMX)
+		})
+	}
+}
+
 func TestLookup(t *testing.T) {
 	for _, tc := range []struct {
 		desc          string
@@ -172,11 +242,11 @@ func TestLookup(t *testing.T) {
 			// When
 			ctx, cancel := context.WithTimeout(context.Background(), 3*clock.Second)
 			defer cancel()
-			mxHosts, explictMX, err := mxresolv.Lookup(ctx, tc.inDomainName)
+			mxHosts, implicitMX, err := mxresolv.Lookup(ctx, tc.inDomainName)
 			// Then
 			assert.NoError(t, err)
 			assert.Equal(t, tc.outMXHosts, mxHosts)
-			assert.Equal(t, tc.outImplicitMX, explictMX)
+			assert.Equal(t, tc.outImplicitMX, implicitMX)
 		})
 	}
 }
