@@ -2,6 +2,8 @@ module github.com/mailgun/holster/v4
 
 go 1.21
 
+toolchain go1.21.12
+
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/ahmetb/go-linq v3.0.0+incompatible
