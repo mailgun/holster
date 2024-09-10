@@ -22,30 +22,32 @@ type DeferredTracer struct {
 }
 
 type DeferredSpan struct {
-	name     string
-	err      error
-	start    time.Time
-	end      time.Time
-	opts     []trace.SpanStartOption
-	children []*DeferredSpan
-	flushed  bool
+	name        string
+	err         error
+	end         time.Time
+	opts        []trace.SpanStartOption
+	children    []*DeferredSpan
+	spanContext trace.SpanContext
+	flushed     bool
 }
 
-// NewTracer creates a DeferredTracer instance.
-func NewTracer() *DeferredTracer {
+// NewDeferredTracer creates a DeferredTracer instance.
+func NewDeferredTracer() *DeferredTracer {
 	return new(DeferredTracer)
 }
 
 func (t *DeferredTracer) StartSpan(opts ...trace.SpanStartOption) *DeferredSpan {
 	start := clock.Now()
 	name, fileTag := getCallerSpanName(1)
-	opts = append(opts, trace.WithAttributes(
-		attribute.String("file", fileTag),
-	))
+	opts = append(opts,
+		trace.WithTimestamp(start),
+		trace.WithAttributes(
+			attribute.String("file", fileTag),
+		),
+	)
 	span := &DeferredSpan{
-		name:  name,
-		start: start,
-		opts:  opts,
+		name: name,
+		opts: opts,
 	}
 	t.spans = append(t.spans, span)
 	return span
@@ -54,13 +56,15 @@ func (t *DeferredTracer) StartSpan(opts ...trace.SpanStartOption) *DeferredSpan 
 func (t *DeferredTracer) StartNamedSpan(name string, opts ...trace.SpanStartOption) *DeferredSpan {
 	start := clock.Now()
 	fileTag := getFileTag(1)
-	opts = append(opts, trace.WithAttributes(
-		attribute.String("file", fileTag),
-	))
+	opts = append(opts,
+		trace.WithTimestamp(start),
+		trace.WithAttributes(
+			attribute.String("file", fileTag),
+		),
+	)
 	span := &DeferredSpan{
-		name:  name,
-		start: start,
-		opts:  opts,
+		name: name,
+		opts: opts,
 	}
 	t.spans = append(t.spans, span)
 	return span
@@ -68,14 +72,13 @@ func (t *DeferredTracer) StartNamedSpan(name string, opts ...trace.SpanStartOpti
 
 // Flush sends all deferred events to OpenTelemetry.
 // Deferred spans will be created as children to span assigned to ctx.
-// Returns true if any spans are still open.
-func (t *DeferredTracer) Flush(ctx context.Context) bool {
+// Returns true if any spans still remain open.
+func (t *DeferredTracer) Flush(ctx context.Context) (remaining bool) {
 	var keepSpans []*DeferredSpan
 
 	for _, span := range t.spans {
-		remaining := t.flushSpan(ctx, span)
-		if len(remaining) > 0 {
-			keepSpans = append(keepSpans, remaining...)
+		if t.flushSpan(ctx, span) {
+			keepSpans = append(keepSpans, span)
 		}
 	}
 
@@ -83,17 +86,21 @@ func (t *DeferredTracer) Flush(ctx context.Context) bool {
 	return len(t.spans) > 0
 }
 
-// flushSpan sends a span and its children to OpenTelemetry.  Any unclosed
-// spans are returned in remaining return value.
-func (t *DeferredTracer) flushSpan(ctx context.Context, span *DeferredSpan) (remaining []*DeferredSpan) {
+// flushSpan sends a span and its children to OpenTelemetry.
+// If parent span is closed, traverse child spans.
+// Idempotent: flushes spans only once.  May call repeatedly until all spans
+// are flushed.
+// Returns true if any spans still remain open.
+func (t *DeferredTracer) flushSpan(ctx context.Context, span *DeferredSpan) (remaining bool) {
 	if span.end.IsZero() {
-		// Preserve unclosed spans.
-		remaining = append(remaining, span)
-	} else if !span.flushed {
+		// Return if not closed.  Do not traverse children.
+		return true
+	}
+	if !span.flushed {
 		// Create real OpenTelemetry span.
-		opts := append(span.opts, trace.WithTimestamp(span.start))
-		ctx2 := StartNamedScope(ctx, span.name, opts...)
+		ctx2 := StartNamedScope(ctx, span.name, span.opts...)
 		realspan := trace.SpanFromContext(ctx2)
+		span.spanContext = realspan.SpanContext()
 		if span.err != nil {
 			realspan.RecordError(span.err)
 			realspan.SetStatus(codes.Error, span.err.Error())
@@ -103,19 +110,16 @@ func (t *DeferredTracer) flushSpan(ctx context.Context, span *DeferredSpan) (rem
 	}
 
 	// Traverse children.
-	childrenRemaining := false
+	ctx2 := trace.ContextWithSpanContext(ctx, span.spanContext)
+	var keepChildren []*DeferredSpan
 	for _, childSpan := range span.children {
-		childRemaining := t.flushSpan(ctx, childSpan)
-		if len(childRemaining) > 0 {
-			remaining = append(remaining, childRemaining...)
-			childrenRemaining = true
+		if t.flushSpan(ctx2, childSpan) {
+			keepChildren = append(keepChildren, childSpan)
 		}
 	}
-	if !childrenRemaining {
-		span.children = span.children[:0]
-	}
+	span.children = keepChildren
 
-	return
+	return len(keepChildren) > 0
 }
 
 func (span *DeferredSpan) EndSpan(err error, opts ...trace.SpanStartOption) {
@@ -129,13 +133,15 @@ func (span *DeferredSpan) EndSpan(err error, opts ...trace.SpanStartOption) {
 func (span *DeferredSpan) StartChildSpan(opts ...trace.SpanStartOption) *DeferredSpan {
 	start := clock.Now()
 	name, fileTag := getCallerSpanName(1)
-	opts = append(opts, trace.WithAttributes(
-		attribute.String("file", fileTag),
-	))
+	opts = append(opts,
+		trace.WithTimestamp(start),
+		trace.WithAttributes(
+			attribute.String("file", fileTag),
+		),
+	)
 	childSpan := &DeferredSpan{
-		name:  name,
-		start: start,
-		opts:  opts,
+		name: name,
+		opts: opts,
 	}
 	span.children = append(span.children, childSpan)
 	return childSpan
@@ -144,13 +150,15 @@ func (span *DeferredSpan) StartChildSpan(opts ...trace.SpanStartOption) *Deferre
 func (span *DeferredSpan) StartNamedChildSpan(name string, opts ...trace.SpanStartOption) *DeferredSpan {
 	start := clock.Now()
 	fileTag := getFileTag(1)
-	opts = append(opts, trace.WithAttributes(
-		attribute.String("file", fileTag),
-	))
+	opts = append(opts,
+		trace.WithTimestamp(start),
+		trace.WithAttributes(
+			attribute.String("file", fileTag),
+		),
+	)
 	childSpan := &DeferredSpan{
-		name:  name,
-		start: start,
-		opts:  opts,
+		name: name,
+		opts: opts,
 	}
 	span.children = append(span.children, childSpan)
 	return childSpan

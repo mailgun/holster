@@ -35,9 +35,10 @@ var (
 		logrus.WarnLevel, logrus.InfoLevel, logrus.DebugLevel,
 		logrus.TraceLevel,
 	}
-	log               = logrus.WithField("category", "tracing")
-	globalLibraryName string
-	SemconvSchemaURL  = semconv.SchemaURL
+	log                = logrus.WithField("category", "tracing")
+	globalLibraryName  string
+	SemconvSchemaURL   = semconv.SchemaURL
+	GlobalTestExporter *TestExporter
 )
 
 // InitTracing initializes a global OpenTelemetry tracer provider singleton.
@@ -63,6 +64,9 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 		case "none":
 			// No exporter.  Used with unit tests.
 			continue
+		case "test":
+			// Used in tests.
+			exporter = makeTestExporter()
 		case "jaeger":
 			exporter, err = makeJaegerExporter()
 			if err != nil {
@@ -267,4 +271,9 @@ func makeJaegerExporter() (*jaeger.Exporter, error) {
 	}
 
 	return exp, nil
+}
+
+func makeTestExporter() sdktrace.SpanExporter {
+	GlobalTestExporter = new(TestExporter)
+	return GlobalTestExporter
 }
