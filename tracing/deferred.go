@@ -18,8 +18,7 @@ import (
 //
 // Note: Not thread-safe.  Use in synchronous code paths only.
 type DeferredTracer struct {
-	capacity int
-	spans    []*DeferredSpan
+	spans []*DeferredSpan
 }
 
 type DeferredSpan struct {
@@ -33,13 +32,8 @@ type DeferredSpan struct {
 }
 
 // NewTracer creates a DeferredTracer instance.
-// capacity is initial event array capacity used to limit extraneous array
-// allocations.
-func NewTracer(capacity int) *DeferredTracer {
-	return &DeferredTracer{
-		capacity: capacity,
-		spans:    make([]*DeferredSpan, 0, capacity),
-	}
+func NewTracer() *DeferredTracer {
+	return new(DeferredTracer)
 }
 
 func (t *DeferredTracer) StartSpan(opts ...trace.SpanStartOption) *DeferredSpan {
