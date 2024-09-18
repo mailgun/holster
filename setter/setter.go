@@ -53,6 +53,21 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 	}
 }
 
+func SetDefaultNew[T comparable](dest *T, defaultValues ...T) {
+	if IsZeroNew(*dest) {
+		for _, value := range defaultValues {
+			if !IsZeroNew(value) {
+				*dest = value
+			}
+		}
+	}
+}
+
+func IsZeroNew[T comparable](value T) bool {
+	var zero T
+	return value == zero
+}
+
 // Assign the first value that is not empty or of zero value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.

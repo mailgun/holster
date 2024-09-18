@@ -145,3 +145,112 @@ func TestIsNil(t *testing.T) {
 	assert.True(t, setter.IsNil(thing))
 	assert.False(t, setter.IsNil(&MyImplementation{}))
 }
+
+// ---------------------------------------------------------
+
+var newRes string
+
+func BenchmarkSetterNew(b *testing.B) {
+	var r string
+	for i := 0; i < b.N; i++ {
+		setter.SetDefaultNew(&r, "", "", "42")
+	}
+	newRes = r
+}
+
+var oldRes string
+
+func BenchmarkSetter(b *testing.B) {
+	var r string
+	for i := 0; i < b.N; i++ {
+		setter.SetDefault(&r, "", "", "42")
+	}
+	oldRes = r
+}
+
+func TestSetterNew_IfEmpty(t *testing.T) {
+	var conf struct {
+		Foo string
+		Bar int
+	}
+	assert.Equal(t, "", conf.Foo)
+	assert.Equal(t, 0, conf.Bar)
+
+	// Should apply the default values
+	setter.SetDefaultNew(&conf.Foo, "default")
+	setter.SetDefaultNew(&conf.Bar, 200)
+
+	assert.Equal(t, "default", conf.Foo)
+	assert.Equal(t, 200, conf.Bar)
+
+	conf.Foo = "thrawn"
+	conf.Bar = 500
+
+	// Should NOT apply the default values
+	setter.SetDefaultNew(&conf.Foo, "default")
+	setter.SetDefaultNew(&conf.Bar, 200)
+
+	assert.Equal(t, "thrawn", conf.Foo)
+	assert.Equal(t, 500, conf.Bar)
+}
+
+func TestSetterNew_IfDefaultPrecedence(t *testing.T) {
+	var conf struct {
+		Foo string
+		Bar string
+	}
+	assert.Equal(t, "", conf.Foo)
+	assert.Equal(t, "", conf.Bar)
+
+	// Should use the final default value
+	envValue := ""
+	setter.SetDefaultNew(&conf.Foo, envValue, "default")
+	assert.Equal(t, "default", conf.Foo)
+
+	// Should use envValue
+	envValue = "bar"
+	setter.SetDefaultNew(&conf.Bar, envValue, "default")
+	assert.Equal(t, "bar", conf.Bar)
+}
+
+func TestSetterNew_IsEmpty(t *testing.T) {
+	var count64 int64
+	var thing string
+
+	// Should return true
+	assert.Equal(t, true, setter.IsZeroNew(count64))
+	assert.Equal(t, true, setter.IsZeroNew(thing))
+
+	thing = "thrawn"
+	count64 = int64(1)
+	assert.Equal(t, false, setter.IsZeroNew(count64))
+	assert.Equal(t, false, setter.IsZeroNew(thing))
+}
+
+// Not possible now given compiler warnings
+// func TestSetterNew_IfEmptyTypePanic(t *testing.T) {
+// defer func() {
+// if r := recover(); r != nil {
+// assert.Equal(t, "reflect.Set: value of type int is not assignable to type string", r)
+// }
+// }()
+
+// var thing string
+// // Should panic
+// setter.SetDefaultNew(&thing, 1)
+// assert.Fail(t, "Should have caught panic")
+// }
+
+// Not possible now given argument is now a pointer to T
+// func TestSetterNew_IfEmptyNonPtrPanic(t *testing.T) {
+// defer func() {
+// if r := recover(); r != nil {
+// assert.Equal(t, "setter.SetDefault: Expected first argument to be of type reflect.Ptr", r)
+// }
+// }()
+
+// var thing string
+// // Should panic
+// setter.SetDefaultNew(thing, "thrawn")
+// assert.Fail(t, "Should have caught panic")
+// }
