@@ -58,6 +58,7 @@ func SetDefaultNew[T comparable](dest *T, defaultValues ...T) {
 		for _, value := range defaultValues {
 			if !IsZeroNew(value) {
 				*dest = value
+				return
 			}
 		}
 	}
