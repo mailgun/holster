@@ -36,11 +36,11 @@ jobs:
         run: go mod download
 
       - name: Start containers
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Test
         run: make test
 
       - name: Stop containers
         if: always()
-        run: docker-compose down
+        run: docker compose down
