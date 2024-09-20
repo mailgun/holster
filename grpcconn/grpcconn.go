@@ -373,7 +373,7 @@ func (cm *ConnMgr[T]) refreshConnPool() (clock.Duration, error) {
 	}
 	cm.connPoolMu.Unlock()
 	took := clock.Since(begin).Truncate(clock.Millisecond)
-	cm.log.Warnf("Connection pool refreshed: took=%s, zone=%s, poolSize=%d, newConnCount=%d, knownServerCount=%d, crossZoneCount=%d, ttl=%s",
+	cm.log.Infof("Connection pool refreshed: took=%s, zone=%s, poolSize=%d, newConnCount=%d, knownServerCount=%d, crossZoneCount=%d, ttl=%s",
 		took, cm.cfg.Zone, connPoolSize, newConnCount, len(getGRPCEndpointRs.Servers), crossZoneCount, ttl)
 	if connPoolSize < 1 {
 		return 0, errConnPoolEmpty
