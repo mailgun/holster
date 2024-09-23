@@ -53,6 +53,54 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 	}
 }
 
+// Default assigns the first non-zero default value to `dest`
+// if `dest`, itself, is the zero value of type T.
+// To work with slices: use DefaultSlice
+//
+//	 var config struct {
+//			Verbose *bool
+//			Foo string
+//			Bar int
+//		}
+//		holster.Default(&config.Foo, "default")
+//		holster.Default(&config.Bar, 200)
+//
+// Supply additional default values and SetDefault will
+// choose the first default that is not of zero value
+//
+//	holster.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+func Default[T comparable](dest *T, defaultValues ...T) {
+	if IsZeroNew(*dest) {
+		for _, value := range defaultValues {
+			if !IsZeroNew(value) {
+				*dest = value
+				return
+			}
+		}
+	}
+}
+
+// DefaultSlice assigns the first non-empty default value to `dest` if
+// `dest`, itself, is an empty slice.
+func DefaultSlice[T comparable](dest *[]T, defaultValues ...[]T) {
+	if len(*dest) == 0 {
+		for _, value := range defaultValues {
+			if len(value) != 0 {
+				*dest = make([]T, len(value))
+				copy(*dest, value)
+				return
+			}
+		}
+	}
+}
+
+// IsZeroNew compares the given value to its Golang-specified zero value.
+// It works for any type T that satisfies comparable.
+func IsZeroNew[T comparable](value T) bool {
+	var zero T
+	return value == zero
+}
+
 // Assign the first value that is not empty or of zero value.
 // This panics if the value is not a pointer or if value and
 // default value are not of the same type.
