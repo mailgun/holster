@@ -277,7 +277,7 @@ func TestSetterNew_IsEmpty(t *testing.T) {
 
 // var thing string
 // // Should panic
-// setter.SetDefaultNew(&thing, 1)
+// setter.Default(&thing, 1)
 // assert.Fail(t, "Should have caught panic")
 // }
 
@@ -291,6 +291,6 @@ func TestSetterNew_IsEmpty(t *testing.T) {
 
 // var thing string
 // // Should panic
-// setter.SetDefaultNew(thing, "thrawn")
+// setter.Default(thing, "thrawn")
 // assert.Fail(t, "Should have caught panic")
 // }
