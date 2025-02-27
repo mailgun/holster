@@ -30,8 +30,8 @@ Waitgroup is a simplification of `sync.Waitgroup` with item and error collection
 
 Running many short term routines over a collection with `.Run()`
 ```go
-import "github.com/mailgun/holster/v4/syncutils"
-var wg syncutils.WaitGroup
+import "github.com/mailgun/holster/v4/syncutil"
+var wg syncutil.WaitGroup
 for _, item := range items {
     wg.Run(func(item interface{}) error {
         // Do some long running thing with the item
@@ -47,9 +47,9 @@ if errs != nil {
 
 Clean up long running routines easily with `.Loop()`
 ```go
-import "github.com/mailgun/holster/v4/syncutils"
+import "github.com/mailgun/holster/v4/syncutil"
 pipe := make(chan int32, 0)
-var wg syncutils.WaitGroup
+var wg syncutil.WaitGroup
 var count int32
 
 wg.Loop(func() bool {
@@ -76,8 +76,8 @@ wg.Wait()
 
 Loop `.Until()` `.Stop()` is called
 ```go
-import "github.com/mailgun/holster/v4/syncutils"
-var wg syncutils.WaitGroup
+import "github.com/mailgun/holster/v4/syncutil"
+var wg syncutil.WaitGroup
 
 wg.Until(func(done chan struct{}) bool {
     select {
@@ -101,9 +101,9 @@ collects any errors from the routines once they have all completed. FanOut allow
 to control how many goroutines spawn at a time while WaitGroup will not.
 
 ```go
-import "github.com/mailgun/holster/v4/syncutils"
+import "github.com/mailgun/holster/v4/syncutil"
 // Insert records into the database 10 at a time
-fanOut := syncutils.NewFanOut(10)
+fanOut := syncutil.NewFanOut(10)
 for _, item := range items {
     fanOut.Run(func(cast interface{}) error {
         item := cast.(Item)
