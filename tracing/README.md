@@ -11,13 +11,10 @@ It's comprised of nested spans that are rendered as a waterfall graph.  Each
 span indicates start/end timings and optionally other developer specified
 metadata and logging output.
 
-Jaeger Tracing is a common tool used to receive OpenTelemetry trace data.  Use
-its web UI to query for traces and view the waterfall graph.
-
 OpenTelemetry is distributed, which allows services to pass the trace ids to
 disparate remote services.  The remote service may generate child spans that
 will be visible on the same waterfall graph.  This requires that all services
-send traces to the same Jaeger Server.
+send traces to the same tracing server.
 
 ## Why OpenTelemetry?
 It is the latest standard for distributed tracing clients.
@@ -25,12 +22,18 @@ It is the latest standard for distributed tracing clients.
 OpenTelemetry supersedes its now deprecated predecessor,
 [OpenTracing](https://opentracing.io).
 
-It no longer requires implementation specific client modules, such as Jaeger
-client.  The provided OpenTelemetry SDK includes a client for Jaeger.
+The OpenTelmetry SDK provides client packages that are used to export traces
+over standard OTLP protocol.
 
 ## Why Jaeger Tracing Server?
 Easy to setup.  Powerful and easy to use web UI.  Open source.  Scalable using
-Elasticsearch.
+Elasticsearch persistence if you outgrow the default in-memory storage.
+
+Jaeger Tracing Server is a common tool used to receive OpenTelemetry trace
+data.  Use its web UI to query for traces and view the waterfall graph.  For
+the sake of simplicity, all examples in this document assume using Jaeger
+Server for collecting and reporting on traces.  Though, there are other free
+and commercial tools that serve the same function.
 
 ## Getting Started
 [opentelemetry.io](https://opentelemetry.io)
@@ -48,15 +51,16 @@ Configuration reference via environment variables:
 [https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md).
 
 #### Exporter
-Traces export to Jaeger by default.  Other exporters are available by setting
-environment variable `OTEL_TRACES_EXPORTER` with one or more of:
+Traces export to OTLP by default.  Other exporters are available by setting
+environment variable `OTEL_TRACES_EXPORTER` to:
 
 * `otlp`: [OTLP: OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md)
-* `jaeger`: [Jaeger Tracing](https://jaegertracing.io)
 * `none`: Disable export.
 
-Usually, you'd only need one exporter.  If not, more than one may be selected
-by delimiting with comma.
+Note: OpenTelemetry [dropped support for Jaeger
+client](https://github.com/open-telemetry/opentelemetry-go/blob/9b06c4cd35edefa3ff7308e8f074d9bc34168e13/CHANGELOG.md?plain=1#L770-L773).
+The Jaeger protocol is no longer required because the Jaeger Server now
+supports OTLP protocol for inbound traces.  As a result, Holster no longer supports a `jaeger` exporter setting.
 
 #### OTLP Exporter
 By default, OTLP exporter exports to an [OpenTelemetry
@@ -65,30 +69,6 @@ Collector](https://opentelemetry.io/docs/collector/) on localhost on gRPC port
 `OTEL_EXPORTER_OTLP_ENDPOINT` like `https://collector:4317`.
 
 See more: [OTLP configuration](#OTLP)
-
-#### Jaeger Exporter via UDP
-By default, Jaeger exporter exports to a Jaeger Agent on localhost port
-6831/udp.  The host and port can be changed by setting environment variables
-`OTEL_EXPORTER_JAEGER_AGENT_HOST`, `OTEL_EXPORTER_JAEGER_AGENT_PORT`.
-
-It's important to ensure UDP traces are sent on the loopback interface (aka
-localhost).  UDP datagrams are limited in size to the MTU of the interface and
-the payload cannot be split into multiple datagrams.  The loopback interface
-MTU is large, typically 65000 or higher.  Network interface MTU is typically
-much lower at 1500.  OpenTelemetry's Jaeger client is sometimes unable to limit
-its payload to fit in a 1500 byte datagram and will drop those packets.  This
-causes traces that are mangled or missing detail.
-
-#### Jaeger Exporter via HTTP
-If it's not possible to install a Jaeger Agent on localhost, the client can
-instead export directly to the Jaeger Collector of the Jaeger Server on HTTP
-port 14268.
-
-Enable HTTP exporter with configuration:
-```
-OTEL_EXPORTER_JAEGER_PROTOCOL=http/thrift.binary
-OTEL_EXPORTER_JAEGER_ENDPOINT=http://<jaeger-server>:14268/api/traces
-```
 
 #### Probabilistic Sampling
 By default, all traces are sampled.  If the tracing volume is burdening the
@@ -181,7 +161,7 @@ shutdown.
 The default tracer is stored globally in the tracer package for use by tracing
 functions.
 
-The tracer object identifies itself by a library name, which can be seen in Jaeger
+The tracer object identifies itself by a library name, which can be seen in
 traces as attribute `otel.library.name`.  This value is typically the module
 name of the application.
 
@@ -434,18 +414,6 @@ Possible environment config exporter config options when using
 
 See also [OTLP configuration
 reference](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md).
-
-#### Jaeger
-* `OTEL_EXPORTER_JAEGER_PROTOCOL`
-* `OTEL_EXPORTER_JAEGER_ENDPOINT`
-* `OTEL_EXPORTER_JAEGER_AGENT_HOST`
-* `OTEL_EXPORTER_JAEGER_AGENT_PORT`
-
-##### `OTEL_EXPORTER_JAEGER_PROTOCOL`
-  Possible values:
-* `udp/thrift.compact` (default): Export traces via UDP datagrams.  Best used when Jaeger Agent is accessible via loopback interface.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6831`.
-* `udp/thrift.binary`: Alternative protocol to the more commonly used `udp/thrift.compact`.  May also provide `OTEL_EXPORTER_JAEGER_AGENT_HOST`/`OTEL_EXPORTER_JAEGER_AGENT_PORT`, which default to `localhost`/`6832`.
-* `http/thrift.compact`: Export traces via HTTP packets.  Best used when Jaeger Agent cannot be deployed or is inaccessible via loopback interface.  This setting sends traces directly to Jaeger's collector port.  May also provide `OTEL_EXPORTER_JAEGER_ENDPOINT`, which defaults to `http://localhost:14268/api/traces`.
 
 #### Honeycomb
 [Honeycomb](https://honeycomb.io) consumes OTLP traces and requires an API key header:
