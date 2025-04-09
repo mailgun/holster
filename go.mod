@@ -1,6 +1,7 @@
 module github.com/mailgun/holster/v4
 
 go 1.22.0
+toolchain go1.24.1
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
@@ -28,7 +29,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0
 	go.opentelemetry.io/otel/sdk v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
-	golang.org/x/net v0.35.0
+	golang.org/x/net v0.36.0
 	google.golang.org/grpc v1.71.0
 	gopkg.in/yaml.v3 v3.0.1
 )
