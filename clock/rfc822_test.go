@@ -188,7 +188,7 @@ func TestParseRFC822Time(t *testing.T) {
 		{"Wed, November 03 2021 17:48:06 CST"},
 
 		// Timestamps without seconds.
-		{"Sun, 31 Oct 2021 12:10 -5000"},
+		{"Sun, 31 Oct 2021 12:10 -0500"},
 		{"Thu, 3 Jun 2021 12:01 MST"},
 		{"Thu, 3 Jun 2021 12:01 -0700"},
 		{"Thu, 3 Jun 2021 12:01 -0700 (MST)"},

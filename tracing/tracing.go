@@ -8,14 +8,13 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/sirupsen/logrus"
@@ -63,11 +62,6 @@ func InitTracing(ctx context.Context, libraryName string, opts ...TracingOption)
 		case "none":
 			// No exporter.  Used with unit tests.
 			continue
-		case "jaeger":
-			exporter, err = makeJaegerExporter()
-			if err != nil {
-				return errors.Wrap(err, "error in makeJaegerExporter")
-			}
 		default:
 			// default assuming "otlp".
 			exporter, err = makeOtlpExporter(ctx)
@@ -186,7 +180,7 @@ func makeOtlpExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	protocol := getenvOrDefault("grpc", "OTEL_EXPORTER_OTLP_PROTOCOL", "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL")
 	var client otlptrace.Client
 
-	// OTel Jaeger client doesn't seem to implement the spec for
+	// OTel OTLP tracer client doesn't seem to implement the spec for
 	// OTEL_EXPORTER_OTLP_PROTOCOL selection.  So we must.
 	// NewClient will parse supported env var configuration.
 	switch protocol {
@@ -216,55 +210,4 @@ func makeOtlpExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	log.WithFields(logFields).Info("Initializing OpenTelemetry")
 
 	return otlptrace.New(ctx, client)
-}
-
-func makeJaegerExporter() (*jaeger.Exporter, error) {
-	var endpointOption jaeger.EndpointOption
-	protocol := getenvOrDefault("udp/thrift.compact", "OTEL_EXPORTER_JAEGER_PROTOCOL")
-
-	logFields := logrus.Fields{
-		"exporter": "jaeger",
-		"protocol": protocol,
-	}
-
-	sampler := getenvOrDefault("", "OTEL_TRACES_SAMPLER")
-	logFields["sampler"] = sampler
-	if strings.HasSuffix(sampler, "traceidratio") {
-		logFields["sampler.ratio"], _ = strconv.ParseFloat(getenvOrDefault("", "OTEL_TRACES_SAMPLER_ARG"), 64)
-	}
-
-	// OTel Jaeger client doesn't seem to implement the spec for
-	// OTEL_EXPORTER_JAEGER_PROTOCOL selection.  So we must.
-	// Jaeger endpoint option will parse supported env var configuration.
-	switch protocol {
-	// TODO: Support for "grpc" protocol. https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#jaeger-exporter
-	case "http/thrift.binary":
-		logFields["endpoint"] = os.Getenv("OTEL_EXPORTER_JAEGER_ENDPOINT")
-		log.WithFields(logFields).Info("Initializing OpenTelemetry")
-		endpointOption = jaeger.WithCollectorEndpoint()
-
-	case "udp/thrift.binary":
-		logFields["agentHost"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
-		logFields["agentPort"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT")
-		log.WithFields(logFields).Info("Initializing OpenTelemetry")
-		endpointOption = jaeger.WithAgentEndpoint()
-
-	case "udp/thrift.compact":
-		logFields["agentHost"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_HOST")
-		logFields["agentPort"] = os.Getenv("OTEL_EXPORTER_JAEGER_AGENT_PORT")
-		log.WithFields(logFields).Info("Initializing OpenTelemetry")
-		endpointOption = jaeger.WithAgentEndpoint()
-
-	default:
-		log.WithField("OTEL_EXPORTER_JAEGER_PROTOCOL", protocol).
-			Error("Unknown Jaeger protocol configured")
-		endpointOption = jaeger.WithAgentEndpoint()
-	}
-
-	exp, err := jaeger.New(endpointOption)
-	if err != nil {
-		return nil, errors.Wrap(err, "error in jaeger.New")
-	}
-
-	return exp, nil
 }
