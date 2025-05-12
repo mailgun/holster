@@ -1,17 +1,16 @@
 module github.com/mailgun/holster/v4
 
-go 1.22.0
+go 1.23.9
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
-	github.com/ahmetb/go-linq v3.0.0+incompatible
 	github.com/foxcpp/go-mockdns v1.0.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.15.2
 	github.com/hashicorp/go-hclog v1.3.1
 	github.com/hashicorp/memberlist v0.5.1
-	github.com/mailgun/errors v0.1.5
+	github.com/mailgun/errors v0.4.0
 	github.com/miekg/dns v1.1.50
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0

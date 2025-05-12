@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 
-	linq "github.com/ahmetb/go-linq"
 	"github.com/mailgun/holster/v4/callstack"
 	"github.com/mailgun/holster/v4/errors"
 	"github.com/stretchr/testify/assert"
@@ -58,8 +58,8 @@ func TestWithStack(t *testing.T) {
 			funcs = append(funcs, fmt.Sprintf("%n", frame))
 		}
 	}
-	assert.True(t, linq.From(files).Contains("with_context_test.go"))
-	assert.True(t, linq.From(funcs).Contains("TestWithStack"), funcs)
+	assert.True(t, slices.Contains(files, "with_context_test.go"))
+	assert.True(t, slices.Contains(funcs, "TestWithStack"), funcs)
 }
 
 func TestWrapfNil(t *testing.T) {

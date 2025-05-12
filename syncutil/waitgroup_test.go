@@ -16,11 +16,11 @@ limitations under the License.
 package syncutil_test
 
 import (
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	linq "github.com/ahmetb/go-linq"
 	"github.com/mailgun/holster/v4/errors"
 	"github.com/mailgun/holster/v4/syncutil"
 	"github.com/stretchr/testify/suite"
@@ -44,7 +44,7 @@ func (s *WaitGroupTestSuite) TestRun() {
 
 	// Iterate over a thing and doing some long running thing for each
 	for _, item := range items {
-		wg.Run(func(item interface{}) error {
+		wg.Run(func(item any) error {
 			// Do some long running thing
 			time.Sleep(time.Nanosecond * 50)
 			// Return an error for testing
@@ -55,8 +55,8 @@ func (s *WaitGroupTestSuite) TestRun() {
 	errs := wg.Wait()
 	s.NotNil(errs)
 	s.Equal(2, len(errs))
-	s.Equal(true, linq.From(errs).Contains(items[0]))
-	s.Equal(true, linq.From(errs).Contains(items[1]))
+	s.True(slices.Contains(errs, items[0]))
+	s.True(slices.Contains(errs, items[1]))
 }
 
 func (s *WaitGroupTestSuite) TestGo() {
