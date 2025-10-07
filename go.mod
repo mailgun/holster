@@ -1,6 +1,6 @@
 module github.com/mailgun/holster/v4
 
-go 1.22.0
+go 1.25.1
 
 require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible

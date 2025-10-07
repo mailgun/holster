@@ -1,4 +1,7 @@
-name: Lint
+# Workflow for Go Static Code Analysis check,
+# See https://mailgun.atlassian.net/wiki/spaces/ENG/pages/4278943767/Go+Static+Code+Analysis+Linters
+
+name: CI
 
 on:
   push:
@@ -8,7 +11,7 @@ on:
 
 env:
   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-  GOLANGCI_LINT_VERSION: v1.57.2
+  GOLANGCI_LINT_VERSION: v2.4.0
 
 jobs:
   lint:
@@ -31,8 +34,8 @@ jobs:
         run: go mod tidy && git diff --exit-code
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          skip-cache: true # cache/restore is done by actions/setup-go@v3 step
+          skip-cache: true # cache/restore is done by actions/setup-go step
           args: -v

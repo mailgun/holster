@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 	"unicode"
-	_ "unsafe" // For go:linkname
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/mailgun/holster/v4/collections"
@@ -73,7 +72,7 @@ func LookupWithPref(ctx context.Context, domainName string) (mxRecords []*net.MX
 	if err != nil {
 		return nil, false, errors.Wrap(err, "invalid domain name")
 	}
-	mxRecords, err = lookupMX(Resolver, ctx, asciiDomainName)
+	mxRecords, err = Resolver.LookupMX(ctx, asciiDomainName)
 	if err != nil {
 		var netDNSError *net.DNSError
 		if errors.As(err, &netDNSError) && netDNSError.IsNotFound {
@@ -233,16 +232,3 @@ func cacheAndReturn(domainName string, mxRecords []*net.MX, implicit bool, err e
 	lookupResultCache.AddWithTTL(domainName, lookupResult{mxRecords: mxRecords, implicit: implicit, err: err}, cacheTTL)
 	return mxRecords, implicit, err
 }
-
-// lookupMX exposes the respective private function of net.Resolver. The public
-// alternative net.(*Resolver).LookupMX considers MX records that contain an IP
-// address invalid. It is indeed invalid according to an RFC, but in reality
-// some people do not read RFC and configure IP addresses in MX records.
-//
-// An issue against the Golang proper was created to remove the strict MX DNS
-// record validation https://github.com/golang/go/issues/56025. When it is
-// fixed we will be able to remove this unsafe binding and get back to calling
-// the public method.
-//
-//go:linkname lookupMX net.(*Resolver).lookupMX
-func lookupMX(r *net.Resolver, ctx context.Context, name string) ([]*net.MX, error)
