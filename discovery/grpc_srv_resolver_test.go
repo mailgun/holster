@@ -29,11 +29,24 @@ type testClientConn struct {
 
 func (t *testClientConn) UpdateState(s resolver.State) error {
 	t.m1.Lock()
-	defer t.m1.Unlock()
 	t.state = s
 	t.updateStateCalls++
-	t.updateChan <- struct{}{}
-	return t.updateStateErr
+	err := t.updateStateErr
+	t.m1.Unlock()
+	// Signal after releasing m1 so a second UpdateState cannot block on a
+	// full updateChan while holding the lock (the success test then reads
+	// state). lookupSRV may call UpdateState twice.
+	select {
+	case t.updateChan <- struct{}{}:
+	default:
+	}
+	return err
+}
+
+func (t *testClientConn) State() resolver.State {
+	t.m1.Lock()
+	defer t.m1.Unlock()
+	return t.state
 }
 
 func (t *testClientConn) ReportError(err error) {
@@ -41,7 +54,6 @@ func (t *testClientConn) ReportError(err error) {
 }
 
 func TestSrvResolverBuilderSuccess(t *testing.T) {
-	t.Skip("TODO: fix https://github.com/mailgun/holster/issues/150")
 
 	z := map[string]mockdns.Zone{
 		"srv.example.com.": {
@@ -83,8 +95,10 @@ func TestSrvResolverBuilderSuccess(t *testing.T) {
 		require.FailNow(t, "timeout waiting for UpdateState() call")
 	}
 
-	assert.Equal(t, "192.168.1.1:12345", cc.state.Addresses[0].Addr)
-	assert.Equal(t, "10.2.1.100:12345", cc.state.Addresses[1].Addr)
+	state := cc.State()
+	require.Len(t, state.Addresses, 2)
+	assert.Equal(t, "192.168.1.1:12345", state.Addresses[0].Addr)
+	assert.Equal(t, "10.2.1.100:12345", state.Addresses[1].Addr)
 }
 
 func TestSrvResolverBuilderNoARecord(t *testing.T) {
