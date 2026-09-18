@@ -45,8 +45,6 @@ func (s *FrozenSuite) TestAdvanceNow() {
 }
 
 func (s *FrozenSuite) TestSleep() {
-	s.T().Skip("TODO: fix DATA RACE and enable(https://github.com/mailgun/holster/issues/147)")
-
 	hits := make(chan int, 100)
 
 	delays := []int{60, 100, 90, 131, 999, 5}
@@ -81,18 +79,13 @@ func (s *FrozenSuite) TestSleep() {
 			hits <- delay
 		},
 	}} {
-		fmt.Printf("Test case #%d: %s", i, tc.desc)
+		fmt.Printf("Test case #%d: %s\n", i, tc.desc)
 		for _, delay := range delays {
 			go tc.fn(delay)
 		}
-		// Spin-wait for all goroutines to fall asleep.
-		ft := provider.(*frozenTime)
-		for {
-			if len(ft.timers) == len(delays) {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
+		// Wait4Scheduled observes the timer list under the frozen clock lock
+		// (issue #147: the previous spin-wait read ft.timers without it).
+		s.Require().True(Wait4Scheduled(len(delays), 2*time.Second), "timers should be scheduled")
 
 		runningMs := 0
 		for i, delayMs := range []int{5, 60, 90, 100, 131, 999} {
